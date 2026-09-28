@@ -1,22 +1,25 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import './App.css';
 
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 
+type Account = {
+  id: string;
+  username: string;
+  password: string;
+};
+
 function App() {
-  const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   useEffect(() => {
     const getAccounts = async () => {
       const snapshot = await getDocs(collection(db, "accounts"));
 
-      const accountList = snapshot.docs.map((doc) => ({
+      const accountList: Account[] = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...(doc.data() as Omit<Account, "id">),
       }));
 
       setAccounts(accountList);
