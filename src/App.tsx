@@ -17,6 +17,8 @@ import {
   googleProvider,
 } from "../firebase";
 
+import AdminDashboard from "./dashboards/AdminDashboard/AdminDashboard";
+
 type Account = {
   email?: string;
   name?: string;
@@ -206,22 +208,8 @@ function App() {
       )}
 
       {account.role === "admin" && (
-        <div>
-          <h2>Administrator Dashboard</h2>
-
-          <button>
-            Manage Users
-          </button>
-
-          <button>
-            Manage Transactions
-          </button>
-
-          <button>
-            View Reports
-          </button>
-        </div>
-      )}
+  <AdminDashboard />
+)}
 
       <br />
 
