@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { TEST_STUDENT_ID } from "../../constants/student";
 import {
   subscribeToStudentDocumentRequests,
 } from "../../services/documentRequests";
@@ -19,7 +18,13 @@ interface StudentRequest {
   claim_code: string | null;
 }
 
-export default function DocumentRequestList() {
+type DocumentRequestListProps = {
+  studentId: string;
+};
+
+export default function DocumentRequestList({
+  studentId,
+}: DocumentRequestListProps) {
   const [requests, setRequests] = useState<
     StudentRequest[]
   >([]);
@@ -34,9 +39,18 @@ export default function DocumentRequestList() {
     setLoading(true);
     setError("");
 
+    // Make sure there is a real student ID
+    if (!studentId.trim()) {
+      setError(
+        "Your student account could not be identified."
+      );
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe =
       subscribeToStudentDocumentRequests(
-        TEST_STUDENT_ID,
+        studentId,
         (data) => {
           const converted =
             data as unknown as StudentRequest[];
@@ -57,7 +71,7 @@ export default function DocumentRequestList() {
       );
 
     return () => unsubscribe();
-  }, []);
+  }, [studentId]);
 
   return (
     <div
@@ -82,6 +96,7 @@ export default function DocumentRequestList() {
       )}
 
       {!loading &&
+        !error &&
         requests.length === 0 && (
           <p>
             You don't have any document

@@ -18,6 +18,7 @@ import {
 } from "../firebase";
 
 import AdminDashboard from "./dashboards/AdminDashboard/AdminDashboard";
+import StudentDashboard from "./dashboards/StudentDashboard/StudentDashboard";
 
 type Account = {
   email?: string;
@@ -150,26 +151,8 @@ function App() {
       <hr />
 
       {account.role === "student" && (
-        <div>
-          <h2>Student Dashboard</h2>
-          <p>
-            Welcome to the CampuServe
-            student dashboard.
-          </p>
-
-          <button>
-            Request a Document
-          </button>
-
-          <button>
-            Reserve an Item
-          </button>
-
-          <button>
-            View Transactions
-          </button>
-        </div>
-      )}
+  <StudentDashboard account={account} />
+)}
 
       {account.role === "registrar" && (
         <div>

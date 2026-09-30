@@ -14,11 +14,16 @@ import {
   createGroupMembers,
 } from "../../services/documentRequests";
 
-import { TEST_STUDENT_ID } from "../../constants/student";
 import { SCHEDULE } from "../../constants/schedule";
 import { DOCUMENTS } from "../../constants/documents";
 
-export default function DocumentRequestWizard() {
+type DocumentRequestWizardProps = {
+  studentId: string;
+};
+
+export default function DocumentRequestWizard({
+  studentId,
+}: DocumentRequestWizardProps) {
   // --------------------------------------------------
   // WIZARD STATE
   // --------------------------------------------------
@@ -93,16 +98,18 @@ export default function DocumentRequestWizard() {
   // STEP 1 - REQUEST METHOD
   // --------------------------------------------------
 
-  function addGroupMember(studentId: string) {
-    const cleanedStudentId = studentId.trim();
+  function addGroupMember(memberStudentId: string) {
+    const cleanedStudentId =
+      memberStudentId.trim();
 
     if (!cleanedStudentId) {
       return;
     }
 
-    // Prevent the host from adding themselves.
+    // Prevent the logged-in student
+    // from adding themselves.
     if (
-      cleanedStudentId === TEST_STUDENT_ID
+      cleanedStudentId === studentId
     ) {
       return;
     }
@@ -111,7 +118,8 @@ export default function DocumentRequestWizard() {
     if (
       groupMembers.some(
         (member) =>
-          member.student_id === cleanedStudentId
+          member.student_id ===
+          cleanedStudentId
       )
     ) {
       return;
@@ -120,17 +128,22 @@ export default function DocumentRequestWizard() {
     setGroupMembers((current) => [
       ...current,
       {
-        student_id: cleanedStudentId,
-        invitation_status: "PENDING",
+        student_id:
+          cleanedStudentId,
+        invitation_status:
+          "PENDING",
       },
     ]);
   }
 
-  function removeGroupMember(studentId: string) {
+  function removeGroupMember(
+    memberStudentId: string
+  ) {
     setGroupMembers((current) =>
       current.filter(
         (member) =>
-          member.student_id !== studentId
+          member.student_id !==
+          memberStudentId
       )
     );
   }
@@ -144,19 +157,24 @@ export default function DocumentRequestWizard() {
   ) {
     setSelectedDocuments((current) => {
       const existing = current.find(
-        (item) => item.id === documentId
+        (item) =>
+          item.id === documentId
       );
 
       // If already selected, remove it.
       if (existing) {
         return current.filter(
-          (item) => item.id !== documentId
+          (item) =>
+            item.id !== documentId
         );
       }
 
-      // Find the document in the central catalog.
+      // Find the document in the
+      // central catalog.
       const catalogDocument =
-        getCatalogDocument(documentId);
+        getCatalogDocument(
+          documentId
+        );
 
       if (!catalogDocument) {
         return current;
@@ -169,12 +187,14 @@ export default function DocumentRequestWizard() {
           id: catalogDocument.id,
 
           document_type:
-            catalogDocument.id === "others"
+            catalogDocument.id ===
+            "others"
               ? "Others"
               : catalogDocument.name,
 
           custom_document_name:
-            catalogDocument.id === "others"
+            catalogDocument.id ===
+            "others"
               ? ""
               : null,
 
@@ -311,7 +331,8 @@ export default function DocumentRequestWizard() {
 
   function validateMethod(): string | null {
     if (
-      requestMethod === "WITH_OTHERS" &&
+      requestMethod ===
+        "WITH_OTHERS" &&
       groupMembers.length === 0
     ) {
       return (
@@ -347,7 +368,8 @@ export default function DocumentRequestWizard() {
 
       // Others requires a custom name.
       if (
-        document.document_type === "Others" &&
+        document.document_type ===
+          "Others" &&
         !document.custom_document_name?.trim()
       ) {
         return (
@@ -481,6 +503,15 @@ export default function DocumentRequestWizard() {
       return;
     }
 
+    // Make sure there is a real
+    // logged-in student ID.
+    if (!studentId.trim()) {
+      setError(
+        "Your student account could not be identified. Please log in again."
+      );
+      return;
+    }
+
     // Prevent duplicate submissions.
     if (loading) {
       return;
@@ -495,8 +526,10 @@ export default function DocumentRequestWizard() {
 
       const requestId =
         await createDocumentRequest({
+          // IMPORTANT:
+          // Use the actual logged-in student.
           student_id:
-            TEST_STUDENT_ID,
+            studentId,
 
           request_method:
             requestMethod,
@@ -531,7 +564,8 @@ export default function DocumentRequestWizard() {
             custom_document_name:
               document.document_type ===
               "Others"
-                ? document.custom_document_name
+                ? document
+                    .custom_document_name
                     ?.trim() || null
                 : null,
 
@@ -648,6 +682,13 @@ export default function DocumentRequestWizard() {
 
           <p>
             <strong>
+              Student ID:
+            </strong>{" "}
+            {studentId}
+          </p>
+
+          <p>
+            <strong>
               Status:
             </strong>{" "}
             Pending
@@ -737,8 +778,11 @@ export default function DocumentRequestWizard() {
           onRemoveMember={
             removeGroupMember
           }
+          // IMPORTANT:
+          // This is now the actual
+          // logged-in student.
           currentStudentId={
-            TEST_STUDENT_ID
+            studentId
           }
         />
       )}
