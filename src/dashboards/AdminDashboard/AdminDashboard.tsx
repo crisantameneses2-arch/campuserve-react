@@ -1,10 +1,13 @@
 import "./AdminDashboard.css";
 
 import { useState } from "react";
+
 import {
-addDoc,
   collection,
+  doc,
   getDocs,
+  setDoc,
+  updateDoc,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -14,9 +17,31 @@ type RecordData = {
   [key: string]: unknown;
 };
 
-function AdminDashboard() {
+type AdminAccount = {
+  email?: string;
+  name?: string;
+  role?: string;
+  status?: string;
+  firebaseUid?: string;
+  student_id?: string;
+};
+
+type AdminDashboardProps = {
+  account: AdminAccount;
+};
+
+function AdminDashboard({
+  account,
+}: AdminDashboardProps) {
+  // ==============================
+  // RETRIEVE DATA
+  // ==============================
+
   const [selectedCollection, setSelectedCollection] =
     useState("");
+
+  const [showDeletedAccounts, setShowDeletedAccounts] =
+    useState(false);
 
   const [records, setRecords] =
     useState<RecordData[]>([]);
@@ -27,23 +52,62 @@ function AdminDashboard() {
   const [error, setError] =
     useState("");
 
-const [createStudentId, setCreateStudentId] =
-  useState("");
+  // ==============================
+  // CREATE ACCOUNT
+  // ==============================
 
-const [createName, setCreateName] =
-  useState("");
+  const [createStudentId, setCreateStudentId] =
+    useState("");
 
-const [createEmail, setCreateEmail] =
-  useState("");
+  const [createName, setCreateName] =
+    useState("");
 
-const [createRole, setCreateRole] =
-  useState("student");
+  const [createEmail, setCreateEmail] =
+    useState("");
 
-const [createStatus, setCreateStatus] =
-  useState("active");
+  const [createRole, setCreateRole] =
+    useState("student");
 
-const [createMessage, setCreateMessage] =
-  useState("");
+  const [createStatus, setCreateStatus] =
+    useState("active");
+
+  const [createMessage, setCreateMessage] =
+    useState("");
+
+  // ==============================
+  // UPDATE ACCOUNT
+  // ==============================
+
+  const [editingId, setEditingId] =
+    useState("");
+
+  const [updateId, setUpdateId] =
+    useState("");
+
+  const [updateStudentId, setUpdateStudentId] =
+    useState("");
+
+  const [updateName, setUpdateName] =
+    useState("");
+
+  const [updateEmail, setUpdateEmail] =
+    useState("");
+
+  const [updateRole, setUpdateRole] =
+    useState("student");
+
+  const [updateStatus, setUpdateStatus] =
+    useState("active");
+
+  const [updateMessage, setUpdateMessage] =
+    useState("");
+
+  const [showProfile, setShowProfile] =
+  useState(false);
+
+  // ==============================
+  // COLLECTIONS
+  // ==============================
 
   const collections = [
     "accounts",
@@ -63,7 +127,13 @@ const [createMessage, setCreateMessage] =
     "reports",
   ];
 
-  const handleRetrieve = async () => {
+  // ==============================
+  // RETRIEVE DATA
+  // ==============================
+
+  const handleRetrieve = async (
+    deletedView = showDeletedAccounts
+  ) => {
     if (!selectedCollection) {
       setError("Please select a collection.");
       return;
@@ -78,14 +148,22 @@ const [createMessage, setCreateMessage] =
         collection(db, selectedCollection)
       );
 
-      const data: RecordData[] = snapshot.docs.map(
-        (document) => ({
+      const data: RecordData[] =
+        snapshot.docs.map((document) => ({
           id: document.id,
           ...document.data(),
-        })
-      );
+        }));
 
-      setRecords(data);
+      const filteredRecords =
+        selectedCollection === "accounts"
+          ? data.filter((record) =>
+              deletedView
+                ? record.status === "deleted"
+                : record.status !== "deleted"
+            )
+          : data;
+
+      setRecords(filteredRecords);
     } catch (error) {
       console.error(
         "Error retrieving data:",
@@ -100,15 +178,148 @@ const [createMessage, setCreateMessage] =
     }
   };
 
-    const handleCreateAccount = async () => {
+  // ==============================
+  // CREATE ACCOUNT
+  // ==============================
+
+const handleCreateAccount = async () => {
+  setError("");
+  setCreateMessage("");
+
+  if (
+    !createName ||
+    !createEmail ||
+    !createRole ||
+    !createStatus
+  ) {
+    setError(
+      "Please fill in all required fields."
+    );
+    return;
+  }
+
+  if (
+    createRole === "student" &&
+    !createStudentId
+  ) {
+    setError(
+      "Student ID is required for student accounts."
+    );
+    return;
+  }
+
+  try {
+    const normalizedEmail =
+      createEmail.trim().toLowerCase();
+
+    const accountData: Record<string, string> = {
+      name: createName.trim(),
+      email: normalizedEmail,
+      role: createRole,
+      status: createStatus,
+    };
+
+    if (createRole === "student") {
+      accountData.student_id =
+        createStudentId.trim();
+    }
+
+    // Use the email as the Firestore document ID
+    const accountRef = doc(
+      db,
+      "accounts",
+      normalizedEmail
+    );
+
+    await setDoc(
+      accountRef,
+      accountData
+    );
+
+    setCreateMessage(
+      "Account pre-registered successfully."
+    );
+
+    setCreateStudentId("");
+    setCreateName("");
+    setCreateEmail("");
+    setCreateRole("student");
+    setCreateStatus("active");
+
+  } catch (error) {
+    console.error(
+      "Error creating account:",
+      error
+    );
+
+    setError(
+      "Failed to create account."
+    );
+  }
+};
+
+  // ==============================
+  // SELECT ACCOUNT FOR UPDATE
+  // ==============================
+
+  const handleSelectForUpdate = (
+    record: RecordData
+  ) => {
+    setUpdateId(record.id);
+
+    setUpdateStudentId(
+      typeof record.student_id === "string"
+        ? record.student_id
+        : ""
+    );
+
+    setUpdateName(
+      typeof record.name === "string"
+        ? record.name
+        : ""
+    );
+
+    setUpdateEmail(
+      typeof record.email === "string"
+        ? record.email
+        : ""
+    );
+
+    setUpdateRole(
+      typeof record.role === "string"
+        ? record.role
+        : "student"
+    );
+
+    setUpdateStatus(
+      typeof record.status === "string"
+        ? record.status
+        : "active"
+    );
+
+    setUpdateMessage("");
+  };
+
+  // ==============================
+  // UPDATE ACCOUNT
+  // ==============================
+
+  const handleUpdateAccount = async () => {
     setError("");
-    setCreateMessage("");
+    setUpdateMessage("");
+
+    if (!updateId) {
+      setError(
+        "Please select an account to update."
+      );
+      return;
+    }
 
     if (
-      !createName ||
-      !createEmail ||
-      !createRole ||
-      !createStatus
+      !updateName ||
+      !updateEmail ||
+      !updateRole ||
+      !updateStatus
     ) {
       setError(
         "Please fill in all required fields."
@@ -117,8 +328,8 @@ const [createMessage, setCreateMessage] =
     }
 
     if (
-      createRole === "student" &&
-      !createStudentId
+      updateRole === "student" &&
+      !updateStudentId
     ) {
       setError(
         "Student ID is required for student accounts."
@@ -127,184 +338,388 @@ const [createMessage, setCreateMessage] =
     }
 
     try {
+      const accountRef = doc(
+        db,
+        "accounts",
+        updateId
+      );
+
       const accountData: Record<string, string> = {
-        name: createName,
-        email: createEmail,
-        role: createRole,
-        status: createStatus,
+        name: updateName,
+        email: updateEmail,
+        role: updateRole,
+        status: updateStatus,
       };
 
-      if (createRole === "student") {
+      if (updateRole === "student") {
         accountData.student_id =
-          createStudentId;
+          updateStudentId;
       }
 
-      await addDoc(
-        collection(db, "accounts"),
+      await updateDoc(
+        accountRef,
         accountData
       );
 
-      setCreateMessage(
-        "Account created successfully."
+      setUpdateMessage(
+        "Account updated successfully."
       );
 
-      setCreateStudentId("");
-      setCreateName("");
-      setCreateEmail("");
-      setCreateRole("student");
-      setCreateStatus("active");
+      setEditingId("");
+
+      if (selectedCollection === "accounts") {
+        await handleRetrieve();
+      }
 
     } catch (error) {
       console.error(
-        "Error creating account:",
+        "Error updating account:",
         error
       );
 
       setError(
-        "Failed to create account."
+        "Failed to update account."
       );
     }
   };
 
-  return (
-    <div className="admin-dashboard">
+  // ==============================
+  // SOFT DELETE ACCOUNT
+  // ==============================
 
-      <h1>CampuServe Admin Dashboard</h1>
+  const handleDeleteAccount = async (
+    accountId: string
+  ) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to move this account to Deleted Accounts?"
+    );
 
-      <p>Welcome, Administrator!</p>
+    if (!confirmed) {
+      return;
+    }
 
-      <hr />
+    setError("");
+    setCreateMessage("");
+    setUpdateMessage("");
 
-      <h2>System Management</h2>
-
-      <p>
-        Select a Firestore collection to view
-        its data.
-      </p>
-
-      <select
-        value={selectedCollection}
-        onChange={(event) =>
-          setSelectedCollection(event.target.value)
+    try {
+      await updateDoc(
+        doc(db, "accounts", accountId),
+        {
+          status: "deleted",
+          deletedAt: new Date(),
         }
-      >
-        <option value="">
-          -- Select Collection --
-        </option>
+      );
 
-        {collections.map((collectionName) => (
-          <option
-            key={collectionName}
-            value={collectionName}
-          >
-            {collectionName}
-          </option>
-        ))}
-      </select>
+      if (editingId === accountId) {
+        setEditingId("");
+      }
 
-      <button
-        onClick={handleRetrieve}
-        disabled={loading}
-      >
-        {loading
-          ? "Loading..."
-          : "Retrieve Data"}
-      </button>
+      setCreateMessage(
+        "Account moved to Deleted Accounts."
+      );
 
-      {error && (
-        <p>{error}</p>
-      )}
+      if (selectedCollection === "accounts") {
+        await handleRetrieve();
+      }
 
-      {records.length > 0 && (
+    } catch (error) {
+      console.error(
+        "Error deleting account:",
+        error
+      );
+
+      setError(
+        "Failed to move account to Deleted Accounts."
+      );
+    }
+  };
+
+  // ==============================
+  // RESTORE ACCOUNT
+  // ==============================
+
+  const handleRestoreAccount = async (
+    accountId: string
+  ) => {
+    const confirmed = window.confirm(
+      "Restore this account?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+    setCreateMessage("");
+    setUpdateMessage("");
+
+    try {
+      await updateDoc(
+        doc(db, "accounts", accountId),
+        {
+          status: "active",
+        }
+      );
+
+      setCreateMessage(
+        "Account restored successfully."
+      );
+
+      if (selectedCollection === "accounts") {
+        await handleRetrieve(true);
+      }
+
+    } catch (error) {
+      console.error(
+        "Error restoring account:",
+        error
+      );
+
+      setError(
+        "Failed to restore account."
+      );
+    }
+  };
+
+  // ==============================
+  // DISPLAY RECORD VALUE
+  // ==============================
+
+  const displayValue = (
+    value: unknown
+  ) => {
+    if (value === null || value === undefined) {
+      return "—";
+    }
+
+    if (
+      typeof value === "object"
+    ) {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return "[Object]";
+      }
+    }
+
+    return String(value);
+  };
+
+  // ==============================
+  // UI
+  // ==============================
+
+  return (
+  <div className="admin-layout">
+
+    <aside className="admin-sidebar">
+
+      <div className="sidebar-logo">
+        CampuServe
+      </div>
+
+      <nav className="sidebar-nav">
+
+        <button className="sidebar-item active">
+          <span>▣</span>
+          Dashboard
+        </button>
+
+        <button className="sidebar-item">
+          <span>👤</span>
+          User accounts
+        </button>
+
+        <button className="sidebar-item">
+          <span>🛡</span>
+          Roles & permissions
+        </button>
+
+        <button className="sidebar-item">
+          <span>📄</span>
+          Document requests
+        </button>
+
+        <button className="sidebar-item">
+          <span>📦</span>
+          Item reservations
+        </button>
+
+        <button className="sidebar-item">
+          <span>📊</span>
+          Reports & analytics
+        </button>
+
+        <button className="sidebar-item">
+          <span>📝</span>
+          Activity logs
+        </button>
+
+        <button className="sidebar-item">
+          <span>⚙</span>
+          System settings
+        </button>
+
+      </nav>
+
+    </aside>
+
+    <main className="admin-main">
+
+      <header className="admin-header">
         <div>
-          <h2>
-            {selectedCollection} Data
-          </h2>
-
-          {records.map((record) => (
-            <div key={record.id}>
-              <hr />
-
-              <p>
-                <strong>ID:</strong>{" "}
-                {record.id}
-              </p>
-
-              <pre>
-                {JSON.stringify(
-                  record,
-                  null,
-                  2
-                )}
-              </pre>
-            </div>
-          ))}
+          <h1>Administrator Dashboard</h1>
+          <p>Manage CampuServe system data and users.</p>
         </div>
-      )}
+
+        <div className="admin-profile">
+  <button
+    className="profile-button"
+    onClick={() =>
+      setShowProfile(!showProfile)
+    }
+  >
+    <span className="profile-icon">
+      👤
+    </span>
+
+    <span className="profile-name">
+      Administrator
+    </span>
+
+    <span className="profile-arrow">
+      ▾
+    </span>
+  </button>
+
+  {showProfile && (
+    <div className="profile-panel">
+
+      <div className="profile-panel-header">
+        <div className="profile-panel-icon">
+          👤
+        </div>
+
+        <div>
+          <strong>
+            {account.name || "Administrator"}
+          </strong>
+
+          <span>
+            Administrator
+          </span>
+        </div>
+      </div>
+
+      <div className="profile-details">
+
+        <div>
+          <small>Email</small>
+          <p>{account.email}</p>
+        </div>
+
+        <div>
+          <small>Role</small>
+          <p>{account.role}</p>
+        </div>
+
+        <div>
+          <small>Status</small>
+          <p>{account.status}</p>
+        </div>
+
+      </div>
+
+    </div>
+  )}
+</div>
+      </header>
+
+      <div className="admin-content">
+
+      <p>
+        Manage CampuServe accounts and
+        system data.
+      </p>
 
       <hr />
 
-      <h2>Create Account</h2>
+      {/* ==========================
+          CREATE ACCOUNT
+      ========================== */}
 
-      <p>
-        Create a new account in the accounts collection.
-      </p>
+      <section>
+        <h3>Create Account</h3>
 
-      <div>
-        <label>
-          Student ID:
+        <div>
+          <label>
+            Student ID:
+          </label>
+
           <input
             type="text"
             value={createStudentId}
             onChange={(event) =>
-              setCreateStudentId(event.target.value)
+              setCreateStudentId(
+                event.target.value
+              )
             }
-            placeholder="Required for students"
+            placeholder="Student ID"
           />
-        </label>
-      </div>
+        </div>
 
-      <br />
+        <br />
 
-      <div>
-        <label>
-          Name:
+        <div>
+          <label>
+            Name:
+          </label>
+
           <input
             type="text"
             value={createName}
             onChange={(event) =>
-              setCreateName(event.target.value)
+              setCreateName(
+                event.target.value
+              )
             }
-            placeholder="Enter name"
+            placeholder="Full Name"
           />
-        </label>
-      </div>
+        </div>
 
-      <br />
+        <br />
 
-      <div>
-        <label>
-          Email:
+        <div>
+          <label>
+            Email:
+          </label>
+
           <input
             type="email"
             value={createEmail}
             onChange={(event) =>
-              setCreateEmail(event.target.value)
+              setCreateEmail(
+                event.target.value
+              )
             }
-            placeholder="Enter email"
+            placeholder="Email"
           />
-        </label>
-      </div>
+        </div>
 
-      <br />
+        <br />
 
-      <div>
-        <label>
-          Role:
+        <div>
+          <label>
+            Role:
+          </label>
+
           <select
             value={createRole}
             onChange={(event) =>
-              setCreateRole(event.target.value)
+              setCreateRole(
+                event.target.value
+              )
             }
           >
             <option value="student">
@@ -316,25 +731,28 @@ const [createMessage, setCreateMessage] =
             </option>
 
             <option value="registrar">
-              Registrar Staff
+              Registrar
             </option>
 
             <option value="general_office">
-              Supply Staff
+              General Office
             </option>
           </select>
-        </label>
-      </div>
+        </div>
 
-      <br />
+        <br />
 
-      <div>
-        <label>
-          Status:
+        <div>
+          <label>
+            Status:
+          </label>
+
           <select
             value={createStatus}
             onChange={(event) =>
-              setCreateStatus(event.target.value)
+              setCreateStatus(
+                event.target.value
+              )
             }
           >
             <option value="active">
@@ -345,30 +763,498 @@ const [createMessage, setCreateMessage] =
               Inactive
             </option>
           </select>
-        </label>
-      </div>
+        </div>
+
+        <br />
+
+        <button
+          onClick={handleCreateAccount}
+        >
+          Create Account
+        </button>
+
+        {createMessage && (
+          <p>
+            {createMessage}
+          </p>
+        )}
+      </section>
+
+      <hr />
+
+      {/* ==========================
+          RETRIEVE DATA
+      ========================== */}
+
+      <section>
+        <h3>Retrieve Data</h3>
+
+        <select
+          value={selectedCollection}
+          onChange={(event) =>
+            setSelectedCollection(
+              event.target.value
+            )
+          }
+        >
+          <option value="">
+            -- Select Collection --
+          </option>
+
+          {collections.map(
+            (collectionName) => (
+              <option
+                key={collectionName}
+                value={collectionName}
+              >
+                {collectionName}
+              </option>
+            )
+          )}
+        </select>
+
+        <button
+          onClick={() =>
+            handleRetrieve()
+          }
+          disabled={loading}
+        >
+          {loading
+            ? "Loading..."
+            : "Retrieve Data"}
+        </button>
+
+        {selectedCollection ===
+          "accounts" && (
+          <div>
+            <br />
+
+            <button
+              onClick={() => {
+                setShowDeletedAccounts(
+                  false
+                );
+
+                handleRetrieve(false);
+              }}
+            >
+              Active Accounts
+            </button>
+
+            <button
+              onClick={() => {
+                setShowDeletedAccounts(
+                  true
+                );
+
+                handleRetrieve(true);
+              }}
+            >
+              Deleted Accounts
+            </button>
+          </div>
+        )}
+
+      </section>
 
       <br />
 
-      <button onClick={handleCreateAccount}>
-        Create Account
-      </button>
+      {/* ==========================
+          ERROR MESSAGE
+      ========================== */}
 
-      {createMessage && (
-        <p>{createMessage}</p>
+      {error && (
+        <div>
+          <p>
+            <strong>
+              Error:
+            </strong>{" "}
+            {error}
+          </p>
+        </div>
       )}
 
-      {!loading &&
-        selectedCollection &&
-        records.length === 0 &&
-        !error && (
+      {/* ==========================
+          RECORDS
+      ========================== */}
+
+      {records.length > 0 && (
+        <section>
+          <h3>
+            Retrieved Records
+          </h3>
+
           <p>
-            No records found in this collection.
+            Collection:{" "}
+            <strong>
+              {selectedCollection}
+            </strong>
+          </p>
+
+          <p>
+            Records found:{" "}
+            {records.length}
+          </p>
+
+          {records.map(
+            (record) => (
+              <div
+                key={record.id}
+                style={{
+                  border:
+                    "1px solid #ccc",
+                  padding: "15px",
+                  marginBottom: "15px",
+                }}
+              >
+
+                {/* ==================
+                    ACCOUNT RECORD
+                ================== */}
+
+                {selectedCollection ===
+                  "accounts" ? (
+                  <div>
+
+                    <p>
+                      <strong>
+                        Document ID:
+                      </strong>{" "}
+                      {record.id}
+                    </p>
+
+                    {editingId ===
+                    record.id ? (
+                      <div>
+
+                        <h4>
+                          Edit Account
+                        </h4>
+
+                        <div>
+                          <label>
+                            Student ID:
+                          </label>
+
+                          <input
+                            type="text"
+                            value={
+                              updateStudentId
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              setUpdateStudentId(
+                                event
+                                  .target
+                                  .value
+                              )
+                            }
+                          />
+                        </div>
+
+                        <br />
+
+                        <div>
+                          <label>
+                            Name:
+                          </label>
+
+                          <input
+                            type="text"
+                            value={
+                              updateName
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              setUpdateName(
+                                event
+                                  .target
+                                  .value
+                              )
+                            }
+                          />
+                        </div>
+
+                        <br />
+
+                        <div>
+                          <label>
+                            Email:
+                          </label>
+
+                          <input
+                            type="email"
+                            value={
+                              updateEmail
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              setUpdateEmail(
+                                event
+                                  .target
+                                  .value
+                              )
+                            }
+                          />
+                        </div>
+
+                        <br />
+
+                        <div>
+                          <label>
+                            Role:
+                          </label>
+
+                          <select
+                            value={
+                              updateRole
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              setUpdateRole(
+                                event
+                                  .target
+                                  .value
+                              )
+                            }
+                          >
+                            <option value="student">
+                              Student
+                            </option>
+
+                            <option value="admin">
+                              Administrator
+                            </option>
+
+                            <option value="registrar">
+                              Registrar
+                            </option>
+
+                            <option value="general_office">
+                              General Office
+                            </option>
+                          </select>
+                        </div>
+
+                        <br />
+
+                        <div>
+                          <label>
+                            Status:
+                          </label>
+
+                          <select
+                            value={
+                              updateStatus
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              setUpdateStatus(
+                                event
+                                  .target
+                                  .value
+                              )
+                            }
+                          >
+                            <option value="active">
+                              Active
+                            </option>
+
+                            <option value="inactive">
+                              Inactive
+                            </option>
+
+                            <option value="deleted">
+                              Deleted
+                            </option>
+                          </select>
+                        </div>
+
+                        <br />
+
+                        <button
+                          onClick={
+                            handleUpdateAccount
+                          }
+                        >
+                          Save Changes
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setEditingId("");
+                            setUpdateMessage("");
+                          }}
+                        >
+                          Cancel
+                        </button>
+
+                        {updateMessage && (
+                          <p>
+                            {
+                              updateMessage
+                            }
+                          </p>
+                        )}
+
+                      </div>
+                    ) : (
+                      <div>
+
+                        <p>
+                          <strong>
+                            Student ID:
+                          </strong>{" "}
+                          {displayValue(
+                            record.student_id
+                          )}
+                        </p>
+
+                        <p>
+                          <strong>
+                            Name:
+                          </strong>{" "}
+                          {displayValue(
+                            record.name
+                          )}
+                        </p>
+
+                        <p>
+                          <strong>
+                            Email:
+                          </strong>{" "}
+                          {displayValue(
+                            record.email
+                          )}
+                        </p>
+
+                        <p>
+                          <strong>
+                            Role:
+                          </strong>{" "}
+                          {displayValue(
+                            record.role
+                          )}
+                        </p>
+
+                        <p>
+                          <strong>
+                            Status:
+                          </strong>{" "}
+                          {displayValue(
+                            record.status
+                          )}
+                        </p>
+
+                        <button
+                          onClick={() => {
+                            handleSelectForUpdate(
+                              record
+                            );
+
+                            setEditingId(
+                              record.id
+                            );
+                          }}
+                        >
+                          Edit
+                        </button>
+
+                        {record.status ===
+                        "deleted" ? (
+                          <button
+                            onClick={() =>
+                              handleRestoreAccount(
+                                record.id
+                              )
+                            }
+                          >
+                            Restore
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              handleDeleteAccount(
+                                record.id
+                              )
+                            }
+                          >
+                            Delete
+                          </button>
+                        )}
+
+                      </div>
+                    )}
+
+                  </div>
+                ) : (
+
+                  /* ==================
+                     OTHER COLLECTIONS
+                  ================== */
+
+                  <div>
+
+                    <p>
+                      <strong>
+                        Document ID:
+                      </strong>{" "}
+                      {record.id}
+                    </p>
+
+                    {Object.entries(
+                      record
+                    ).map(
+                      ([key, value]) => {
+                        if (
+                          key === "id"
+                        ) {
+                          return null;
+                        }
+
+                        return (
+                          <p
+                            key={key}
+                          >
+                            <strong>
+                              {key}:
+                            </strong>{" "}
+                            {displayValue(
+                              value
+                            )}
+                          </p>
+                        );
+                      }
+                    )}
+
+                  </div>
+                )}
+
+              </div>
+            )
+          )}
+
+        </section>
+      )}
+
+      {selectedCollection &&
+        records.length === 0 &&
+        !loading && (
+          <p>
+            No records found.
           </p>
         )}
 
-    </div>
-  );
-}
+          </div>
 
+    </main>
+
+  </div>
+);
+}
 export default AdminDashboard;
