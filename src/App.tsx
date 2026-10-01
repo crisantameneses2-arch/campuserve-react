@@ -1,3 +1,5 @@
+import "./seedInventory";
+
 import "./App.css";
 
 import { useState } from "react";

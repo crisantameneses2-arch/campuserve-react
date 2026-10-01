@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import ItemStocks from "../../pages/student/ItemStocks";
+import ItemReservation from "../../pages/student/ItemReservation";
 import DocumentRequestWizard from "../../pages/student/DocumentRequestWizard";
 import DocumentRequestList from "../../pages/student/DocumentRequestList";
 
@@ -22,8 +24,11 @@ export default function StudentDashboard({
     "";
 
   const [activePage, setActivePage] = useState<
-    "dashboard" | "request" | "requests"
-  >("dashboard");
+  "dashboard" |
+  "request" |
+  "requests" |
+  "itemReservation"
+>("dashboard");
 
   // --------------------------------------------------
   // DOCUMENT REQUEST PAGE
@@ -70,6 +75,27 @@ export default function StudentDashboard({
       </div>
     );
   }
+
+
+  // --------------------------------------------------
+// ITEM RESERVATION PAGE
+// --------------------------------------------------
+
+if (activePage === "itemReservation") {
+  return (
+    <div className="student-dashboard">
+
+      <ItemReservation
+        studentId={studentId}
+        onBack={() =>
+          setActivePage("dashboard")
+        }
+      />
+
+    </div>
+  );
+}
+
 
   // --------------------------------------------------
   // MAIN STUDENT DASHBOARD
@@ -157,12 +183,14 @@ export default function StudentDashboard({
             supplies.
           </p>
 
-          <button
-            type="button"
-            disabled
-          >
-            Reserve an Item
-          </button>
+ <button
+  type="button"
+  onClick={() =>
+    setActivePage("itemReservation")
+  }
+>
+  Reserve an Item
+</button>
 
         </div>
 
@@ -188,7 +216,15 @@ export default function StudentDashboard({
 
         </div>
 
+
+
+<ItemStocks />
+
+
+
       </div>
     </div>
   );
 }
+
+
