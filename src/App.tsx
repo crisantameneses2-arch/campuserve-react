@@ -9,8 +9,12 @@ import {
 } from "firebase/auth";
 
 import {
+  collection,
   doc,
-  getDoc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
 } from "firebase/firestore";
 
 import {
@@ -27,6 +31,8 @@ type Account = {
   name?: string;
   role?: string;
   status?: string;
+  firebaseUid?: string;
+  student_id?: string;
 };
 
 function App() {
@@ -34,68 +40,101 @@ function App() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleGoogleLogin = async () => {
-    setError("");
-    setLoading(true);
+const handleGoogleLogin = async () => {
+  setError("");
+  setLoading(true);
 
-    try {
-      // Open Google sign-in
-      const result = await signInWithPopup(
-        auth,
-        googleProvider
+  try {
+    const result = await signInWithPopup(
+      auth,
+      googleProvider
+    );
+
+    const user = result.user;
+
+    console.log("Logged in user:", user);
+    console.log("Firebase UID:", user.uid);
+    console.log("Google email:", user.email);
+
+    if (!user.email) {
+      setError(
+        "Your Google account does not have an email address."
       );
 
-      // Get the signed-in Google user
-      const user = result.user;
+      await signOut(auth);
+      return;
+    }
 
-      console.log("Logged in user:", user);
-      console.log("Firebase UID:", user.uid);
+    const normalizedEmail =
+      user.email.trim().toLowerCase();
 
-      // Look for the user's CampuServe account
-      const accountRef = doc(
+    // Find the pre-registered account
+    // using the Google email address.
+    const accountsQuery = query(
+      collection(db, "accounts"),
+      where("email", "==", normalizedEmail)
+    );
+
+    const accountSnapshot =
+      await getDocs(accountsQuery);
+
+    if (accountSnapshot.empty) {
+      setError(
+        "This Google account is not registered in CampuServe."
+      );
+
+      await signOut(auth);
+      return;
+    }
+
+    const accountDocument =
+      accountSnapshot.docs[0];
+
+    const accountData =
+      accountDocument.data() as Account;
+
+    // Check account status
+    if (accountData.status !== "active") {
+      setError(
+        "Your CampuServe account is not active."
+      );
+
+      await signOut(auth);
+      return;
+    }
+
+    // Link the Firebase UID to the account.
+    await updateDoc(
+      doc(
         db,
         "accounts",
-        user.uid
-      );
-
-      const accountSnapshot = await getDoc(accountRef);
-
-      if (!accountSnapshot.exists()) {
-        setError(
-          "This Google account is not registered in CampuServe."
-        );
-
-        await signOut(auth);
-        return;
+        accountDocument.id
+      ),
+      {
+        firebaseUid: user.uid,
       }
+    );
 
-      // Get CampuServe account information
-      const accountData =
-        accountSnapshot.data() as Account;
+    // Add the Firebase UID to the account
+    // used by the React application.
+    setAccount({
+      ...accountData,
+      firebaseUid: user.uid,
+    });
 
-      // Check account status
-      if (accountData.status !== "active") {
-        setError(
-          "Your CampuServe account is not active."
-        );
+  } catch (error) {
+    console.error(
+      "Google login error:",
+      error
+    );
 
-        await signOut(auth);
-        return;
-      }
-
-      // Login successful
-      setAccount(accountData);
-
-    } catch (error) {
-      console.error("Google login error:", error);
-
-      setError(
-        "Google login failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    setError(
+      "Google login failed. Please try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -129,26 +168,6 @@ function App() {
   return (
     <div>
       <h1>CampuServe</h1>
-
-      <h2>
-        Welcome,{" "}
-        {account.name || account.email}!
-      </h2>
-
-      <p>
-        <strong>Email:</strong>{" "}
-        {account.email}
-      </p>
-
-      <p>
-        <strong>Role:</strong>{" "}
-        {account.role}
-      </p>
-
-      <p>
-        <strong>Status:</strong>{" "}
-        {account.status}
-      </p>
 
       <hr />
 
@@ -193,7 +212,7 @@ function App() {
       )}
 
       {account.role === "admin" && (
-  <AdminDashboard />
+  <AdminDashboard account={account} />
 )}
 
       <br />
