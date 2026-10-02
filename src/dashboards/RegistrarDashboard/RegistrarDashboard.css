@@ -1,0 +1,118 @@
+
+.registrar-dashboard {
+  min-height: 100vh;
+  background: #f5f7f6;
+  color: #243b35;
+  text-align: left;
+}
+
+.registrar-header {
+  background: #174c3c;
+  color: white;
+  padding: 32px 5%;
+}
+
+.registrar-label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: #c6dfd2;
+}
+
+.registrar-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.registrar-header p:last-child {
+  margin-bottom: 0;
+  color: #e0eee7;
+}
+
+.registrar-content {
+  max-width: 1200px;
+  margin: auto;
+  padding: 32px 5%;
+}
+
+.registrar-content h2 {
+  margin-bottom: 8px;
+  font-size: 22px;
+}
+
+.registrar-description {
+  color: #6b7973;
+  margin-top: 0;
+}
+
+.registrar-stats,
+.registrar-services {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.registrar-card,
+.registrar-service-card {
+  background: white;
+  border: 1px solid #e1e9e4;
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 3px 12px rgba(20, 55, 40, 0.04);
+}
+
+.registrar-card p {
+  margin: 0;
+  color: #61736a;
+}
+
+.registrar-card h3 {
+  font-size: 30px;
+  margin: 12px 0 4px;
+  color: #174c3c;
+}
+
+.registrar-card span {
+  color: #839087;
+  font-size: 13px;
+}
+
+.registrar-section-title {
+  margin-top: 38px;
+}
+
+.registrar-service-card h3 {
+  margin-top: 0;
+  font-size: 17px;
+}
+
+.registrar-service-card p {
+  min-height: 48px;
+  color: #6b7973;
+  line-height: 1.5;
+}
+
+.registrar-service-card button {
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #174c3c;
+  color: white;
+  font: inherit;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 700px) {
+  .registrar-stats,
+  .registrar-services {
+    grid-template-columns: 1fr;
+  }
+
+  .registrar-header h1 {
+    font-size: 24px;
+  }
+}
