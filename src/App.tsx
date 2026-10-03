@@ -30,6 +30,7 @@ import {
 
 import AdminDashboard from "./dashboards/AdminDashboard/AdminDashboard";
 import StudentDashboard from "./dashboards/StudentDashboard/StudentDashboard";
+import RegistrarDashboard from "./dashboards/RegistrarDashboard/RegistrarDashboard";
 
 type Account = {
   email?: string;
@@ -279,25 +280,23 @@ function App() {
                 />
               )}
 
-              {account.role === "registrar" && (
-                <div>
-                  <h2>
-                    Registrar Staff Dashboard
-                  </h2>
+      {account.role === "registrar" && (
+        <div>
+          <h2>Registrar Staff Dashboard</h2>
 
-                  <button>
-                    Manage Document Requests
-                  </button>
+          <button>
+            Manage Document Requests
+          </button>
 
-                  <button>
-                    View Claiming Schedule
-                  </button>
+          <button>
+            View Claiming Schedule
+          </button>
 
-                  <button>
-                    Daily Preparation Summary
-                  </button>
-                </div>
-              )}
+          <button>
+            Daily Preparation Summary
+          </button>
+        </div>
+      )}
 
               {account.role ===
                 "general_office" && (
