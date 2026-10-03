@@ -111,7 +111,7 @@ function AdminDashboard({
 
   const collections = [
     "accounts",
-    "documentRequests",
+    "document_requests",
     "groupRequestMembers",
     "documentRequestDetails",
     "itemReservations",

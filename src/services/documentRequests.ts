@@ -115,7 +115,9 @@ export async function createGroupMembers(
 
 export function subscribeToDocumentRequest(
   request_id: string,
-  callback: (data: Record<string, unknown>) => void
+  callback: (
+    data: Record<string, unknown> | null
+  ) => void
 ): () => void {
   const requestRef = doc(
     db,
@@ -126,6 +128,8 @@ export function subscribeToDocumentRequest(
   return onSnapshot(requestRef, (snapshot) => {
     if (snapshot.exists()) {
       callback(snapshot.data());
+    } else {
+      callback(null);
     }
   });
 }
