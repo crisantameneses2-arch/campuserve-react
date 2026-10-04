@@ -218,37 +218,75 @@ export default function RegistrarDashboard({
     setMenuOpen(false);
   };
 
-  const updateStatus = async (request: RequestRecord, status: Status) => {
-    if (!request.request_id) {
-      setError("This request is missing its request ID.");
-      return;
+const updateStatus = async (
+  request: RequestRecord,
+  status: Status,
+) => {
+  if (!request.request_id) {
+    setError("This request is missing its request ID.");
+    return;
+  }
+
+  setBusyId(request.id);
+  setError("");
+  setNotice("");
+
+  try {
+    const updates: Record<string, any> = {
+      status,
+      updated_at: serverTimestamp(),
+    };
+
+    // Generate a claim code when the request
+    // becomes ready for pickup.
+    if (
+      status === "READY_FOR_PICKUP" &&
+      !request.claim_code
+    ) {
+      const generatedClaimCode =
+        Math.random()
+          .toString(36)
+          .substring(2, 8)
+          .toUpperCase();
+
+      updates.claim_code = generatedClaimCode;
     }
 
-    setBusyId(request.id);
-    setError("");
-    setNotice("");
+    await updateDoc(
+      doc(
+        db,
+        "document_requests",
+        request.id,
+      ),
+      updates,
+    );
 
-    try {
-      await updateDoc(doc(db, "document_requests", request.id), {
+    setNotice(
+      `${request.request_id} updated to ${status.replace(
+        /_/g,
+        " ",
+      )}.`,
+    );
+
+    if (selected?.id === request.id) {
+      setSelected({
+        ...request,
+        ...updates,
         status,
-        updated_at: serverTimestamp(),
       });
-      setNotice(
-        `${request.request_id} updated to ${status.replace(/_/g, " ")}.`,
-      );
-      if (selected?.id === request.id) {
-        setSelected({ ...request, status });
-      }
-    } catch (err) {
-      setError(
-        `Could not update request: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`,
-      );
-    } finally {
-      setBusyId("");
     }
-  };
+  } catch (err) {
+    setError(
+      `Could not update request: ${
+        err instanceof Error
+          ? err.message
+          : "Unknown error"
+      }`,
+    );
+  } finally {
+    setBusyId("");
+  }
+};
 
   const filteredRequests = useMemo(
     () =>
