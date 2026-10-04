@@ -112,7 +112,7 @@ export default function StudentDashboard({
 
         <ClaimStubPage
           studentId={studentId}
-          studentName={account.name}
+         // studentName={account.name}
           onBack={() =>
             setActivePage("dashboard")
           }
