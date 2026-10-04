@@ -1612,12 +1612,11 @@ const filteredTransactions = reservations.filter((reservation) => {
                                 : activePage}
                         </h1>
 
-                        <p>
-                            {activePage === "Dashboard"
-                                ? "Manage items, reservations, and inventory."
-                                : `Manage ${activePage.toLowerCase()}.`}
-                        </p>
-
+                       <p>
+    {activePage === "Dashboard"
+        ? `Welcome, ${account.name || "General Office"}.`
+        : `Manage ${activePage.toLowerCase()}.`}
+</p>
                     </div>
 
 

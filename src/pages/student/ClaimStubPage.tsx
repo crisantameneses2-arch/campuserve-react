@@ -7,7 +7,7 @@ import {
 
 type ClaimStubPageProps = {
   studentId: string;
-  studentName?: string;
+  //studentName?: string;
   onBack: () => void;
 };
 
@@ -17,7 +17,7 @@ type ClaimType =
 
 export default function ClaimStubPage({
   studentId,
-  studentName,
+  //studentName,
   onBack,
 }: ClaimStubPageProps) {
 
