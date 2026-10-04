@@ -63,6 +63,7 @@ type ItemReservation = {
     pickupTime: string;
     status: string;
     totalAmount: number;
+    cancellationReason?: string;
      createdAt: any;
     items: ReservationItem[];
 };
@@ -71,7 +72,12 @@ function GeneralOfficeDashboard() {
 
     const [activePage, setActivePage] = useState("Dashboard");
 
+const [requestSearch, setRequestSearch] = useState("");
+const [reservationSearch, setReservationSearch] = useState("");
+const [claimingSearch, setClaimingSearch] = useState("");
 
+const [reportType, setReportType] =
+    useState<"All" | "Online" | "Walk-in">("All");
     // =========================
     // INVENTORY STATE
     // =========================
@@ -124,7 +130,8 @@ function GeneralOfficeDashboard() {
         subtotal: 0,
         purchaseType: "Walk-in",
     });
-
+    const [transactionFilter, setTransactionFilter] = useState("All");
+const [transactionSearch, setTransactionSearch] = useState("");
 
     // =========================
     // EDIT STOCK MODAL
@@ -324,6 +331,7 @@ function GeneralOfficeDashboard() {
             activePage === "Requests" ||
             activePage === "Claiming" ||
             activePage === "Dashboard" ||
+             activePage === "Transactions" ||
             activePage === "Reports"
         ) {
             loadReservations();
@@ -415,6 +423,8 @@ function GeneralOfficeDashboard() {
 
     createdAt:
         data.createdAt || null,
+
+cancellationReason: data.cancellationReason || "",
 
     items: items,
 };
@@ -635,22 +645,43 @@ const approveReservation = async (
     };
 
 
-    const cancelReservation = async (
-    reservation: ItemReservation
-) => {
+   const cancelReservation = async () => {
+    if (!selectedReservationForCancel) {
+        return;
+    }
+
+    if (!cancellationReason.trim()) {
+        alert("Please enter a cancellation reason.");
+        return;
+    }
+
     try {
         await updateDoc(
-            doc(db, "itemReservations", reservation.id),
+            doc(
+                db,
+                "itemReservations",
+                selectedReservationForCancel.id
+            ),
             {
                 status: "Cancelled",
+                cancellationReason:
+                    cancellationReason.trim(),
             }
         );
 
         alert("Reservation cancelled successfully.");
 
+        setShowCancelModal(false);
+        setSelectedReservationForCancel(null);
+        setCancellationReason("");
+
         loadReservations();
     } catch (error) {
-        console.error("Error cancelling reservation:", error);
+        console.error(
+            "Error cancelling reservation:",
+            error
+        );
+
         alert("Failed to cancel reservation.");
     }
 };
@@ -1160,204 +1191,261 @@ const approveReservation = async (
                 "claimed"
         );
 
-
+    
+        const [showCancelModal, setShowCancelModal] = useState(false);
+const [selectedReservationForCancel, setSelectedReservationForCancel] =
+    useState<ItemReservation | null>(null);
+const [cancellationReason, setCancellationReason] = useState("");
     // =========================
     // REPORTS DATA
     // =========================
 
+// =========================
+// REPORT FILTER HELPERS
+// =========================
 
-    // CANCELLED RESERVATIONS
+const itemMatchesReport = (item: ReservationItem) =>
+    reportType === "All" || item.purchaseType === reportType;
 
-    const cancelledReservations =
-        reservations.filter(
-            (reservation) =>
-                reservation.status.toLowerCase() ===
-                "cancelled"
-        );
+const reservationMatchesReport = (reservation: ItemReservation) =>
+    reservation.items.some(itemMatchesReport);
 
+const getReportItems = (reservation: ItemReservation) =>
+    reservation.items.filter(itemMatchesReport);
 
-    // =========================
-    // TOTAL SALES
-    // =========================
-
-    const totalSales =
-        claimedReservations.reduce(
-            (total, reservation) =>
-                total +
-                Number(
-                    reservation.totalAmount || 0
-                ),
-            0
-        );
-
-
-    // =========================
-    // TOTAL ITEMS SOLD
-    // =========================
-
-    const totalItemsSold =
-        claimedReservations.reduce(
-            (total, reservation) =>
-                total +
-                reservation.items.reduce(
-                    (itemTotal, item) =>
-                        itemTotal +
-                        Number(
-                            item.quantity || 0
-                        ),
-                    0
-                ),
-            0
-        );
-
-
-    // =========================
-    // AVERAGE TRANSACTION
-    // =========================
-
-    const averageTransaction =
-        claimedReservations.length > 0
-            ? totalSales /
-              claimedReservations.length
-            : 0;
-
-
-    // =========================
-    // TOTAL STOCK
-    // =========================
-
-    const totalStock =
-        inventory.reduce(
-            (total, item) =>
-                total +
-                Number(
-                    item.totalStock || 0
-                ),
-            0
-        );
-
-
-    // =========================
-    // AVAILABLE STOCK
-    // =========================
-
-    const totalAvailableStock =
-        inventory.reduce(
-            (total, item) =>
-                total +
-                Number(
-                    item.availableOnline || 0
-                ) +
-                Number(
-                    item.availableWalkIn || 0
-                ),
-            0
-        );
-
-
-    // =========================
-    // RESERVED STOCK
-    // =========================
-
-    const totalReservedStock =
-        inventory.reduce(
-            (total, item) =>
-                total +
-                Number(
-                    item.reservedQuantity || 0
-                ),
-            0
-        );
-
-
-    // =========================
-    // LOW STOCK
-    // =========================
-
-    const lowStockItems =
-        inventory.filter(
-            (item) =>
-                Number(
-                    item.availableOnline || 0
-                ) +
-                Number(
-                    item.availableWalkIn || 0
-                ) <= 5
-        );
-
-
-    // =========================
-    // TOP ITEMS
-    // =========================
-
-    const itemSales: {
-        [key: string]: {
-            itemName: string;
-            quantity: number;
-            sales: number;
-        };
-    } = {};
-
-
-    claimedReservations.forEach(
-        (reservation) => {
-
-            reservation.items.forEach(
-                (item) => {
-
-                    if (
-                        !itemSales[
-                            item.itemName
-                        ]
-                    ) {
-
-                        itemSales[
-                            item.itemName
-                        ] = {
-
-                            itemName:
-                                item.itemName,
-
-                            quantity: 0,
-
-                            sales: 0,
-
-                        };
-
-                    }
-
-
-                    itemSales[
-                        item.itemName
-                    ].quantity +=
-                        Number(
-                            item.quantity || 0
-                        );
-
-
-                    itemSales[
-                        item.itemName
-                    ].sales +=
-                        Number(
-                            item.subtotal || 0
-                        );
-
-                }
-            );
-
-        }
+const getReportAmount = (reservation: ItemReservation) =>
+    getReportItems(reservation).reduce(
+        (total, item) => total + Number(item.subtotal || 0),
+        0
     );
 
+const getTypeStats = (type: "All" | "Online" | "Walk-in") => {
 
-    const topItems =
-        Object.values(itemSales)
-            .sort(
-                (a, b) =>
-                    b.quantity -
-                    a.quantity
-            )
-            .slice(0, 5);
+    const matches = (item: ReservationItem) =>
+        type === "All" || item.purchaseType === type;
 
+    const matchingReservations = claimedReservations.filter(
+        (reservation) => reservation.items.some(matches)
+    );
+
+    const sales = matchingReservations.reduce(
+        (total, reservation) =>
+            total +
+            reservation.items
+                .filter(matches)
+                .reduce(
+                    (sum, item) => sum + Number(item.subtotal || 0),
+                    0
+                ),
+        0
+    );
+
+    const quantity = matchingReservations.reduce(
+        (total, reservation) =>
+            total +
+            reservation.items
+                .filter(matches)
+                .reduce(
+                    (sum, item) => sum + Number(item.quantity || 0),
+                    0
+                ),
+        0
+    );
+
+    return {
+        transactions: matchingReservations.length,
+        sales,
+        quantity,
+        average:
+            matchingReservations.length > 0
+                ? sales / matchingReservations.length
+                : 0,
+    };
+};
+
+// =========================
+// REPORT STATISTICS
+// =========================
+
+const currentStats = getTypeStats(reportType);
+
+const totalSales = currentStats.sales;
+const totalItemsSold = currentStats.quantity;
+const averageTransaction = currentStats.average;
+
+const reportAllReservations =
+    reservations.filter(reservationMatchesReport);
+
+const reportPending =
+    pendingReservations.filter(reservationMatchesReport);
+
+const reportApproved =
+    approvedReservations.filter(reservationMatchesReport);
+
+const reportClaimed =
+    claimedReservations.filter(reservationMatchesReport);
+
+const reportCancelled =
+    reservations
+        .filter(
+            (reservation) =>
+                reservation.status.toLowerCase() === "cancelled"
+        )
+        .filter(reservationMatchesReport);
+
+// =========================
+// REPORT INVENTORY
+// =========================
+
+const getAvailable = (item: InventoryItem) => {
+
+    if (reportType === "Online") {
+        return Number(item.availableOnline || 0);
+    }
+
+    if (reportType === "Walk-in") {
+        return Number(item.availableWalkIn || 0);
+    }
+
+    return (
+        Number(item.availableOnline || 0) +
+        Number(item.availableWalkIn || 0)
+    );
+};
+
+const totalStock = inventory.reduce((total, item) => {
+
+    if (reportType === "Online") {
+        return total + Number(item.onlineStock || 0);
+    }
+
+    if (reportType === "Walk-in") {
+        return total + Number(item.walkInStock || 0);
+    }
+
+    return total + Number(item.totalStock || 0);
+
+}, 0);
+
+const totalAvailableStock = inventory.reduce(
+    (total, item) => total + getAvailable(item),
+    0
+);
+
+// Online / Walk-in reserved is worked out from approved
+// reservations because inventory stores one combined number.
+const totalReservedStock =
+    reportType === "All"
+        ? inventory.reduce(
+              (total, item) =>
+                  total + Number(item.reservedQuantity || 0),
+              0
+          )
+        : approvedReservations.reduce(
+              (total, reservation) =>
+                  total +
+                  getReportItems(reservation).reduce(
+                      (sum, item) =>
+                          sum + Number(item.quantity || 0),
+                      0
+                  ),
+              0
+          );
+
+const lowStockItems = inventory.filter(
+    (item) => getAvailable(item) <= 5
+);
+
+// =========================
+// TOP ITEMS
+// =========================
+
+const itemSales: {
+    [key: string]: {
+        itemName: string;
+        quantity: number;
+        sales: number;
+    };
+} = {};
+
+reportClaimed.forEach((reservation) => {
+
+    getReportItems(reservation).forEach((item) => {
+
+        if (!itemSales[item.itemName]) {
+            itemSales[item.itemName] = {
+                itemName: item.itemName,
+                quantity: 0,
+                sales: 0,
+            };
+        }
+
+        itemSales[item.itemName].quantity +=
+            Number(item.quantity || 0);
+
+        itemSales[item.itemName].sales +=
+            Number(item.subtotal || 0);
+    });
+});
+
+const topItems =
+    Object.values(itemSales)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 5);
+
+            const matchesReservationSearch = (
+    reservation: ItemReservation,
+    searchText: string
+) => {
+
+    const search = searchText.trim().toLowerCase();
+
+    if (!search) {
+        return true;
+    }
+
+    return (
+        reservation.reservationId.toLowerCase().includes(search) ||
+        reservation.claimStubId.toLowerCase().includes(search) ||
+        reservation.fullName.toLowerCase().includes(search) ||
+        reservation.studentId.toLowerCase().includes(search) ||
+        reservation.mobileNumber.toLowerCase().includes(search) ||
+        reservation.program.toLowerCase().includes(search) ||
+        reservation.items.some((item) =>
+            item.itemName.toLowerCase().includes(search)
+        )
+    );
+};
+
+const filteredPending = pendingReservations.filter((reservation) =>
+    matchesReservationSearch(reservation, requestSearch)
+);
+
+const filteredApproved = approvedReservations.filter((reservation) =>
+    matchesReservationSearch(reservation, reservationSearch)
+);
+
+const filteredClaimed = claimedReservations.filter((reservation) =>
+    matchesReservationSearch(reservation, claimingSearch)
+);
+const filteredTransactions = reservations.filter((reservation) => {
+
+    const matchesStatus =
+        transactionFilter === "All" ||
+        reservation.status.toLowerCase() ===
+            transactionFilter.toLowerCase();
+
+    const search = transactionSearch.trim().toLowerCase();
+
+    const matchesSearch =
+        !search ||
+        reservation.reservationId.toLowerCase().includes(search) ||
+        reservation.claimStubId.toLowerCase().includes(search) ||
+        reservation.fullName.toLowerCase().includes(search) ||
+        reservation.studentId.toLowerCase().includes(search);
+
+    return matchesStatus && matchesSearch;
+});
 
     return (
 
@@ -1462,7 +1550,17 @@ const approveReservation = async (
                         Claimed Items
                     </button>
 
+{/* TRANSACTIONS */}
 
+<button
+    className={`go-nav-item ${
+        activePage === "Transactions" ? "active" : ""
+    }`}
+    onClick={() => setActivePage("Transactions")}
+>
+    <span>💳</span>
+    Transactions
+</button>
                     {/* REPORTS */}
 
                     <button
@@ -1570,7 +1668,7 @@ const approveReservation = async (
                                     </p>
 
                                     <h2>
-                                        {pendingReservations.length}
+                                      {pendingReservations.length}
                                     </h2>
 
                                     <span>
@@ -2220,7 +2318,13 @@ const approveReservation = async (
                                         gap: "10px",
                                         alignItems: "center",
                                     }}
-                                >
+                                > <input
+    type="text"
+    placeholder="Search name, ID, item..."
+    value={requestSearch}
+    onChange={(e) => setRequestSearch(e.target.value)}
+    style={{ padding: "8px" }}
+/>
 
                                     <button
                                         className="inventory-refresh-button"
@@ -2249,7 +2353,7 @@ const approveReservation = async (
                                     Loading requests...
                                 </p>
 
-                            ) : pendingReservations.length === 0 ? (
+                            ) : filteredPending.length === 0 ? (
 
                                 <p className="inventory-message">
                                     No pending requests found.
@@ -2308,7 +2412,7 @@ const approveReservation = async (
 
                                         <tbody>
 
-                                            {pendingReservations.map(
+                                            {filteredPending.map(
                                                 (reservation) => (
 
                                                     <tr
@@ -2447,14 +2551,20 @@ const approveReservation = async (
 
                                                          <div style={{ display: "flex", gap: "8px" }}>
     <button
-        onClick={() => approveReservation(reservation)}
+        onClick={() => approveReservation(reservation.id)}
     >
         Approve
     </button>
 
     <button
-        onClick={() => cancelReservation(reservation)}
-    >
+   
+    onClick={() => {
+        setSelectedReservationForCancel(reservation);
+        setCancellationReason("");
+        setShowCancelModal(true);
+    }}
+>
+
         Cancel
     </button>
 </div>
@@ -2508,12 +2618,28 @@ const approveReservation = async (
                                 </div>
 
 
-                                <button
-                                    className="inventory-refresh-button"
-                                    onClick={loadReservations}
-                                >
-                                    ↻ Refresh
-                                </button>
+                              <div
+    style={{
+        display: "flex",
+        gap: "10px",
+        alignItems: "center",
+    }}
+>
+    <input
+        type="text"
+        placeholder="Search name, ID, stub, item..."
+        value={reservationSearch}
+        onChange={(e) => setReservationSearch(e.target.value)}
+        style={{ padding: "8px" }}
+    />
+
+    <button
+        className="inventory-refresh-button"
+        onClick={loadReservations}
+    >
+        ↻ Refresh
+    </button>
+</div>
 
                             </div>
 
@@ -2526,7 +2652,7 @@ const approveReservation = async (
                                     Loading reservations...
                                 </p>
 
-                            ) : approvedReservations.length === 0 ? (
+                            )  : filteredApproved.length === 0 ? (
 
                                 <p className="inventory-message">
                                     No approved reservations found.
@@ -2590,7 +2716,7 @@ const approveReservation = async (
                                         <tbody>
 
 
-                                            {approvedReservations.map(
+                                           {filteredApproved.map(
                                                 (reservation) => (
 
                                                     <tr
@@ -2811,7 +2937,8 @@ const approveReservation = async (
                                                         {/* ACTION */}
 
                                                         <td>
-
+  <div style={{ display: "flex", gap: "8px" }}>
+ 
                                                             <button
                                                                 onClick={() =>
                                                                     completeReservation(
@@ -2821,6 +2948,16 @@ const approveReservation = async (
                                                             >
                                                                 Complete
                                                             </button>
+                                                             <button
+    onClick={() => {
+        setSelectedReservationForCancel(reservation);
+        setCancellationReason("");
+        setShowCancelModal(true);
+    }}
+>
+    Cancel
+</button>
+</div>
 
                                                         </td>
 
@@ -2872,12 +3009,28 @@ const approveReservation = async (
                                 </div>
 
 
-                                <button
-                                    className="inventory-refresh-button"
-                                    onClick={loadReservations}
-                                >
-                                    ↻ Refresh
-                                </button>
+                            <div
+    style={{
+        display: "flex",
+        gap: "10px",
+        alignItems: "center",
+    }}
+>
+    <input
+        type="text"
+        placeholder="Search name, ID, stub, item..."
+        value={claimingSearch}
+        onChange={(e) => setClaimingSearch(e.target.value)}
+        style={{ padding: "8px" }}
+    />
+
+    <button
+        className="inventory-refresh-button"
+        onClick={loadReservations}
+    >
+        ↻ Refresh
+    </button>
+</div>
 
                             </div>
 
@@ -2890,7 +3043,7 @@ const approveReservation = async (
                                     Loading claimed items...
                                 </p>
 
-                            ) : claimedReservations.length === 0 ? (
+                           ) : filteredClaimed.length === 0 ? (
 
                                 <p className="inventory-message">
                                     No claimed items found.
@@ -2945,7 +3098,7 @@ const approveReservation = async (
 
                                         <tbody>
 
-                                            {claimedReservations.map(
+                                            {filteredClaimed.map(
                                                 (reservation) => (
 
                                                     <tr
@@ -3137,7 +3290,99 @@ const approveReservation = async (
                 {activePage === "Reports" && (
 
                     <section className="go-content">
+{/* REPORT TYPE FILTER */}
 
+<section className="go-panel">
+
+    <div className="inventory-page-header">
+
+        <div>
+            <h2>Report Type</h2>
+            <p>
+                Showing:{" "}
+                <strong>
+                    {reportType === "All"
+                        ? "Combined (Online + Walk-in)"
+                        : reportType}
+                </strong>
+            </p>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px" }}>
+            {(["All", "Online", "Walk-in"] as const).map((type) => (
+                <button
+                    key={type}
+                    className="inventory-refresh-button"
+                    onClick={() => setReportType(type)}
+                    style={{
+                        fontWeight: reportType === type ? 700 : 400,
+                        outline:
+                            reportType === type
+                                ? "2px solid #4f46e5"
+                                : "none",
+                    }}
+                >
+                    {type === "All" ? "Combined" : type}
+                </button>
+            ))}
+        </div>
+
+    </div>
+
+    <div className="inventory-table-container">
+
+        <table className="inventory-table">
+
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Claimed Transactions</th>
+                    <th>Items Sold</th>
+                    <th>Total Sales</th>
+                    <th>Average Transaction</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {(["Online", "Walk-in", "All"] as const).map((type) => {
+
+                    const stats = getTypeStats(type);
+
+                    return (
+                        <tr key={type}>
+                            <td>
+                                <strong>
+                                    {type === "All" ? "Combined" : type}
+                                </strong>
+                            </td>
+                            <td>{stats.transactions}</td>
+                            <td>{stats.quantity}</td>
+                            <td>
+                                ₱
+                                {stats.sales.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })}
+                            </td>
+                            <td>
+                                ₱
+                                {stats.average.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })}
+                            </td>
+                        </tr>
+                    );
+                })}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
 
                         {/* REPORT SUMMARY */}
 
@@ -3220,7 +3465,7 @@ const approveReservation = async (
                                     </p>
 
                                     <h2>
-                                        {reservations.length}
+                                        {reportAllReservations.length}
                                     </h2>
 
                                     <span>
@@ -3453,7 +3698,7 @@ const approveReservation = async (
                                             </td>
 
                                             <td>
-                                                {pendingReservations.length}
+                                               {reportPending.length}
                                             </td>
 
                                         </tr>
@@ -3466,7 +3711,7 @@ const approveReservation = async (
                                             </td>
 
                                             <td>
-                                                {approvedReservations.length}
+                                                {reportApproved.length}
                                             </td>
 
                                         </tr>
@@ -3479,7 +3724,7 @@ const approveReservation = async (
                                             </td>
 
                                             <td>
-                                                {claimedReservations.length}
+                                                {reportClaimed.length}
                                             </td>
 
                                         </tr>
@@ -3492,7 +3737,7 @@ const approveReservation = async (
                                             </td>
 
                                             <td>
-                                                {cancelledReservations.length}
+                                                {reportCancelled.length}
                                             </td>
 
                                         </tr>
@@ -3720,16 +3965,7 @@ const approveReservation = async (
                                             lowStockItems.map(
                                                 (item) => {
 
-                                                    const available =
-                                                        Number(
-                                                            item.availableOnline ||
-                                                            0
-                                                        ) +
-                                                        Number(
-                                                            item.availableWalkIn ||
-                                                            0
-                                                        );
-
+                                                   const available = getAvailable(item);
                                                     return (
 
                                                         <tr
@@ -3855,8 +4091,7 @@ const approveReservation = async (
 
                                     <tbody>
 
-                                        {claimedReservations.length === 0 ? (
-
+                                      {reportClaimed.length === 0 ? (
                                             <tr>
 
                                                 <td
@@ -3874,8 +4109,8 @@ const approveReservation = async (
 
                                         ) : (
 
-                                            claimedReservations
-                                                .slice(0, 10)
+                                           reportClaimed
+    .slice(0, 10)
                                                 .map(
                                                     (
                                                         reservation
@@ -3905,16 +4140,9 @@ const approveReservation = async (
 
                                                             <td>
 
-                                                                {reservation.items
-                                                                    .map(
-                                                                        (
-                                                                            item
-                                                                        ) =>
-                                                                            `${item.itemName} (${item.quantity})`
-                                                                    )
-                                                                    .join(
-                                                                        ", "
-                                                                    )}
+                                                              {getReportItems(reservation)
+    .map((item) => `${item.itemName} (${item.quantity})`)
+    .join(", ")}
 
                                                             </td>
 
@@ -3922,17 +4150,11 @@ const approveReservation = async (
 
                                                                 <strong>
 
-                                                                    ₱
-                                                                    {Number(
-                                                                        reservation.totalAmount ||
-                                                                        0
-                                                                    ).toLocaleString(
-                                                                        undefined,
-                                                                        {
-                                                                            minimumFractionDigits: 2,
-                                                                            maximumFractionDigits: 2,
-                                                                        }
-                                                                    )}
+                                                                  ₱
+{getReportAmount(reservation).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+})}
 
                                                                 </strong>
 
@@ -3974,7 +4196,202 @@ const approveReservation = async (
                     </section>
 
                 )}
+{/* ========================= */}
+{/* TRANSACTIONS PAGE */}
+{/* ========================= */}
 
+{activePage === "Transactions" && (
+
+    <section className="go-content">
+
+        <section className="go-panel inventory-page">
+
+            <div className="inventory-page-header">
+
+                <div>
+                    <h2>Transactions</h2>
+                    <p>View all reservation transactions.</p>
+                </div>
+
+                <div
+                    style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                    }}
+                >
+                    <input
+                        type="text"
+                        placeholder="Search name, ID, stub..."
+                        value={transactionSearch}
+                        onChange={(e) =>
+                            setTransactionSearch(e.target.value)
+                        }
+                        style={{ padding: "8px" }}
+                    />
+
+                    <select
+                        value={transactionFilter}
+                        onChange={(e) =>
+                            setTransactionFilter(e.target.value)
+                        }
+                        style={{ padding: "8px" }}
+                    >
+                        <option value="All">All</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Claimed">Claimed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+
+                    <button
+                        className="inventory-refresh-button"
+                        onClick={loadReservations}
+                    >
+                        ↻ Refresh
+                    </button>
+                </div>
+
+            </div>
+
+            {loadingReservations ? (
+
+                <p className="inventory-message">
+                    Loading transactions...
+                </p>
+
+            ) : filteredTransactions.length === 0 ? (
+
+                <p className="inventory-message">
+                    No transactions found.
+                </p>
+
+            ) : (
+
+                <div className="inventory-table-container">
+
+                    <table className="inventory-table">
+
+                        <thead>
+                            <tr>
+                                <th>Reservation ID</th>
+                                <th>Claim Stub ID</th>
+                                <th>Student</th>
+                                <th>Items</th>
+                                <th>Pickup</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            {filteredTransactions.map((reservation) => (
+
+                                <tr key={reservation.id}>
+
+                                    <td>
+                                        <strong>
+                                            {reservation.reservationId}
+                                        </strong>
+                                    </td>
+
+                                    <td>
+                                        {reservation.claimStubId || "—"}
+                                    </td>
+
+                                    <td>
+                                        <strong>
+                                            {reservation.fullName}
+                                        </strong>
+                                        <br />
+                                        <small>
+                                            ID: {reservation.studentId}
+                                        </small>
+                                    </td>
+
+                                    <td>
+                                        {reservation.items.map(
+                                            (item, index) => (
+                                                <div
+                                                    key={index}
+                                                    style={{
+                                                        marginBottom: "6px",
+                                                    }}
+                                                >
+                                                    <strong>
+                                                        {item.itemName}
+                                                    </strong>
+                                                    <br />
+                                                    <small>
+                                                        Size: {item.size}
+                                                        {" | "}
+                                                        Qty: {item.quantity}
+                                                        {" | "}
+                                                        {item.purchaseType}
+                                                    </small>
+                                                </div>
+                                            )
+                                        )}
+                                    </td>
+
+                                    <td>
+                                        <strong>
+                                            {reservation.pickupDate}
+                                        </strong>
+                                        <br />
+                                        <small>
+                                            {reservation.pickupTime}
+                                        </small>
+                                    </td>
+
+                                    <td>
+                                        <strong>
+                                            ₱
+                                            {reservation.totalAmount.toLocaleString(
+                                                undefined,
+                                                {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
+                                                }
+                                            )}
+                                        </strong>
+                                    </td>
+
+                                    <td>
+                                        <span
+                                            className={`status ${reservation.status.toLowerCase()}`}
+                                        >
+                                            {reservation.status}
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        {reservation.status.toLowerCase() ===
+                                        "cancelled"
+                                            ? reservation.cancellationReason ||
+                                              "—"
+                                            : "—"}
+                                    </td>
+
+                                </tr>
+
+                            ))}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            )}
+
+        </section>
+
+    </section>
+
+)}
 
                 {/* ========================= */}
                 {/* OTHER PAGES */}
@@ -3985,7 +4402,8 @@ const approveReservation = async (
                     activePage !== "Requests" &&
                     activePage !== "Reservations" &&
                     activePage !== "Claiming" &&
-                    activePage !== "Reports" && (
+                    activePage !== "Reports" && 
+                    activePage !== "Transactions" && (
 
                     <section className="go-content">
 
@@ -4497,27 +4915,7 @@ const approveReservation = async (
         padding: "10px",
         marginTop: "6px",
     }}
-><label style={{ display: "block", marginTop: "15px" }}>
-    Purchase Type
-</label>
-
-<select
-    value={newRequestItem.purchaseType}
-    onChange={(e) =>
-        setNewRequestItem({
-            ...newRequestItem,
-            purchaseType: e.target.value as "Online" | "Walk-in",
-        })
-    }
-    style={{
-        width: "100%",
-        padding: "10px",
-        marginTop: "6px",
-    }}
 >
-    <option value="Online">Online</option>
-    <option value="Walk-in">Walk-in</option>
-</select>
 
                                             <option value="">
                                                 Select item
@@ -4947,7 +5345,92 @@ const approveReservation = async (
 {/* ========================= */}
 {/* EDIT STOCK MODAL */}
 {/* ========================= */}
+{showCancelModal && selectedReservationForCancel && (
+    <div
+        style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+        }}
+    >
+        <div
+            style={{
+                backgroundColor: "white",
+                padding: "25px",
+                borderRadius: "10px",
+                width: "450px",
+                maxWidth: "90%",
+            }}
+        >
+            <h2>Cancel Reservation</h2>
 
+            <p>
+                Please provide a reason for cancelling this
+                reservation.
+            </p>
+
+            <p>
+                <strong>
+                    Reservation ID:
+                </strong>{" "}
+                {selectedReservationForCancel.reservationId}
+            </p>
+
+            <label>
+                Note / Cancellation Reason
+            </label>
+
+            <textarea
+                value={cancellationReason}
+                onChange={(e) =>
+                    setCancellationReason(e.target.value)
+                }
+                placeholder="Enter the reason for cancellation..."
+                rows={5}
+                style={{
+                    width: "100%",
+                    padding: "10px",
+                    marginTop: "6px",
+                    marginBottom: "15px",
+                    resize: "vertical",
+                    boxSizing: "border-box",
+                }}
+            />
+
+            <div
+                style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: "10px",
+                }}
+            >
+                <button
+                    onClick={() => {
+                        setShowCancelModal(false);
+                        setSelectedReservationForCancel(null);
+                        setCancellationReason("");
+                    }}
+                >
+                    Go Back
+                </button>
+
+                <button
+                    onClick={cancelReservation}
+                    disabled={!cancellationReason.trim()}
+                >
+                    Continue Cancellation
+                </button>
+            </div>
+        </div>
+    </div>
+)}
 {showEditStockModal &&
     selectedInventoryItem && (
 
