@@ -1,5 +1,7 @@
 import "./seedInventory";
 
+
+
 import { Navigate, Route, Routes } from "react-router-dom";
 import ClaimStub from "./pages/student/ClaimStub";
 import DocumentRequestList from "./pages/student/DocumentRequestList";
@@ -31,6 +33,7 @@ import {
 import AdminDashboard from "./dashboards/AdminDashboard/AdminDashboard";
 import StudentDashboard from "./dashboards/StudentDashboard/StudentDashboard";
 import RegistrarDashboard from "./dashboards/RegistrarDashboard/RegistrarDashboard";
+import GeneralOfficeDashboard from "./dashboards/GeneralOfficeDashboard/GeneralOfficeDashboard";
 
 type Account = {
   email?: string;
@@ -258,6 +261,24 @@ function App() {
             )
           }
         />
+                {/* -------------------------------------------
+            GENERAL OFFICE DASHBOARD
+        ------------------------------------------- */}
+        <Route
+          path="/general-office"
+          element={
+            account.role === "general_office" ? (
+              <GeneralOfficeDashboard
+                account={account}
+              />
+            ) : (
+              <Navigate
+                to="/"
+                replace
+              />
+            )
+          }
+        />
 
         {/* -------------------------------------------
             DEFAULT DASHBOARD
@@ -279,6 +300,12 @@ function App() {
                   replace
                 />
               )}
+              {account.role === "general_office" && (
+                  <Navigate
+                      to="/general-office"
+                      replace
+                  />
+              )}
 
       {account.role === "registrar" && (
         <div>
@@ -298,26 +325,7 @@ function App() {
         </div>
       )}
 
-              {account.role ===
-                "general_office" && (
-                <div>
-                  <h2>
-                    Supply Staff Dashboard
-                  </h2>
-
-                  <button>
-                    Manage Item Reservations
-                  </button>
-
-                  <button>
-                    Manage Inventory
-                  </button>
-
-                  <button>
-                    View Claiming Schedule
-                  </button>
-                </div>
-              )}
+   
             </>
           }
         />
