@@ -68,9 +68,18 @@ type ItemReservation = {
     items: ReservationItem[];
 };
 
-function GeneralOfficeDashboard() {
+type GeneralOfficeDashboardProps = {
+    account: {
+        name?: string;
+        email?: string;
+        role?: string;
+    };
+};
+
+function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
     const [activePage, setActivePage] = useState("Dashboard");
+ 
 
 const [requestSearch, setRequestSearch] = useState("");
 const [reservationSearch, setReservationSearch] = useState("");

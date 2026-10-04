@@ -32,8 +32,10 @@ import {
 
 import AdminDashboard from "./dashboards/AdminDashboard/AdminDashboard";
 import StudentDashboard from "./dashboards/StudentDashboard/StudentDashboard";
-import RegistrarDashboard from "./dashboards/RegistrarDashboard/RegistrarDashboard";
+// import RegistrarDashboard from "./dashboards/RegistrarDashboard/RegistrarDashboard";
 import GeneralOfficeDashboard from "./dashboards/GeneralOfficeDashboard/GeneralOfficeDashboard";
+
+
 
 type Account = {
   email?: string;
