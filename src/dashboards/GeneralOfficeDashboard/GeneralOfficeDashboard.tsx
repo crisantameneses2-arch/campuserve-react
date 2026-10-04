@@ -6,6 +6,8 @@ import {
     getDocs,
     doc,
     updateDoc,
+    addDoc,
+    serverTimestamp,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -41,6 +43,7 @@ type ReservationItem = {
     quantity: number;
     size: string;
     subtotal: number;
+    purchaseType: "Walk-in" | "Online";
 };
 
 
@@ -60,9 +63,9 @@ type ItemReservation = {
     pickupTime: string;
     status: string;
     totalAmount: number;
+     createdAt: any;
     items: ReservationItem[];
 };
-
 
 function GeneralOfficeDashboard() {
 
@@ -92,6 +95,171 @@ function GeneralOfficeDashboard() {
 
 
     // =========================
+    // ADD REQUEST MODAL STATE
+    // =========================
+
+    const [showAddRequestModal, setShowAddRequestModal] =
+        useState(false);
+
+    const [newRequest, setNewRequest] = useState({
+        reservationId: "",
+        claimStubId: "",
+        fullName: "",
+        studentId: "",
+        mobileNumber: "",
+        program: "",
+        pickupDate: "",
+        pickupTime: "8:00AM - 10:00AM",
+        status: "Pending",
+        totalAmount: 0,
+        items: [] as ReservationItem[],
+    });
+
+    const [newRequestItem, setNewRequestItem] = useState<ReservationItem>({
+        inventoryId: "",
+        itemName: "",
+        price: 0,
+        quantity: 1,
+        size: "",
+        subtotal: 0,
+        purchaseType: "Walk-in",
+    });
+
+
+    // =========================
+    // EDIT STOCK MODAL
+    // =========================
+
+    const [showEditStockModal, setShowEditStockModal] =
+        useState(false);
+
+    const [selectedInventoryItem, setSelectedInventoryItem] =
+        useState<InventoryItem | null>(null);
+
+    const [editStock, setEditStock] = useState({
+        price: 0,
+        totalStock: 0,
+        onlineStock: 0,
+        walkInStock: 0,
+        reservedQuantity: 0,
+        availableOnline: 0,
+        availableWalkIn: 0,
+    });
+
+    const openEditStockModal = (
+        item: InventoryItem
+    ) => {
+
+        setSelectedInventoryItem(item);
+
+        setEditStock({
+            price:
+                Number(item.price || 0),
+
+            totalStock:
+                Number(item.totalStock || 0),
+
+            onlineStock:
+                Number(item.onlineStock || 0),
+
+            walkInStock:
+                Number(item.walkInStock || 0),
+
+            reservedQuantity:
+                Number(item.reservedQuantity || 0),
+
+            availableOnline:
+                Number(item.availableOnline || 0),
+
+            availableWalkIn:
+                Number(item.availableWalkIn || 0),
+        });
+
+        setShowEditStockModal(true);
+    };
+    // =========================
+    // SAVE EDITED STOCK
+    // =========================
+
+    const saveEditedStock = async () => {
+
+        if (!selectedInventoryItem) {
+            return;
+        }
+
+
+        if (
+            editStock.price < 0 ||
+            editStock.totalStock < 0 ||
+            editStock.onlineStock < 0 ||
+            editStock.walkInStock < 0 ||
+            editStock.reservedQuantity < 0 ||
+            editStock.availableOnline < 0 ||
+            editStock.availableWalkIn < 0
+        ) {
+            alert(
+                "Stock values cannot be negative."
+            );
+            return;
+        }
+
+
+        try {
+
+            await updateDoc(
+                doc(
+                    db,
+                    "inventory",
+                    selectedInventoryItem.id
+                ),
+                {
+                    price:
+                        Number(editStock.price),
+
+                    totalStock:
+                        editStock.totalStock,
+
+                    onlineStock:
+                        editStock.onlineStock,
+
+                    walkInStock:
+                        editStock.walkInStock,
+
+                    reservedQuantity:
+                        editStock.reservedQuantity,
+
+                    availableOnline:
+                        editStock.availableOnline,
+
+                    availableWalkIn:
+                        editStock.availableWalkIn,
+                }
+            );
+
+
+            setShowEditStockModal(false);
+
+            setSelectedInventoryItem(null);
+
+
+            await loadInventory();
+
+
+        } catch (error) {
+
+            console.error(
+                "Error updating stock:",
+                error
+            );
+
+            alert(
+                "Failed to update stock."
+            );
+        }
+    };
+
+
+    // =========================
     // LOAD INVENTORY
     // =========================
 
@@ -99,6 +267,7 @@ function GeneralOfficeDashboard() {
 
         if (
             activePage === "Inventory" ||
+            activePage === "Requests" ||
             activePage === "Reports"
         ) {
             loadInventory();
@@ -202,53 +371,73 @@ function GeneralOfficeDashboard() {
                                 subtotal:
                                     Number(item.subtotal) || 0,
 
+                                purchaseType:
+                                    item.purchaseType === "Walk-in"
+                                        ? "Walk-in"
+                                        : "Online",
+
                             }))
                             : [];
 
 
-                    return {
+                   return {
+    id: document.id,
 
-                        id: document.id,
+    reservationId:
+        data.reservationId || document.id,
 
-                        reservationId:
-                            data.reservationId ||
-                            document.id,
+    claimStubId:
+        data.claimStubId || "",
 
-                        claimStubId:
-                            data.claimStubId || "",
+    fullName:
+        data.fullName || "",
 
-                        fullName:
-                            data.fullName || "",
+    studentId:
+        data.studentId || "",
 
-                        studentId:
-                            data.studentId || "",
+    mobileNumber:
+        data.mobileNumber || "",
 
-                        mobileNumber:
-                            data.mobileNumber || "",
+    program:
+        data.program || "",
 
-                        program:
-                            data.program || "",
+    pickupDate:
+        data.pickupDate || "",
 
-                        pickupDate:
-                            data.pickupDate || "",
+    pickupTime:
+        data.pickupTime || "",
 
-                        pickupTime:
-                            data.pickupTime || "",
+    status:
+        data.status || "Pending",
 
-                        status:
-                            data.status || "Pending",
+    totalAmount:
+        Number(data.totalAmount) || 0,
 
-                        totalAmount:
-                            Number(data.totalAmount) || 0,
+    createdAt:
+        data.createdAt || null,
 
-                        items: items,
-
-                    };
+    items: items,
+};
 
                 });
 
 
-            setReservations(reservationData);
+            reservationData.sort((a, b) => {
+
+    const dateA =
+        a.createdAt?.toMillis
+            ? a.createdAt.toMillis()
+            : 0;
+
+    const dateB =
+        b.createdAt?.toMillis
+            ? b.createdAt.toMillis()
+            : 0;
+
+    return dateB - dateA;
+});
+
+setReservations(reservationData);
 
         } catch (error) {
 
@@ -265,44 +454,149 @@ function GeneralOfficeDashboard() {
     };
 
 
-    // =========================
-    // APPROVE RESERVATION
-    // =========================
+// =========================
+// APPROVE RESERVATION
+// =========================
 
-    const approveReservation = async (
-        reservationId: string
-    ) => {
+const approveReservation = async (
+    reservationId: string
+) => {
 
-        try {
+    try {
 
-            const claimStubId =
-                `CS-${Date.now()}`;
+        // Find the reservation
+        const reservation =
+            reservations.find(
+                (item) =>
+                    item.id === reservationId
+            );
+
+        if (!reservation) {
+            console.error(
+                "Reservation not found."
+            );
+            return;
+        }
 
 
+        // Prevent adding reserved quantity twice
+        if (
+            reservation.status.toLowerCase() !==
+            "pending"
+        ) {
+            console.error(
+                "This reservation has already been processed."
+            );
+            return;
+        }
+
+
+        // =========================
+        // UPDATE INVENTORY RESERVED QUANTITY
+        // =========================
+
+        for (
+            const reservedItem of
+            reservation.items
+        ) {
+
+            if (!reservedItem.inventoryId) {
+                continue;
+            }
+
+
+            const inventoryItem =
+                inventory.find(
+                    (item) =>
+                        item.id ===
+                        reservedItem.inventoryId
+                );
+
+
+            if (!inventoryItem) {
+                console.error(
+                    `Inventory item not found: ${reservedItem.inventoryId}`
+                );
+                continue;
+            }
+
+
+            const currentReserved =
+                Number(
+                    inventoryItem.reservedQuantity ||
+                    0
+                );
+
+
+            const quantityToReserve =
+                Number(
+                    reservedItem.quantity ||
+                    0
+                );
+
+
+            const newReservedQuantity =
+                currentReserved +
+                quantityToReserve;
+
+
+            // Update the inventory document
             await updateDoc(
                 doc(
                     db,
-                    "itemReservations",
-                    reservationId
+                    "inventory",
+                    reservedItem.inventoryId
                 ),
                 {
-                    status: "Approved",
-                    claimStubId: claimStubId,
+                    reservedQuantity:
+                        newReservedQuantity,
                 }
             );
 
-
-            await loadReservations();
-
-        } catch (error) {
-
-            console.error(
-                "Error approving reservation:",
-                error
-            );
-
         }
-    };
+
+
+        // =========================
+        // CREATE CLAIM STUB
+        // =========================
+
+        const claimStubId =
+            `CS-${Date.now()}`;
+
+
+        // =========================
+        // UPDATE RESERVATION
+        // =========================
+
+        await updateDoc(
+            doc(
+                db,
+                "itemReservations",
+                reservationId
+            ),
+            {
+                status: "Approved",
+                claimStubId:
+                    claimStubId,
+            }
+        );
+
+
+        // Reload both
+        // reservation and inventory data
+        await loadReservations();
+        await loadInventory();
+
+
+    } catch (error) {
+
+        console.error(
+            "Error approving reservation:",
+            error
+        );
+
+    }
+};
 
 
     // =========================
@@ -341,6 +635,25 @@ function GeneralOfficeDashboard() {
     };
 
 
+    const cancelReservation = async (
+    reservation: ItemReservation
+) => {
+    try {
+        await updateDoc(
+            doc(db, "itemReservations", reservation.id),
+            {
+                status: "Cancelled",
+            }
+        );
+
+        alert("Reservation cancelled successfully.");
+
+        loadReservations();
+    } catch (error) {
+        console.error("Error cancelling reservation:", error);
+        alert("Failed to cancel reservation.");
+    }
+};
     // =========================
     // UPDATE PICKUP TIME
     // =========================
@@ -377,8 +690,8 @@ function GeneralOfficeDashboard() {
     };
 
 
-    // =========================
-    // COMPLETE RESERVATION
+   // =========================
+    // COMPLETE / CLAIM RESERVATION
     // =========================
 
     const completeReservation = async (
@@ -386,6 +699,189 @@ function GeneralOfficeDashboard() {
     ) => {
 
         try {
+
+            const reservation =
+                reservations.find(
+                    (item) =>
+                        item.id === reservationId
+                );
+
+            if (!reservation) {
+                console.error(
+                    "Reservation not found."
+                );
+                return;
+            }
+
+            if (
+                reservation.status.toLowerCase() !==
+                "approved"
+            ) {
+                console.error(
+                    "Only approved reservations can be claimed."
+                );
+                return;
+            }
+
+            // =========================
+            // UPDATE INVENTORY BY PURCHASE TYPE
+            // =========================
+
+            for (const claimedItem of reservation.items) {
+
+                if (!claimedItem.inventoryId) {
+                    continue;
+                }
+
+                const inventoryItem =
+                    inventory.find(
+                        (item) =>
+                            item.id ===
+                            claimedItem.inventoryId
+                    );
+
+                if (!inventoryItem) {
+                    console.error(
+                        `Inventory item not found: ${claimedItem.inventoryId}`
+                    );
+                    continue;
+                }
+
+                const quantityBought =
+                    Number(claimedItem.quantity || 0);
+
+                if (quantityBought <= 0) {
+                    continue;
+                }
+
+                const purchaseType =
+                    claimedItem.purchaseType === "Walk-in"
+                        ? "Walk-in"
+                        : "Online";
+
+                const currentTotalStock =
+                    Number(inventoryItem.totalStock || 0);
+
+                const currentReservedQuantity =
+                    Number(inventoryItem.reservedQuantity || 0);
+
+                if (currentReservedQuantity < quantityBought) {
+                    console.error(
+                        `Reserved quantity is not enough for ${claimedItem.itemName}.`
+                    );
+                    continue;
+                }
+
+                // Deduct from the stock source actually used.
+                const currentOnlineStock =
+                    Number(inventoryItem.onlineStock || 0);
+
+                const currentWalkInStock =
+                    Number(inventoryItem.walkInStock || 0);
+
+                const currentAvailableOnline =
+                    Number(inventoryItem.availableOnline || 0);
+
+                const currentAvailableWalkIn =
+                    Number(inventoryItem.availableWalkIn || 0);
+
+                if (purchaseType === "Online") {
+
+                    if (currentAvailableOnline < quantityBought) {
+                        console.error(
+                            `Not enough online stock for ${claimedItem.itemName}.`
+                        );
+                        continue;
+                    }
+
+                    await updateDoc(
+                        doc(
+                            db,
+                            "inventory",
+                            claimedItem.inventoryId
+                        ),
+                        {
+                            totalStock:
+                                Math.max(
+                                    0,
+                                    currentTotalStock -
+                                        quantityBought
+                                ),
+
+                            onlineStock:
+                                Math.max(
+                                    0,
+                                    currentOnlineStock -
+                                        quantityBought
+                                ),
+
+                            availableOnline:
+                                Math.max(
+                                    0,
+                                    currentAvailableOnline -
+                                        quantityBought
+                                ),
+
+                            reservedQuantity:
+                                Math.max(
+                                    0,
+                                    currentReservedQuantity -
+                                        quantityBought
+                                ),
+                        }
+                    );
+
+                } else {
+
+                    if (currentAvailableWalkIn < quantityBought) {
+                        console.error(
+                            `Not enough walk-in stock for ${claimedItem.itemName}.`
+                        );
+                        continue;
+                    }
+
+                    await updateDoc(
+                        doc(
+                            db,
+                            "inventory",
+                            claimedItem.inventoryId
+                        ),
+                        {
+                            totalStock:
+                                Math.max(
+                                    0,
+                                    currentTotalStock -
+                                        quantityBought
+                                ),
+
+                            walkInStock:
+                                Math.max(
+                                    0,
+                                    currentWalkInStock -
+                                        quantityBought
+                                ),
+
+                            availableWalkIn:
+                                Math.max(
+                                    0,
+                                    currentAvailableWalkIn -
+                                        quantityBought
+                                ),
+
+                            reservedQuantity:
+                                Math.max(
+                                    0,
+                                    currentReservedQuantity -
+                                        quantityBought
+                                ),
+                        }
+                    );
+                }
+            }
+
+            // =========================
+            // UPDATE RESERVATION
+            // =========================
 
             await updateDoc(
                 doc(
@@ -398,14 +894,239 @@ function GeneralOfficeDashboard() {
                 }
             );
 
-
             await loadReservations();
+            await loadInventory();
 
         } catch (error) {
 
             console.error(
                 "Error completing reservation:",
                 error
+            );
+        }
+    };
+
+
+    // =========================
+    // ADD REQUEST ITEM
+    // =========================
+
+    const addRequestItem = () => {
+
+        if (
+            !newRequestItem.inventoryId ||
+            !newRequestItem.itemName ||
+            !newRequestItem.size ||
+            !newRequestItem.purchaseType ||
+            newRequestItem.quantity <= 0
+        ) {
+            alert("Please complete the item details.");
+            return;
+        }
+
+        const subtotal =
+            Number(newRequestItem.price || 0) *
+            Number(newRequestItem.quantity || 0);
+
+        const itemToAdd: ReservationItem = {
+            ...newRequestItem,
+            price: Number(newRequestItem.price || 0),
+            quantity: Number(newRequestItem.quantity || 0),
+            subtotal: subtotal,
+            purchaseType: newRequestItem.purchaseType,
+        };
+
+        setNewRequest((previous) => ({
+            ...previous,
+            items: [...previous.items, itemToAdd],
+            totalAmount:
+                previous.totalAmount + subtotal,
+        }));
+
+        setNewRequestItem({
+            inventoryId: "",
+            itemName: "",
+            price: 0,
+            quantity: 1,
+            size: "",
+            subtotal: 0,
+            purchaseType: "Online",
+        });
+    };
+
+
+    // =========================
+    // REMOVE REQUEST ITEM
+    // =========================
+
+    const removeRequestItem = (index: number) => {
+
+        setNewRequest((previous) => {
+
+            const itemToRemove =
+                previous.items[index];
+
+            const updatedItems =
+                previous.items.filter(
+                    (_, itemIndex) =>
+                        itemIndex !== index
+                );
+
+            return {
+                ...previous,
+                items: updatedItems,
+                totalAmount:
+                    previous.totalAmount -
+                    Number(
+                        itemToRemove?.subtotal || 0
+                    ),
+            };
+
+        });
+    };
+
+
+    // =========================
+    // CREATE NEW REQUEST
+    // =========================
+
+    const addNewRequest = async () => {
+
+        if (
+            !newRequest.fullName.trim() ||
+            !newRequest.studentId.trim() ||
+            !newRequest.mobileNumber.trim() ||
+            !newRequest.program.trim() ||
+            !newRequest.pickupDate ||
+            !newRequest.pickupTime ||
+            newRequest.items.length === 0
+        ) {
+            alert(
+                "Please complete all required fields and add at least one item."
+            );
+            return;
+        }
+
+        try {
+
+            const reservationId =
+                newRequest.reservationId.trim() ||
+                `IR-${Date.now()}`;
+
+            await addDoc(
+                collection(db, "itemReservations"),
+                {
+                    reservationId:
+                        reservationId,
+
+                    claimStubId:
+                        newRequest.claimStubId.trim(),
+
+                    fullName:
+                        newRequest.fullName.trim(),
+
+                    studentId:
+                        newRequest.studentId.trim(),
+
+                    mobileNumber:
+                        newRequest.mobileNumber.trim(),
+
+                    program:
+                        newRequest.program.trim(),
+
+                    pickupDate:
+                        newRequest.pickupDate,
+
+                    pickupTime:
+                        newRequest.pickupTime,
+
+                    status:
+                        newRequest.status || "Pending",
+
+                    totalAmount:
+                        Number(
+                            newRequest.totalAmount || 0
+                        ),
+
+                    items:
+                        newRequest.items.map(
+                            (item) => ({
+                                inventoryId:
+                                    item.inventoryId,
+
+                                itemName:
+                                    item.itemName,
+
+                                price:
+                                    Number(
+                                        item.price || 0
+                                    ),
+
+                                quantity:
+                                    Number(
+                                        item.quantity || 0
+                                    ),
+
+                                size:
+                                    item.size,
+
+                                subtotal:
+                                    Number(
+                                        item.subtotal || 0
+                                    ),
+
+                                purchaseType:
+                                    item.purchaseType || "Online",
+                            })
+                        ),
+
+                    createdAt:
+                        serverTimestamp(),
+                }
+            );
+
+            alert(
+                "New request added successfully."
+            );
+
+            setShowAddRequestModal(false);
+
+            setNewRequest({
+                reservationId: "",
+                claimStubId: "",
+                fullName: "",
+                studentId: "",
+                mobileNumber: "",
+                program: "",
+                pickupDate: "",
+                pickupTime:
+                    "8:00AM - 10:00AM",
+                status: "Pending",
+                totalAmount: 0,
+                items: [],
+            });
+
+            setNewRequestItem({
+                inventoryId: "",
+                itemName: "",
+                price: 0,
+                quantity: 1,
+                size: "",
+                subtotal: 0,
+                purchaseType: "Online",
+            });
+
+            await loadReservations();
+
+        } catch (error) {
+
+            console.error(
+                "Error adding new request:",
+                error
+            );
+
+            alert(
+                "Failed to add request. Please try again."
             );
 
         }
@@ -1328,6 +2049,10 @@ function GeneralOfficeDashboard() {
                                                 <th>
                                                     Status
                                                 </th>
+                                                
+                                                <th>
+                                                    Action
+                                                </th>
 
                                             </tr>
 
@@ -1430,6 +2155,16 @@ function GeneralOfficeDashboard() {
                                                                 </span>
 
                                                             </td>
+                                                            <td>
+                                                                <button
+    className="inventory-action-button"
+    onClick={() =>
+        openEditStockModal(item)
+    }
+>
+    Edit Stock
+</button>
+                                                            </td>
 
                                                         </tr>
 
@@ -1479,12 +2214,31 @@ function GeneralOfficeDashboard() {
                                 </div>
 
 
-                                <button
-                                    className="inventory-refresh-button"
-                                    onClick={loadReservations}
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
+                                    }}
                                 >
-                                    ↻ Refresh
-                                </button>
+
+                                    <button
+                                        className="inventory-refresh-button"
+                                        onClick={() =>
+                                            setShowAddRequestModal(true)
+                                        }
+                                    >
+                                        + Add Request
+                                    </button>
+
+                                    <button
+                                        className="inventory-refresh-button"
+                                        onClick={loadReservations}
+                                    >
+                                        ↻ Refresh
+                                    </button>
+
+                                </div>
 
                             </div>
 
@@ -1691,16 +2445,19 @@ function GeneralOfficeDashboard() {
 
                                                         <td>
 
-                                                            <button
-                                                                onClick={() =>
-                                                                    approveReservation(
-                                                                        reservation.id
-                                                                    )
-                                                                }
-                                                            >
-                                                                Approve
-                                                            </button>
+                                                         <div style={{ display: "flex", gap: "8px" }}>
+    <button
+        onClick={() => approveReservation(reservation)}
+    >
+        Approve
+    </button>
 
+    <button
+        onClick={() => cancelReservation(reservation)}
+    >
+        Cancel
+    </button>
+</div>
                                                         </td>
 
                                                     </tr>
@@ -3253,6 +4010,1318 @@ function GeneralOfficeDashboard() {
 
                 )}
 
+                {/* ========================= */}
+                {/* ADD REQUEST MODAL */}
+                {/* ========================= */}
+
+                {showAddRequestModal && (
+
+                    <div
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            backgroundColor:
+                                "rgba(0, 0, 0, 0.45)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            zIndex: 1000,
+                            padding: "20px",
+                        }}
+                    >
+
+                        <div
+                            style={{
+                                background: "#ffffff",
+                                width: "100%",
+                                maxWidth: "900px",
+                                maxHeight: "90vh",
+                                overflowY: "auto",
+                                borderRadius: "12px",
+                                padding: "24px",
+                                boxShadow:
+                                    "0 10px 40px rgba(0,0,0,0.2)",
+                            }}
+                        >
+
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent:
+                                        "space-between",
+                                    alignItems: "center",
+                                    marginBottom: "20px",
+                                }}
+                            >
+
+                                <div>
+
+                                    <h2
+                                        style={{
+                                            margin: 0,
+                                        }}
+                                    >
+                                        Add New Request
+                                    </h2>
+
+                                    <p
+                                        style={{
+                                            marginTop: "6px",
+                                            color: "#71849a",
+                                        }}
+                                    >
+                                        Create a new item reservation
+                                        request.
+                                    </p>
+
+                                </div>
+
+                                <button
+                                    onClick={() =>
+                                        setShowAddRequestModal(false)
+                                    }
+                                    style={{
+                                        border: "none",
+                                        background: "transparent",
+                                        fontSize: "24px",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    ×
+                                </button>
+
+                            </div>
+
+
+                            {/* REQUEST DETAILS */}
+
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns:
+                                        "repeat(2, minmax(0, 1fr))",
+                                    gap: "16px",
+                                }}
+                            >
+
+                                <div>
+
+                                    <label>
+                                        Reservation ID
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={
+                                            newRequest.reservationId
+                                        }
+                                        placeholder="Leave blank to auto-generate"
+                                        onChange={(e) =>
+                                            setNewRequest(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    reservationId:
+                                                        e.target.value,
+                                                })
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                <div>
+
+                                    <label>
+                                        Claim Stub ID
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={
+                                            newRequest.claimStubId
+                                        }
+                                        placeholder="Leave blank for pending request"
+                                        onChange={(e) =>
+                                            setNewRequest(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    claimStubId:
+                                                        e.target.value,
+                                                })
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                <div>
+
+                                    <label>
+                                        Full Name *
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={
+                                            newRequest.fullName
+                                        }
+                                        onChange={(e) =>
+                                            setNewRequest(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    fullName:
+                                                        e.target.value,
+                                                })
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                <div>
+
+                                    <label>
+                                        Student ID *
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={
+                                            newRequest.studentId
+                                        }
+                                        onChange={(e) =>
+                                            setNewRequest(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    studentId:
+                                                        e.target.value,
+                                                })
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                <div>
+
+                                    <label>
+                                        Mobile Number *
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={
+                                            newRequest.mobileNumber
+                                        }
+                                        onChange={(e) =>
+                                            setNewRequest(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    mobileNumber:
+                                                        e.target.value,
+                                                })
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                <div>
+
+                                    <label>
+                                        Program *
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={
+                                            newRequest.program
+                                        }
+                                        placeholder="e.g. BSIT"
+                                        onChange={(e) =>
+                                            setNewRequest(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    program:
+                                                        e.target.value,
+                                                })
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                <div>
+
+                                    <label>
+                                        Pickup Date *
+                                    </label>
+
+                                    <input
+                                        type="date"
+                                        value={
+                                            newRequest.pickupDate
+                                        }
+                                        onChange={(e) =>
+                                            setNewRequest(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    pickupDate:
+                                                        e.target.value,
+                                                })
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                <div>
+
+                                    <label>
+                                        Pickup Time *
+                                    </label>
+
+                                    <select
+                                        value={
+                                            newRequest.pickupTime
+                                        }
+                                        onChange={(e) =>
+                                            setNewRequest(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    pickupTime:
+                                                        e.target.value,
+                                                })
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                        }}
+                                    >
+
+                                        <option value="8:00AM - 10:00AM">
+                                            8:00AM - 10:00AM
+                                        </option>
+
+                                        <option value="10:00AM - 12:00PM">
+                                            10:00AM - 12:00PM
+                                        </option>
+
+                                        <option value="1:00PM - 3:00PM">
+                                            1:00PM - 3:00PM
+                                        </option>
+
+                                        <option value="3:00PM - 5:00PM">
+                                            3:00PM - 5:00PM
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+
+                                <div>
+
+                                    <label>
+                                        Status *
+                                    </label>
+
+                                    <select
+                                        value={
+                                            newRequest.status
+                                        }
+                                        onChange={(e) =>
+                                            setNewRequest(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    status:
+                                                        e.target.value,
+                                                })
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                        }}
+                                    >
+
+                                        <option value="Pending">
+                                            Pending
+                                        </option>
+
+                                        <option value="Approved">
+                                            Approved
+                                        </option>
+
+                                        <option value="Claimed">
+                                            Claimed
+                                        </option>
+
+                                        <option value="Cancelled">
+                                            Cancelled
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+
+                                <div>
+
+                                    <label>
+                                        Total Amount
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        value={
+                                            newRequest.totalAmount
+                                        }
+                                        readOnly
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "6px",
+                                            background:
+                                                "#f5f7fa",
+                                        }}
+                                    />
+
+                                </div>
+
+                            </div>
+
+
+                            {/* ITEMS */}
+
+                            <div
+                                style={{
+                                    marginTop: "24px",
+                                }}
+                            >
+
+                                <h3>
+                                    Requested Items
+                                </h3>
+
+                                <p
+                                    style={{
+                                        color: "#71849a",
+                                    }}
+                                >
+                                    Add at least one item to the
+                                    request.
+                                </p>
+
+
+                                <div
+                                    style={{
+                                        display: "grid",
+                                        gridTemplateColumns:
+                                            "1.5fr 1.5fr 1fr 1fr 0.8fr 1fr auto",
+                                        gap: "10px",
+                                        alignItems: "end",
+                                    }}
+                                >
+
+                                    <div>
+
+                                        <label>
+                                            Inventory Item *
+                                        </label>
+
+                                       <select
+    value={newRequestItem.inventoryId}
+    onChange={(e) => {
+        const selectedItem = inventory.find(
+            (item) => item.id === e.target.value
+        );
+
+        setNewRequestItem({
+            inventoryId: selectedItem?.id || "",
+            itemName: selectedItem?.itemName || "",
+            price: Number(selectedItem?.price || 0),
+            quantity: 1,
+            size: selectedItem?.size || "",
+            subtotal: Number(selectedItem?.price || 0),
+            purchaseType: "Online",
+        });
+    }}
+    style={{
+        width: "100%",
+        padding: "10px",
+        marginTop: "6px",
+    }}
+><label style={{ display: "block", marginTop: "15px" }}>
+    Purchase Type
+</label>
+
+<select
+    value={newRequestItem.purchaseType}
+    onChange={(e) =>
+        setNewRequestItem({
+            ...newRequestItem,
+            purchaseType: e.target.value as "Online" | "Walk-in",
+        })
+    }
+    style={{
+        width: "100%",
+        padding: "10px",
+        marginTop: "6px",
+    }}
+>
+    <option value="Online">Online</option>
+    <option value="Walk-in">Walk-in</option>
+</select>
+
+                                            <option value="">
+                                                Select item
+                                            </option>
+
+                                            {inventory.map(
+                                                (item) => (
+                                                    <option
+                                                        key={item.id}
+                                                        value={item.id}
+                                                    >
+                                                        {item.itemName} -
+                                                        {item.size} - ₱
+                                                        {Number(
+                                                            item.price || 0
+                                                        ).toLocaleString()}
+                                                    </option>
+                                                )
+                                            )}
+
+                                        </select>
+
+                                    </div>
+
+
+                                    <div>
+
+                                        <label>
+                                            Item Name *
+                                        </label>
+
+                                        <input
+                                            type="text"
+                                            value={
+                                                newRequestItem.itemName
+                                            }
+                                            readOnly
+                                            style={{
+                                                width: "100%",
+                                                padding: "10px",
+                                                marginTop: "6px",
+                                                background:
+                                                    "#f5f7fa",
+                                            }}
+                                        />
+
+                                    </div>
+
+
+                                    <div>
+
+                                        <label>
+                                            Size *
+                                        </label>
+
+                                        <input
+                                            type="text"
+                                            value={
+                                                newRequestItem.size
+                                            }
+                                            readOnly
+                                            style={{
+                                                width: "100%",
+                                                padding: "10px",
+                                                marginTop: "6px",
+                                                background:
+                                                    "#f5f7fa",
+                                            }}
+                                        />
+
+                                    </div>
+
+
+                                    <div>
+
+                                        <label>
+                                            Price
+                                        </label>
+
+                                        <input
+                                            type="number"
+                                            value={
+                                                newRequestItem.price
+                                            }
+                                            readOnly
+                                            style={{
+                                                width: "100%",
+                                                padding: "10px",
+                                                marginTop: "6px",
+                                                background:
+                                                    "#f5f7fa",
+                                            }}
+                                        />
+
+                                    </div>
+
+
+                                    <div>
+
+                                        <label>
+                                            Purchase Type *
+                                        </label>
+
+                                        <select
+                                            value={
+                                                newRequestItem.purchaseType
+                                            }
+                                            onChange={(e) =>
+                                                setNewRequestItem(
+                                                    (previous) => ({
+                                                        ...previous,
+                                                        purchaseType:
+                                                            e.target.value as
+                                                            "Online" |
+                                                            "Walk-in",
+                                                    })
+                                                )
+                                            }
+                                            style={{
+                                                width: "100%",
+                                                padding: "10px",
+                                                marginTop: "6px",
+                                            }}
+                                        >
+                                            <option value="Online">
+                                                Online
+                                            </option>
+
+                                            <option value="Walk-in">
+                                                Walk-in
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+
+                                    <div>
+
+                                        <label>
+                                            Quantity *
+                                        </label>
+
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={
+                                                newRequestItem.quantity
+                                            }
+                                            onChange={(e) => {
+
+                                                const quantity =
+                                                    Math.max(
+                                                        1,
+                                                        Number(
+                                                            e.target.value ||
+                                                                1
+                                                        )
+                                                    );
+
+                                                setNewRequestItem(
+                                                    (previous) => ({
+                                                        ...previous,
+                                                        quantity:
+                                                            quantity,
+                                                        subtotal:
+                                                            Number(
+                                                                previous.price ||
+                                                                    0
+                                                            ) *
+                                                            quantity,
+                                                    })
+                                                );
+
+                                            }}
+                                            style={{
+                                                width: "100%",
+                                                padding: "10px",
+                                                marginTop: "6px",
+                                            }}
+                                        />
+
+                                    </div>
+
+
+                                    <button
+                                        type="button"
+                                        onClick={
+                                            addRequestItem
+                                        }
+                                        style={{
+                                            padding:
+                                                "10px 14px",
+                                            cursor: "pointer",
+                                            border: "none",
+                                            borderRadius:
+                                                "6px",
+                                            background:
+                                                "#4f46e5",
+                                            color: "#ffffff",
+                                        }}
+                                    >
+                                        + Add
+                                    </button>
+
+                                </div>
+
+
+                                {/* ADDED ITEMS */}
+
+                                <div
+                                    style={{
+                                        marginTop: "18px",
+                                    }}
+                                >
+
+                                    {newRequest.items.length ===
+                                    0 ? (
+
+                                        <p
+                                            style={{
+                                                color: "#71849a",
+                                            }}
+                                        >
+                                            No items added yet.
+                                        </p>
+
+                                    ) : (
+
+                                        <div className="inventory-table-container">
+
+                                            <table className="inventory-table">
+
+                                                <thead>
+
+                                                    <tr>
+
+                                                        <th>
+                                                            Item
+                                                        </th>
+
+                                                        <th>
+                                                            Size
+                                                        </th>
+
+                                                        <th>
+                                                            Price
+                                                        </th>
+
+                                                        <th>
+                                                            Quantity
+                                                        </th>
+
+                                                        <th>
+                                                            Purchase Type
+                                                        </th>
+
+                                                        <th>
+                                                            Subtotal
+                                                        </th>
+
+                                                        <th>
+                                                            Action
+                                                        </th>
+
+                                                    </tr>
+
+                                                </thead>
+
+                                                <tbody>
+
+                                                    {newRequest.items.map(
+                                                        (
+                                                            item,
+                                                            index
+                                                        ) => (
+
+                                                            <tr
+                                                                key={
+                                                                    index
+                                                                }
+                                                            >
+
+                                                                <td>
+                                                                    {
+                                                                        item.itemName
+                                                                    }
+                                                                </td>
+
+                                                                <td>
+                                                                    {
+                                                                        item.size
+                                                                    }
+                                                                </td>
+
+                                                                <td>
+                                                                    ₱
+                                                                    {Number(
+                                                                        item.price ||
+                                                                            0
+                                                                    ).toLocaleString()}
+                                                                </td>
+
+                                                                <td>
+                                                                    {
+                                                                        item.quantity
+                                                                    }
+                                                                </td>
+
+                                                                <td>
+                                                                    {
+                                                                        item.purchaseType
+                                                                    }
+                                                                </td>
+
+                                                                <td>
+                                                                    ₱
+                                                                    {Number(
+                                                                        item.subtotal ||
+                                                                            0
+                                                                    ).toLocaleString(
+                                                                        undefined,
+                                                                        {
+                                                                            minimumFractionDigits:
+                                                                                2,
+                                                                            maximumFractionDigits:
+                                                                                2,
+                                                                        }
+                                                                    )}
+                                                                </td>
+
+                                                                <td>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            removeRequestItem(
+                                                                                index
+                                                                            )
+                                                                        }
+                                                                        style={{
+                                                                            cursor:
+                                                                                "pointer",
+                                                                        }}
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+
+                                                                </td>
+
+                                                            </tr>
+
+                                                        )
+                                                    )}
+
+                                                </tbody>
+
+                                            </table>
+
+                                        </div>
+
+                                    )}
+
+                                </div>
+
+                            </div>
+
+
+                            {/* MODAL ACTIONS */}
+
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent:
+                                        "flex-end",
+                                    gap: "10px",
+                                    marginTop: "24px",
+                                }}
+                            >
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowAddRequestModal(
+                                            false
+                                        )
+                                    }
+                                    style={{
+                                        padding:
+                                            "10px 18px",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={
+                                        addNewRequest
+                                    }
+                                    style={{
+                                        padding:
+                                            "10px 18px",
+                                        cursor: "pointer",
+                                        border: "none",
+                                        borderRadius:
+                                            "6px",
+                                        background:
+                                            "#4f46e5",
+                                        color: "#ffffff",
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    Save Request
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                )}
+
+
+
+{/* ========================= */}
+{/* EDIT STOCK MODAL */}
+{/* ========================= */}
+
+{showEditStockModal &&
+    selectedInventoryItem && (
+
+        <div
+            style={{
+                position: "fixed",
+                inset: 0,
+                backgroundColor:
+                    "rgba(0, 0, 0, 0.45)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 9999,
+            }}
+        >
+
+            <div
+                style={{
+                    backgroundColor: "#fff",
+                    width: "500px",
+                    maxWidth: "90%",
+                    maxHeight: "90vh",
+                    overflowY: "auto",
+                    borderRadius: "12px",
+                    padding: "25px",
+                    boxShadow:
+                        "0 10px 30px rgba(0,0,0,0.2)",
+                }}
+            >
+
+                <h2>
+                    Edit Stock
+                </h2>
+
+                <p
+                    style={{
+                        color: "#666",
+                        marginBottom: "20px",
+                    }}
+                >
+                    Edit the stock values for this
+                    inventory item.
+                </p>
+
+
+                {/* ITEM NAME */}
+                <div
+                    style={{
+                        marginBottom: "15px",
+                    }}
+                >
+
+                    <label>
+                        Item
+                    </label>
+
+                    <input
+                        type="text"
+                        value={
+                            `${selectedInventoryItem.itemName} - ${selectedInventoryItem.size}`
+                        }
+                        readOnly
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop: "5px",
+                            boxSizing:
+                                "border-box",
+                        }}
+                    />
+
+                </div>
+
+
+                {/* PRICE */}
+                <div
+                    style={{
+                        marginBottom: "15px",
+                    }}
+                >
+
+                    <label>
+                        Price
+                    </label>
+
+                    <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editStock.price}
+                        onChange={(e) =>
+                            setEditStock({
+                                ...editStock,
+                                price: Number(
+                                    e.target.value
+                                ),
+                            })
+                        }
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop: "5px",
+                            boxSizing: "border-box",
+                        }}
+                    />
+
+                </div>
+
+
+                {/* TOTAL STOCK */}
+                <div
+                    style={{
+                        marginBottom: "15px",
+                    }}
+                >
+
+                    <label>
+                        Total Stock
+                    </label>
+
+                    <input
+                        type="number"
+                        min="0"
+                        value={
+                            editStock.totalStock
+                        }
+                        onChange={(e) =>
+                            setEditStock({
+                                ...editStock,
+                                totalStock:
+                                    Number(
+                                        e.target.value
+                                    ),
+                            })
+                        }
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop: "5px",
+                            boxSizing:
+                                "border-box",
+                        }}
+                    />
+
+                </div>
+
+
+                {/* ONLINE STOCK */}
+                <div
+                    style={{
+                        marginBottom: "15px",
+                    }}
+                >
+
+                    <label>
+                        Online Stock
+                    </label>
+
+                    <input
+                        type="number"
+                        min="0"
+                        value={
+                            editStock.onlineStock
+                        }
+                        onChange={(e) =>
+                            setEditStock({
+                                ...editStock,
+                                onlineStock:
+                                    Number(
+                                        e.target.value
+                                    ),
+                            })
+                        }
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop: "5px",
+                            boxSizing:
+                                "border-box",
+                        }}
+                    />
+
+                </div>
+
+
+                {/* WALK-IN STOCK */}
+                <div
+                    style={{
+                        marginBottom: "15px",
+                    }}
+                >
+
+                    <label>
+                        Walk-in Stock
+                    </label>
+
+                    <input
+                        type="number"
+                        min="0"
+                        value={
+                            editStock.walkInStock
+                        }
+                        onChange={(e) =>
+                            setEditStock({
+                                ...editStock,
+                                walkInStock:
+                                    Number(
+                                        e.target.value
+                                    ),
+                            })
+                        }
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop: "5px",
+                            boxSizing:
+                                "border-box",
+                        }}
+                    />
+
+                </div>
+
+
+                {/* RESERVED QUANTITY */}
+                <div
+                    style={{
+                        marginBottom: "15px",
+                    }}
+                >
+
+                    <label>
+                        Reserved Quantity
+                    </label>
+
+                    <input
+                        type="number"
+                        min="0"
+                        value={
+                            editStock.reservedQuantity
+                        }
+                        onChange={(e) =>
+                            setEditStock({
+                                ...editStock,
+                                reservedQuantity:
+                                    Number(
+                                        e.target.value
+                                    ),
+                            })
+                        }
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop: "5px",
+                            boxSizing:
+                                "border-box",
+                        }}
+                    />
+
+                </div>
+
+
+                {/* AVAILABLE ONLINE */}
+                <div
+                    style={{
+                        marginBottom: "15px",
+                    }}
+                >
+
+                    <label>
+                        Available Online
+                    </label>
+
+                    <input
+                        type="number"
+                        min="0"
+                        value={
+                            editStock.availableOnline
+                        }
+                        onChange={(e) =>
+                            setEditStock({
+                                ...editStock,
+                                availableOnline:
+                                    Number(
+                                        e.target.value
+                                    ),
+                            })
+                        }
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop: "5px",
+                            boxSizing:
+                                "border-box",
+                        }}
+                    />
+
+                </div>
+
+
+                {/* AVAILABLE WALK-IN */}
+                <div
+                    style={{
+                        marginBottom: "20px",
+                    }}
+                >
+
+                    <label>
+                        Available Walk-in
+                    </label>
+
+                    <input
+                        type="number"
+                        min="0"
+                        value={
+                            editStock.availableWalkIn
+                        }
+                        onChange={(e) =>
+                            setEditStock({
+                                ...editStock,
+                                availableWalkIn:
+                                    Number(
+                                        e.target.value
+                                    ),
+                            })
+                        }
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop: "5px",
+                            boxSizing:
+                                "border-box",
+                        }}
+                    />
+
+                </div>
+
+
+                {/* BUTTONS */}
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent:
+                            "flex-end",
+                        gap: "10px",
+                    }}
+                >
+
+                    <button
+                        onClick={() => {
+                            setShowEditStockModal(
+                                false
+                            );
+
+                            setSelectedInventoryItem(
+                                null
+                            );
+                        }}
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        onClick={saveEditedStock}
+                    >
+                        Save Changes
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+    )}
             </main>
 
         </div>
