@@ -1,0 +1,617 @@
+.user-accounts-page {
+  width: 100%;
+}
+
+.user-accounts-page h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  color: #1f2937;
+}
+
+.user-accounts-page > p {
+  margin: 0 0 24px;
+  color: #6b7280;
+}
+
+
+/* ========================================
+   SUMMARY CARDS
+======================================== */
+
+.account-summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.account-summary-card {
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.account-summary-card span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.account-summary-card strong {
+  font-size: 28px;
+  color: #111827;
+}
+
+
+/* ========================================
+   PAGE HEADER
+======================================== */
+
+.user-accounts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.user-accounts-header h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  color: #1f2937;
+}
+
+.user-accounts-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.refresh-accounts-button {
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.refresh-accounts-button:hover {
+  background: #f9fafb;
+}
+
+
+/* ========================================
+   CREATE ACCOUNT BUTTON
+======================================== */
+
+.create-account-button-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.show-create-account-button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.show-create-account-button:hover {
+  background: #4338ca;
+}
+
+
+/* ========================================
+   CREATE ACCOUNT FORM
+======================================== */
+
+.create-account-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.create-account-header {
+  margin-bottom: 20px;
+}
+
+.create-account-header h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.create-account-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.create-account-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.create-account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.create-account-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.create-account-field input,
+.create-account-field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.create-account-field input:focus,
+.create-account-field select:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+.create-account-field input:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.create-account-button-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.create-account-button {
+  width: auto;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.create-account-button:hover {
+  background: #4338ca;
+}
+
+.cancel-create-account-button {
+  margin-top: 0;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #e5e7eb;
+  color: #374151;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cancel-create-account-button:hover {
+  background: #d1d5db;
+}
+
+.create-account-message {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 14px;
+}
+
+
+/* ========================================
+   SEARCH SECTION
+======================================== */
+
+.user-accounts-search-section {
+  margin-bottom: 24px;
+}
+
+.user-accounts-search {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.user-accounts-search input {
+  flex: 1;
+  padding: 11px 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.user-accounts-search button {
+  padding: 11px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.user-accounts-search button:hover {
+  background: #4338ca;
+}
+
+.user-accounts-search-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-accounts-search-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.user-accounts-search-options button {
+  padding: 8px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+}
+
+.user-accounts-search-options button:hover {
+  background: #f9fafb;
+}
+
+
+/* ========================================
+   ACCOUNT TABLE
+======================================== */
+
+.user-accounts-table-container {
+  overflow-x: auto;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.user-accounts-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-accounts-table th,
+.user-accounts-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.user-accounts-table th {
+  background: #f9fafb;
+  color: #374151;
+  font-weight: 600;
+}
+
+.user-accounts-table td {
+  color: #4b5563;
+}
+
+.user-accounts-table tr:last-child td {
+  border-bottom: none;
+}
+
+
+/* ========================================
+   ACCOUNT STATUS
+======================================== */
+
+.account-status {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.account-status.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.account-status.inactive {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.account-status.deleted {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+
+/* ========================================
+   ACTION BUTTONS
+======================================== */
+
+.account-action-button {
+  padding: 6px 10px;
+  margin-right: 6px;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-edit-button {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.account-edit-button:hover {
+  background: #c7d2fe;
+}
+
+.account-delete-button {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.account-delete-button:hover {
+  background: #fecaca;
+}
+
+.account-restore-button {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.account-restore-button:hover {
+  background: #bbf7d0;
+}
+
+
+/* ========================================
+   EDIT ACCOUNT
+======================================== */
+
+.edit-account-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.edit-account-header {
+  margin-bottom: 20px;
+}
+
+.edit-account-header h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.edit-account-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.edit-account-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.edit-account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.edit-account-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.edit-account-field input,
+.edit-account-field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.edit-account-field input:focus,
+.edit-account-field select:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+.edit-account-field input:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.edit-account-buttons {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.save-account-button,
+.cancel-edit-button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-account-button {
+  background: #4f46e5;
+  color: white;
+}
+
+.save-account-button:hover {
+  background: #4338ca;
+}
+
+.cancel-edit-button {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.cancel-edit-button:hover {
+  background: #d1d5db;
+}
+
+.edit-account-message {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 14px;
+}
+
+
+/* ========================================
+   EMPTY TABLE
+======================================== */
+
+.no-accounts-message {
+  text-align: center !important;
+  padding: 40px !important;
+  color: #9ca3af !important;
+}
+
+
+/* ========================================
+   LOADING AND ERROR
+======================================== */
+
+.user-accounts-loading {
+  color: #6b7280;
+  margin-bottom: 20px;
+}
+
+.user-accounts-error {
+  padding: 10px 12px;
+  margin-bottom: 20px;
+  border-radius: 7px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 14px;
+}
+
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 1100px) {
+  .account-summary {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .account-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .create-account-form,
+  .edit-account-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+
+  .account-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .user-accounts-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .user-accounts-search {
+    flex-direction: column;
+  }
+
+  .user-accounts-search-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .create-account-button-wrapper {
+    justify-content: flex-start;
+  }
+
+  .create-account-button-container {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .create-account-button,
+  .cancel-create-account-button {
+    width: 100%;
+  }
+
+  .edit-account-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .save-account-button,
+  .cancel-edit-button {
+    width: 100%;
+  }
+}
