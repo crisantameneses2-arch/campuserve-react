@@ -4,13 +4,12 @@ import { useState } from "react";
 
 import {
   collection,
-  doc,
   getDocs,
-  setDoc,
-  updateDoc,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
+
+import UserAccounts from "./UserAccounts";
 
 type RecordData = {
   id: string;
@@ -33,10 +32,6 @@ type AdminDashboardProps = {
 function AdminDashboard({
   account,
 }: AdminDashboardProps) {
-  // ==============================
-  // RETRIEVE DATA
-  // ==============================
-
   const [selectedCollection, setSelectedCollection] =
     useState("");
 
@@ -52,62 +47,11 @@ function AdminDashboard({
   const [error, setError] =
     useState("");
 
-  // ==============================
-  // CREATE ACCOUNT
-  // ==============================
-
-  const [createStudentId, setCreateStudentId] =
-    useState("");
-
-  const [createName, setCreateName] =
-    useState("");
-
-  const [createEmail, setCreateEmail] =
-    useState("");
-
-  const [createRole, setCreateRole] =
-    useState("student");
-
-  const [createStatus, setCreateStatus] =
-    useState("active");
-
-  const [createMessage, setCreateMessage] =
-    useState("");
-
-  // ==============================
-  // UPDATE ACCOUNT
-  // ==============================
-
-  const [editingId, setEditingId] =
-    useState("");
-
-  const [updateId, setUpdateId] =
-    useState("");
-
-  const [updateStudentId, setUpdateStudentId] =
-    useState("");
-
-  const [updateName, setUpdateName] =
-    useState("");
-
-  const [updateEmail, setUpdateEmail] =
-    useState("");
-
-  const [updateRole, setUpdateRole] =
-    useState("student");
-
-  const [updateStatus, setUpdateStatus] =
-    useState("active");
-
-  const [updateMessage, setUpdateMessage] =
-    useState("");
-
   const [showProfile, setShowProfile] =
-  useState(false);
+    useState(false);
 
-  // ==============================
-  // COLLECTIONS
-  // ==============================
+  const [currentPage, setCurrentPage] =
+    useState("dashboard");
 
   const collections = [
     "accounts",
@@ -126,10 +70,6 @@ function AdminDashboard({
     "activityLogs",
     "reports",
   ];
-
-  // ==============================
-  // RETRIEVE DATA
-  // ==============================
 
   const handleRetrieve = async (
     deletedView = showDeletedAccounts
@@ -178,318 +118,13 @@ function AdminDashboard({
     }
   };
 
-  // ==============================
-  // CREATE ACCOUNT
-  // ==============================
-
-const handleCreateAccount = async () => {
-  setError("");
-  setCreateMessage("");
-
-  if (
-    !createName ||
-    !createEmail ||
-    !createRole ||
-    !createStatus
-  ) {
-    setError(
-      "Please fill in all required fields."
-    );
-    return;
-  }
-
-  if (
-    createRole === "student" &&
-    !createStudentId
-  ) {
-    setError(
-      "Student ID is required for student accounts."
-    );
-    return;
-  }
-
-  try {
-    const normalizedEmail =
-      createEmail.trim().toLowerCase();
-
-    const accountData: Record<string, string> = {
-      name: createName.trim(),
-      email: normalizedEmail,
-      role: createRole,
-      status: createStatus,
-    };
-
-    if (createRole === "student") {
-      accountData.student_id =
-        createStudentId.trim();
-    }
-
-    // Use the email as the Firestore document ID
-    const accountRef = doc(
-      db,
-      "accounts",
-      normalizedEmail
-    );
-
-    await setDoc(
-      accountRef,
-      accountData
-    );
-
-    setCreateMessage(
-      "Account pre-registered successfully."
-    );
-
-    setCreateStudentId("");
-    setCreateName("");
-    setCreateEmail("");
-    setCreateRole("student");
-    setCreateStatus("active");
-
-  } catch (error) {
-    console.error(
-      "Error creating account:",
-      error
-    );
-
-    setError(
-      "Failed to create account."
-    );
-  }
-};
-
-  // ==============================
-  // SELECT ACCOUNT FOR UPDATE
-  // ==============================
-
-  const handleSelectForUpdate = (
-    record: RecordData
-  ) => {
-    setUpdateId(record.id);
-
-    setUpdateStudentId(
-      typeof record.student_id === "string"
-        ? record.student_id
-        : ""
-    );
-
-    setUpdateName(
-      typeof record.name === "string"
-        ? record.name
-        : ""
-    );
-
-    setUpdateEmail(
-      typeof record.email === "string"
-        ? record.email
-        : ""
-    );
-
-    setUpdateRole(
-      typeof record.role === "string"
-        ? record.role
-        : "student"
-    );
-
-    setUpdateStatus(
-      typeof record.status === "string"
-        ? record.status
-        : "active"
-    );
-
-    setUpdateMessage("");
-  };
-
-  // ==============================
-  // UPDATE ACCOUNT
-  // ==============================
-
-  const handleUpdateAccount = async () => {
-    setError("");
-    setUpdateMessage("");
-
-    if (!updateId) {
-      setError(
-        "Please select an account to update."
-      );
-      return;
-    }
-
-    if (
-      !updateName ||
-      !updateEmail ||
-      !updateRole ||
-      !updateStatus
-    ) {
-      setError(
-        "Please fill in all required fields."
-      );
-      return;
-    }
-
-    if (
-      updateRole === "student" &&
-      !updateStudentId
-    ) {
-      setError(
-        "Student ID is required for student accounts."
-      );
-      return;
-    }
-
-    try {
-      const accountRef = doc(
-        db,
-        "accounts",
-        updateId
-      );
-
-      const accountData: Record<string, string> = {
-        name: updateName,
-        email: updateEmail,
-        role: updateRole,
-        status: updateStatus,
-      };
-
-      if (updateRole === "student") {
-        accountData.student_id =
-          updateStudentId;
-      }
-
-      await updateDoc(
-        accountRef,
-        accountData
-      );
-
-      setUpdateMessage(
-        "Account updated successfully."
-      );
-
-      setEditingId("");
-
-      if (selectedCollection === "accounts") {
-        await handleRetrieve();
-      }
-
-    } catch (error) {
-      console.error(
-        "Error updating account:",
-        error
-      );
-
-      setError(
-        "Failed to update account."
-      );
-    }
-  };
-
-  // ==============================
-  // SOFT DELETE ACCOUNT
-  // ==============================
-
-  const handleDeleteAccount = async (
-    accountId: string
-  ) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to move this account to Deleted Accounts?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setError("");
-    setCreateMessage("");
-    setUpdateMessage("");
-
-    try {
-      await updateDoc(
-        doc(db, "accounts", accountId),
-        {
-          status: "deleted",
-          deletedAt: new Date(),
-        }
-      );
-
-      if (editingId === accountId) {
-        setEditingId("");
-      }
-
-      setCreateMessage(
-        "Account moved to Deleted Accounts."
-      );
-
-      if (selectedCollection === "accounts") {
-        await handleRetrieve();
-      }
-
-    } catch (error) {
-      console.error(
-        "Error deleting account:",
-        error
-      );
-
-      setError(
-        "Failed to move account to Deleted Accounts."
-      );
-    }
-  };
-
-  // ==============================
-  // RESTORE ACCOUNT
-  // ==============================
-
-  const handleRestoreAccount = async (
-    accountId: string
-  ) => {
-    const confirmed = window.confirm(
-      "Restore this account?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setError("");
-    setCreateMessage("");
-    setUpdateMessage("");
-
-    try {
-      await updateDoc(
-        doc(db, "accounts", accountId),
-        {
-          status: "active",
-        }
-      );
-
-      setCreateMessage(
-        "Account restored successfully."
-      );
-
-      if (selectedCollection === "accounts") {
-        await handleRetrieve(true);
-      }
-
-    } catch (error) {
-      console.error(
-        "Error restoring account:",
-        error
-      );
-
-      setError(
-        "Failed to restore account."
-      );
-    }
-  };
-
-  // ==============================
-  // DISPLAY RECORD VALUE
-  // ==============================
-
   const displayValue = (
     value: unknown
   ) => {
-    if (value === null || value === undefined) {
+    if (
+      value === null ||
+      value === undefined
+    ) {
       return "—";
     }
 
@@ -506,755 +141,648 @@ const handleCreateAccount = async () => {
     return String(value);
   };
 
-  // ==============================
-  // UI
-  // ==============================
-
   return (
-  <div className="admin-layout">
+    <div className="admin-dashboard">
 
-    <aside className="admin-sidebar">
+      {/* SIDEBAR */}
+      <aside className="admin-sidebar">
 
-      <div className="sidebar-logo">
-        CampuServe
-      </div>
-
-      <nav className="sidebar-nav">
-
-        <button className="sidebar-item active">
-          <span>▣</span>
-          Dashboard
-        </button>
-
-        <button className="sidebar-item">
-          <span>👤</span>
-          User accounts
-        </button>
-
-        <button className="sidebar-item">
-          <span>🛡</span>
-          Roles & permissions
-        </button>
-
-        <button className="sidebar-item">
-          <span>📄</span>
-          Document requests
-        </button>
-
-        <button className="sidebar-item">
-          <span>📦</span>
-          Item reservations
-        </button>
-
-        <button className="sidebar-item">
-          <span>📊</span>
-          Reports & analytics
-        </button>
-
-        <button className="sidebar-item">
-          <span>📝</span>
-          Activity logs
-        </button>
-
-        <button className="sidebar-item">
-          <span>⚙</span>
-          System settings
-        </button>
-
-      </nav>
-
-    </aside>
-
-    <main className="admin-main">
-
-      <header className="admin-header">
-        <div>
-          <h1>Administrator Dashboard</h1>
-          <p>Manage CampuServe system data and users.</p>
+        <div className="sidebar-logo">
+          <h2>CampuServe</h2>
+          <span>Administrator</span>
         </div>
 
-        <div className="admin-profile">
-  <button
-    className="profile-button"
-    onClick={() =>
-      setShowProfile(!showProfile)
-    }
-  >
-    <span className="profile-icon">
-      👤
-    </span>
+        <nav className="sidebar-navigation">
 
-    <span className="profile-name">
-      Administrator
-    </span>
-
-    <span className="profile-arrow">
-      ▾
-    </span>
-  </button>
-
-  {showProfile && (
-    <div className="profile-panel">
-
-      <div className="profile-panel-header">
-        <div className="profile-panel-icon">
-          👤
-        </div>
-
-        <div>
-          <strong>
-            {account.name || "Administrator"}
-          </strong>
-
-          <span>
-            Administrator
-          </span>
-        </div>
-      </div>
-
-      <div className="profile-details">
-
-        <div>
-          <small>Email</small>
-          <p>{account.email}</p>
-        </div>
-
-        <div>
-          <small>Role</small>
-          <p>{account.role}</p>
-        </div>
-
-        <div>
-          <small>Status</small>
-          <p>{account.status}</p>
-        </div>
-
-      </div>
-
-    </div>
-  )}
-</div>
-      </header>
-
-      <div className="admin-content">
-
-      <p>
-        Manage CampuServe accounts and
-        system data.
-      </p>
-
-      <hr />
-
-      {/* ==========================
-          CREATE ACCOUNT
-      ========================== */}
-
-      <section>
-        <h3>Create Account</h3>
-
-        <div>
-          <label>
-            Student ID:
-          </label>
-
-          <input
-            type="text"
-            value={createStudentId}
-            onChange={(event) =>
-              setCreateStudentId(
-                event.target.value
-              )
-            }
-            placeholder="Student ID"
-          />
-        </div>
-
-        <br />
-
-        <div>
-          <label>
-            Name:
-          </label>
-
-          <input
-            type="text"
-            value={createName}
-            onChange={(event) =>
-              setCreateName(
-                event.target.value
-              )
-            }
-            placeholder="Full Name"
-          />
-        </div>
-
-        <br />
-
-        <div>
-          <label>
-            Email:
-          </label>
-
-          <input
-            type="email"
-            value={createEmail}
-            onChange={(event) =>
-              setCreateEmail(
-                event.target.value
-              )
-            }
-            placeholder="Email"
-          />
-        </div>
-
-        <br />
-
-        <div>
-          <label>
-            Role:
-          </label>
-
-          <select
-            value={createRole}
-            onChange={(event) =>
-              setCreateRole(
-                event.target.value
-              )
+          {/* Dashboard */}
+          <button
+            className={`sidebar-item ${
+              currentPage === "dashboard"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setCurrentPage("dashboard")
             }
           >
-            <option value="student">
-              Student
-            </option>
+            <span>▣</span>
+            Dashboard
+          </button>
 
-            <option value="admin">
-              Administrator
-            </option>
-
-            <option value="registrar">
-              Registrar
-            </option>
-
-            <option value="general_office">
-              General Office
-            </option>
-          </select>
-        </div>
-
-        <br />
-
-        <div>
-          <label>
-            Status:
-          </label>
-
-          <select
-            value={createStatus}
-            onChange={(event) =>
-              setCreateStatus(
-                event.target.value
-              )
+          {/* User Accounts */}
+          <button
+            className={`sidebar-item ${
+              currentPage === "userAccounts"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setCurrentPage("userAccounts")
             }
           >
-            <option value="active">
-              Active
-            </option>
+            <span>👤</span>
+            User accounts
+          </button>
 
-            <option value="inactive">
-              Inactive
-            </option>
-          </select>
-        </div>
+          {/* Roles & Permissions */}
+          <button
+            className="sidebar-item"
+          >
+            <span>🔐</span>
+            Roles & permissions
+          </button>
 
-        <br />
+          {/* Document Requests */}
+          <button
+            className="sidebar-item"
+          >
+            <span>📄</span>
+            Document requests
+          </button>
 
-        <button
-          onClick={handleCreateAccount}
-        >
-          Create Account
-        </button>
+          {/* Item Reservations */}
+          <button
+            className="sidebar-item"
+          >
+            <span>📦</span>
+            Item reservations
+          </button>
 
-        {createMessage && (
-          <p>
-            {createMessage}
-          </p>
-        )}
-      </section>
+          {/* Reports & Analytics */}
+          <button
+            className="sidebar-item"
+          >
+            <span>📊</span>
+            Reports & analytics
+          </button>
 
-      <hr />
+          {/* Activity Logs */}
+          <button
+            className="sidebar-item"
+          >
+            <span>📝</span>
+            Activity logs
+          </button>
 
-      {/* ==========================
-          RETRIEVE DATA
-      ========================== */}
+          {/* System Settings */}
+          <button
+            className="sidebar-item"
+          >
+            <span>⚙</span>
+            System settings
+          </button>
 
-      <section>
-        <h3>Retrieve Data</h3>
+        </nav>
 
-        <select
-          value={selectedCollection}
-          onChange={(event) =>
-            setSelectedCollection(
-              event.target.value
-            )
-          }
-        >
-          <option value="">
-            -- Select Collection --
-          </option>
+      </aside>
 
-          {collections.map(
-            (collectionName) => (
-              <option
-                key={collectionName}
-                value={collectionName}
-              >
-                {collectionName}
-              </option>
-            )
-          )}
-        </select>
+      {/* MAIN AREA */}
+      <main className="admin-main">
 
-        <button
-          onClick={() =>
-            handleRetrieve()
-          }
-          disabled={loading}
-        >
-          {loading
-            ? "Loading..."
-            : "Retrieve Data"}
-        </button>
+        {/* HEADER */}
+        <header className="admin-header">
 
-        {selectedCollection ===
-          "accounts" && (
           <div>
-            <br />
+            <h1>
+              Administrator Dashboard
+            </h1>
 
-            <button
-              onClick={() => {
-                setShowDeletedAccounts(
-                  false
-                );
-
-                handleRetrieve(false);
-              }}
-            >
-              Active Accounts
-            </button>
-
-            <button
-              onClick={() => {
-                setShowDeletedAccounts(
-                  true
-                );
-
-                handleRetrieve(true);
-              }}
-            >
-              Deleted Accounts
-            </button>
+            <p>
+              Manage CampuServe system data
+              and users.
+            </p>
           </div>
-        )}
 
-      </section>
+          <div className="admin-profile-container">
 
-      <br />
+            <button
+              className="admin-profile-button"
+              onClick={() =>
+                setShowProfile(
+                  !showProfile
+                )
+              }
+            >
+              <span className="profile-avatar">
+                👤
+              </span>
 
-      {/* ==========================
-          ERROR MESSAGE
-      ========================== */}
+              <span>
+                Administrator
+              </span>
 
-      {error && (
-        <div>
-          <p>
-            <strong>
-              Error:
-            </strong>{" "}
-            {error}
-          </p>
-        </div>
-      )}
+              <span>
+                ▾
+              </span>
+            </button>
 
-      {/* ==========================
-          RECORDS
-      ========================== */}
+            {showProfile && (
+              <div className="profile-panel">
 
-      {records.length > 0 && (
-        <section>
-          <h3>
-            Retrieved Records
-          </h3>
+                <div className="profile-panel-header">
 
-          <p>
-            Collection:{" "}
-            <strong>
-              {selectedCollection}
-            </strong>
-          </p>
-
-          <p>
-            Records found:{" "}
-            {records.length}
-          </p>
-
-          {records.map(
-            (record) => (
-              <div
-                key={record.id}
-                style={{
-                  border:
-                    "1px solid #ccc",
-                  padding: "15px",
-                  marginBottom: "15px",
-                }}
-              >
-
-                {/* ==================
-                    ACCOUNT RECORD
-                ================== */}
-
-                {selectedCollection ===
-                  "accounts" ? (
-                  <div>
-
-                    <p>
-                      <strong>
-                        Document ID:
-                      </strong>{" "}
-                      {record.id}
-                    </p>
-
-                    {editingId ===
-                    record.id ? (
-                      <div>
-
-                        <h4>
-                          Edit Account
-                        </h4>
-
-                        <div>
-                          <label>
-                            Student ID:
-                          </label>
-
-                          <input
-                            type="text"
-                            value={
-                              updateStudentId
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setUpdateStudentId(
-                                event
-                                  .target
-                                  .value
-                              )
-                            }
-                          />
-                        </div>
-
-                        <br />
-
-                        <div>
-                          <label>
-                            Name:
-                          </label>
-
-                          <input
-                            type="text"
-                            value={
-                              updateName
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setUpdateName(
-                                event
-                                  .target
-                                  .value
-                              )
-                            }
-                          />
-                        </div>
-
-                        <br />
-
-                        <div>
-                          <label>
-                            Email:
-                          </label>
-
-                          <input
-                            type="email"
-                            value={
-                              updateEmail
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setUpdateEmail(
-                                event
-                                  .target
-                                  .value
-                              )
-                            }
-                          />
-                        </div>
-
-                        <br />
-
-                        <div>
-                          <label>
-                            Role:
-                          </label>
-
-                          <select
-                            value={
-                              updateRole
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setUpdateRole(
-                                event
-                                  .target
-                                  .value
-                              )
-                            }
-                          >
-                            <option value="student">
-                              Student
-                            </option>
-
-                            <option value="admin">
-                              Administrator
-                            </option>
-
-                            <option value="registrar">
-                              Registrar
-                            </option>
-
-                            <option value="general_office">
-                              General Office
-                            </option>
-                          </select>
-                        </div>
-
-                        <br />
-
-                        <div>
-                          <label>
-                            Status:
-                          </label>
-
-                          <select
-                            value={
-                              updateStatus
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setUpdateStatus(
-                                event
-                                  .target
-                                  .value
-                              )
-                            }
-                          >
-                            <option value="active">
-                              Active
-                            </option>
-
-                            <option value="inactive">
-                              Inactive
-                            </option>
-
-                            <option value="deleted">
-                              Deleted
-                            </option>
-                          </select>
-                        </div>
-
-                        <br />
-
-                        <button
-                          onClick={
-                            handleUpdateAccount
-                          }
-                        >
-                          Save Changes
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setEditingId("");
-                            setUpdateMessage("");
-                          }}
-                        >
-                          Cancel
-                        </button>
-
-                        {updateMessage && (
-                          <p>
-                            {
-                              updateMessage
-                            }
-                          </p>
-                        )}
-
-                      </div>
-                    ) : (
-                      <div>
-
-                        <p>
-                          <strong>
-                            Student ID:
-                          </strong>{" "}
-                          {displayValue(
-                            record.student_id
-                          )}
-                        </p>
-
-                        <p>
-                          <strong>
-                            Name:
-                          </strong>{" "}
-                          {displayValue(
-                            record.name
-                          )}
-                        </p>
-
-                        <p>
-                          <strong>
-                            Email:
-                          </strong>{" "}
-                          {displayValue(
-                            record.email
-                          )}
-                        </p>
-
-                        <p>
-                          <strong>
-                            Role:
-                          </strong>{" "}
-                          {displayValue(
-                            record.role
-                          )}
-                        </p>
-
-                        <p>
-                          <strong>
-                            Status:
-                          </strong>{" "}
-                          {displayValue(
-                            record.status
-                          )}
-                        </p>
-
-                        <button
-                          onClick={() => {
-                            handleSelectForUpdate(
-                              record
-                            );
-
-                            setEditingId(
-                              record.id
-                            );
-                          }}
-                        >
-                          Edit
-                        </button>
-
-                        {record.status ===
-                        "deleted" ? (
-                          <button
-                            onClick={() =>
-                              handleRestoreAccount(
-                                record.id
-                              )
-                            }
-                          >
-                            Restore
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() =>
-                              handleDeleteAccount(
-                                record.id
-                              )
-                            }
-                          >
-                            Delete
-                          </button>
-                        )}
-
-                      </div>
-                    )}
-
+                  <div className="profile-panel-icon">
+                    👤
                   </div>
-                ) : (
-
-                  /* ==================
-                     OTHER COLLECTIONS
-                  ================== */
 
                   <div>
+                    <strong>
+                      {account.name ||
+                        "Administrator"}
+                    </strong>
+
+                    <span>
+                      Administrator
+                    </span>
+                  </div>
+
+                </div>
+
+                <div className="profile-details">
+
+                  <div>
+                    <small>
+                      Email
+                    </small>
 
                     <p>
-                      <strong>
-                        Document ID:
-                      </strong>{" "}
-                      {record.id}
+                      {account.email ||
+                        "—"}
                     </p>
-
-                    {Object.entries(
-                      record
-                    ).map(
-                      ([key, value]) => {
-                        if (
-                          key === "id"
-                        ) {
-                          return null;
-                        }
-
-                        return (
-                          <p
-                            key={key}
-                          >
-                            <strong>
-                              {key}:
-                            </strong>{" "}
-                            {displayValue(
-                              value
-                            )}
-                          </p>
-                        );
-                      }
-                    )}
-
                   </div>
-                )}
+
+                  <div>
+                    <small>
+                      Role
+                    </small>
+
+                    <p>
+                      {account.role ||
+                        "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <small>
+                      Status
+                    </small>
+
+                    <p>
+                      {account.status ||
+                        "—"}
+                    </p>
+                  </div>
+
+                </div>
 
               </div>
-            )
-          )}
-
-        </section>
-      )}
-
-      {selectedCollection &&
-        records.length === 0 &&
-        !loading && (
-          <p>
-            No records found.
-          </p>
-        )}
+            )}
 
           </div>
 
-    </main>
+        </header>
 
-  </div>
-);
+        {/* CONTENT */}
+        <div className="admin-content">
+
+          {currentPage === "userAccounts" ? (
+
+            <UserAccounts />
+
+          ) : (
+
+            <>
+
+              {/* DASHBOARD INTRODUCTION */}
+              <p className="dashboard-description">
+                View and monitor CampuServe
+                system data.
+              </p>
+
+
+              {/* SUMMARY CARDS */}
+              <section className="dashboard-summary">
+
+                <div className="dashboard-summary-card">
+                  <span>
+                    Total Students
+                  </span>
+
+                  <strong>
+                    0
+                  </strong>
+                </div>
+
+
+                <div className="dashboard-summary-card">
+                  <span>
+                    Pending Requests
+                  </span>
+
+                  <strong>
+                    0
+                  </strong>
+                </div>
+
+
+                <div className="dashboard-summary-card">
+                  <span>
+                    Active Reservations
+                  </span>
+
+                  <strong>
+                    0
+                  </strong>
+                </div>
+
+
+                <div className="dashboard-summary-card">
+                  <span>
+                    System Alerts
+                  </span>
+
+                  <strong>
+                    0
+                  </strong>
+                </div>
+
+              </section>
+
+
+              {/* RETRIEVE DATA */}
+              <section className="retrieve-data-section">
+
+                <div className="retrieve-data-header">
+
+                  <div>
+                    <h3>
+                      Retrieve System Data
+                    </h3>
+
+                    <p>
+                      Search and view records
+                      from the CampuServe system.
+                    </p>
+                  </div>
+
+                </div>
+
+
+                {/* SEARCH-STYLE RETRIEVE BAR */}
+                <div className="retrieve-search-bar">
+
+                  <span className="retrieve-search-icon">
+                    🔍
+                  </span>
+
+                  <select
+                    value={
+                      selectedCollection
+                    }
+                    onChange={(event) => {
+
+                      setSelectedCollection(
+                        event.target.value
+                      );
+
+                      setRecords([]);
+                      setError("");
+
+                    }}
+                  >
+
+                    <option value="">
+                      Select collection...
+                    </option>
+
+                    {collections.map(
+                      (collectionName) => (
+                        <option
+                          key={
+                            collectionName
+                          }
+                          value={
+                            collectionName
+                          }
+                        >
+                          {collectionName}
+                        </option>
+                      )
+                    )}
+
+                  </select>
+
+
+                  <button
+                    onClick={() =>
+                      handleRetrieve()
+                    }
+                    disabled={
+                      loading ||
+                      !selectedCollection
+                    }
+                  >
+                    {loading
+                      ? "Loading..."
+                      : "Retrieve Data"}
+                  </button>
+
+                </div>
+
+
+                {/* ACCOUNT FILTERS */}
+                {selectedCollection ===
+                  "accounts" && (
+
+                  <div className="account-filter-buttons">
+
+                    <button
+                      className={
+                        !showDeletedAccounts
+                          ? "active-filter"
+                          : ""
+                      }
+                      onClick={() => {
+
+                        setShowDeletedAccounts(
+                          false
+                        );
+
+                        handleRetrieve(
+                          false
+                        );
+
+                      }}
+                    >
+                      Active Accounts
+                    </button>
+
+
+                    <button
+                      className={
+                        showDeletedAccounts
+                          ? "active-filter"
+                          : ""
+                      }
+                      onClick={() => {
+
+                        setShowDeletedAccounts(
+                          true
+                        );
+
+                        handleRetrieve(
+                          true
+                        );
+
+                      }}
+                    >
+                      Deleted Accounts
+                    </button>
+
+                  </div>
+
+                )}
+
+              </section>
+
+
+              {/* ERROR */}
+              {error && (
+
+                <div className="retrieve-error">
+
+                  <strong>
+                    Error:
+                  </strong>{" "}
+
+                  {error}
+
+                </div>
+
+              )}
+
+
+              {/* RETRIEVED RECORDS */}
+              {records.length > 0 && (
+
+                <section className="retrieved-records-section">
+
+                  <div className="retrieved-records-header">
+
+                    <div>
+
+                      <h3>
+                        Retrieved Records
+                      </h3>
+
+                      <p>
+                        Collection:{" "}
+
+                        <strong>
+                          {selectedCollection}
+                        </strong>
+                      </p>
+
+                    </div>
+
+
+                    <span className="records-count">
+                      {records.length}{" "}
+                      {records.length === 1
+                        ? "record"
+                        : "records"}
+                    </span>
+
+                  </div>
+
+
+                  <div className="retrieved-table-container">
+
+                    <table className="retrieved-data-table">
+
+                      <thead>
+
+                        <tr>
+
+                          {selectedCollection ===
+                          "accounts" ? (
+
+                            <>
+                              <th>
+                                Name
+                              </th>
+
+                              <th>
+                                Email
+                              </th>
+
+                              <th>
+                                Role
+                              </th>
+
+                              <th>
+                                Status
+                              </th>
+
+                              <th>
+                                Student ID
+                              </th>
+                            </>
+
+                          ) : (
+
+                            Object.keys(
+                              records[0]
+                            )
+                              .filter(
+                                (key) =>
+                                  key !==
+                                  "id"
+                              )
+                              .map(
+                                (key) => (
+                                  <th
+                                    key={
+                                      key
+                                    }
+                                  >
+                                    {key}
+                                  </th>
+                                )
+                              )
+
+                          )}
+
+                        </tr>
+
+                      </thead>
+
+
+                      <tbody>
+
+                        {records.map(
+                          (record) => (
+
+                            <tr
+                              key={
+                                record.id
+                              }
+                            >
+
+                              {selectedCollection ===
+                              "accounts" ? (
+
+                                <>
+
+                                  <td>
+                                    {displayValue(
+                                      record.name
+                                    )}
+                                  </td>
+
+                                  <td>
+                                    {displayValue(
+                                      record.email
+                                    )}
+                                  </td>
+
+                                  <td>
+                                    {displayValue(
+                                      record.role
+                                    )}
+                                  </td>
+
+                                  <td>
+
+                                    <span
+                                      className={`table-status ${
+                                        record.status
+                                      }`}
+                                    >
+                                      {displayValue(
+                                        record.status
+                                      )}
+                                    </span>
+
+                                  </td>
+
+                                  <td>
+                                    {displayValue(
+                                      record.student_id
+                                    )}
+                                  </td>
+
+                                </>
+
+                              ) : (
+
+                                Object.entries(
+                                  record
+                                )
+                                  .filter(
+                                    ([key]) =>
+                                      key !==
+                                      "id"
+                                  )
+                                  .map(
+                                    ([
+                                      key,
+                                      value,
+                                    ]) => (
+
+                                      <td
+                                        key={
+                                          key
+                                        }
+                                      >
+                                        {displayValue(
+                                          value
+                                        )}
+                                      </td>
+
+                                    )
+                                  )
+
+                              )}
+
+                            </tr>
+
+                          )
+                        )}
+
+                      </tbody>
+
+                    </table>
+
+                  </div>
+
+                </section>
+
+              )}
+
+
+              {/* NO RESULTS */}
+              {selectedCollection &&
+                records.length === 0 &&
+                !loading &&
+                !error && (
+
+                  <div className="no-records-message">
+                    No records found.
+                  </div>
+
+                )}
+
+            </>
+
+          )}
+
+        </div>
+
+      </main>
+
+    </div>
+  );
 }
+
 export default AdminDashboard;
