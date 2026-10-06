@@ -280,22 +280,8 @@ function App() {
                 />
               )}
 
-      {account.role === "registrar" && (
-        <div>
-          <h2>Registrar Staff Dashboard</h2>
-
-          <button>
-            Manage Document Requests
-          </button>
-
-          <button>
-            View Claiming Schedule
-          </button>
-
-          <button>
-            Daily Preparation Summary
-          </button>
-        </div>
+            {account.role === "registrar" && (
+        <RegistrarDashboard account={account} />
       )}
 
               {account.role ===
