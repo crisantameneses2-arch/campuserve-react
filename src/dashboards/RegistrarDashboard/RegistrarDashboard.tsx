@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   addDoc,
   collection,
@@ -8,10 +13,9 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
-  query,
 } from "firebase/firestore";
 import { signOut } from "firebase/auth";
+
 import { auth, db } from "../../../firebase";
 import "./RegistrarDashboard.css";
 
@@ -36,6 +40,17 @@ type Status =
   | "DECLINED"
   | "RESCHEDULED";
 
+type FirestoreValue =
+  | Date
+  | string
+  | number
+  | {
+      toDate?: () => Date;
+      toMillis?: () => number;
+    }
+  | null
+  | undefined;
+
 type RequestRecord = {
   id: string;
   request_id: string;
@@ -46,16 +61,17 @@ type RequestRecord = {
   total_amount?: number;
   requested_date?: string;
   requested_time?: string;
-  created_at?: any;
+  created_at?: FirestoreValue;
+  updated_at?: FirestoreValue;
   status: Status;
   claim_code?: string | null;
-  updated_at?: any;
   decline_reason?: string;
   decline_review_status?: string;
 };
 
 type DetailRecord = {
   id: string;
+  request_id?: string;
   document_type?: string;
   custom_document_name?: string | null;
   quantity?: number;
@@ -65,29 +81,14 @@ type DetailRecord = {
 
 type ScheduleRecord = {
   id: string;
+  scheduleId?: string;
   claimDate?: string;
   timeSlot?: string;
   slotCapacity?: number;
   availableSlot?: number;
   availableSlots?: number;
-};
-
-type MessageRecord = {
-  id: string;
-  senderId?: string;
-  senderName?: string;
-  senderRole?: string;
-  recipientId?: string;
-  recipientName?: string;
-  text?: string;
-  createdAt?: any;
-};
-
-type Recipient = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
+  createdAt?: FirestoreValue;
+  updatedAt?: FirestoreValue;
 };
 
 const PAGE_TITLES: Record<string, string> = {
@@ -111,80 +112,73 @@ const STATUSES: Status[] = [
   "RESCHEDULED",
 ];
 
-/*
- * Based on the university claim stub supplied for CampuServe.
- */
-const DOCUMENT_CATALOG = [
-  {
-    name: "Official Transcript of Records",
-    price: 230,
-  },
-  {
-    name: "Diploma – 2nd Copy",
-    price: 280,
-  },
-  {
-    name: "Transfer Credential",
-    price: 80,
-  },
-  {
-    name: "Cert. of Auth. & Verification (CAV)",
-    price: 60,
-  },
-  {
-    name: "Authentication – per set",
-    price: 30,
-  },
-  {
-    name: "Certified True Copy",
-    price: 30,
-  },
-  {
-    name: "Report of Rating / Cert. of Grades",
-    price: 60,
-  },
-  {
-    name: "Certification",
-    price: 60,
-  },
-  {
-    name: "Others",
-    price: null,
-  },
-];
-
 const money = (value?: number | null) =>
   `₱${Number(value || 0).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 
-const dateText = (value: any) => {
-  if (!value) return "—";
+const toDateValue = (
+  value: FirestoreValue,
+): Date | null => {
+  if (value == null) {
+    return null;
+  }
 
-  const date =
-    typeof value?.toDate === "function"
-      ? value.toDate()
-      : new Date(value);
+  if (
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof value.toDate === "function"
+  ) {
+    return value.toDate();
+  }
 
-  return Number.isNaN(date.getTime())
-    ? String(value)
-    : date.toLocaleString("en-PH", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      });
+  if (
+    value instanceof Date ||
+    typeof value === "string" ||
+    typeof value === "number"
+  ) {
+    const date =
+      value instanceof Date
+        ? value
+        : new Date(value);
+
+    return Number.isNaN(date.getTime())
+      ? null
+      : date;
+  }
+
+  return null;
 };
 
-const today = () => new Date().toLocaleDateString("en-CA");
+const dateText = (value: FirestoreValue) => {
+  const date = toDateValue(value);
+
+  if (!date) {
+    return value == null ? "—" : String(value);
+  }
+
+  return date.toLocaleString("en-PH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+};
+
+const today = () =>
+  new Date().toLocaleDateString("en-CA");
 
 const documentName = (detail?: DetailRecord) => {
-  if (!detail) return "Document";
+  if (!detail) {
+    return "Document";
+  }
 
   if (detail.custom_document_name) {
     return detail.custom_document_name;
   }
 
-  const raw = String(detail.document_type || "Document")
+  const raw = String(
+    detail.document_type || "Document",
+  )
     .toLowerCase()
     .replace(/[_-]+/g, " ")
     .trim();
@@ -193,61 +187,72 @@ const documentName = (detail?: DetailRecord) => {
     tor: "Official Transcript of Records",
     diploma: "Diploma – 2nd Copy",
     transfer: "Transfer Credential",
-    "transfer of credential": "Transfer Credential",
-    cav: "Cert. of Auth. & Verification (CAV)",
+    "transfer credential": "Transfer Credential",
+    cav: "CAV",
     "certificate of authentication & verification":
-      "Cert. of Auth. & Verification (CAV)",
+      "CAV",
     authentication: "Authentication – per set",
-    certified_true_copy: "Certified True Copy",
     "certified true copy": "Certified True Copy",
-    report_rating: "Report of Rating / Cert. of Grades",
-    "report of rating/certificate of grades":
-      "Report of Rating / Cert. of Grades",
+    report_rating:
+      "Report of Rating / Certificate of Grades",
+    "report of rating":
+      "Report of Rating / Certificate of Grades",
     certification: "Certification",
     others: "Others",
   };
 
-  return aliases[raw] || detail.document_type || "Document";
+  return (
+    aliases[raw] ||
+    detail.document_type ||
+    "Document"
+  );
 };
 
-const documentNamesFromDetails = (details: DetailRecord[]) =>
-  details.length
-    ? details.map((detail) => documentName(detail)).join(", ")
-    : "No document details";
-
-export default function RegistrarDashboard({
+function RegistrarDashboard({
   account,
 }: RegistrarDashboardProps) {
-  const [activePage, setActivePage] = useState("overview");
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [activePage, setActivePage] =
+    useState("overview");
 
-  const [requests, setRequests] = useState<RequestRecord[]>([]);
-  const [requestDetails, setRequestDetails] = useState<
-    Record<string, DetailRecord[]>
-  >({});
+  const [menuOpen, setMenuOpen] =
+    useState(false);
 
-  const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
-  const [scheduleDate, setScheduleDate] = useState("");
-  const [scheduleTime, setScheduleTime] = useState("");
-  const [scheduleCapacity, setScheduleCapacity] = useState("10");
-  const [editingScheduleId, setEditingScheduleId] = useState("");
+  const [requests, setRequests] =
+    useState<RequestRecord[]>([]);
 
-  const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState("");
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [requestDetails, setRequestDetails] =
+    useState<Record<string, DetailRecord[]>>({});
 
-  const [search, setSearch] = useState("");
-  const [topSearch, setTopSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [schedules, setSchedules] =
+    useState<ScheduleRecord[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [busyId, setBusyId] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
+  const [notice, setNotice] =
+    useState("");
+
+  const [search, setSearch] =
+    useState("");
+
+  const [topSearch, setTopSearch] =
+    useState("");
+
+  const [statusFilter, setStatusFilter] =
+    useState("ALL");
 
   const [selected, setSelected] =
     useState<RequestRecord | null>(null);
 
-  const [selectedDetails, setSelectedDetails] =
-    useState<DetailRecord[]>([]);
+  const [claimCode, setClaimCode] =
+    useState("");
 
-  const [claimCode, setClaimCode] = useState("");
   const [claimResult, setClaimResult] =
     useState<RequestRecord | null>(null);
 
@@ -257,24 +262,34 @@ export default function RegistrarDashboard({
   const [declineTarget, setDeclineTarget] =
     useState<RequestRecord | null>(null);
 
-  const [declineReason, setDeclineReason] = useState("");
+  const [declineReason, setDeclineReason] =
+    useState("");
 
   const [rescheduleTarget, setRescheduleTarget] =
     useState<RequestRecord | null>(null);
 
-  const [rescheduleDate, setRescheduleDate] = useState("");
-  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [rescheduleDate, setRescheduleDate] =
+    useState("");
+
+  const [rescheduleTime, setRescheduleTime] =
+    useState("");
+
+  const [scheduleDate, setScheduleDate] =
+    useState("");
+
+  const [scheduleTime, setScheduleTime] =
+    useState("");
+
+  const [scheduleCapacity, setScheduleCapacity] =
+    useState("10");
+
+  const [editingScheduleId, setEditingScheduleId] =
+    useState("");
 
   const [reportPeriod, setReportPeriod] =
-    useState<"DAY" | "WEEK" | "MONTH" | "YEAR">("DAY");
-
-  const [recipients, setRecipients] = useState<Recipient[]>([]);
-  const [selectedRecipient, setSelectedRecipient] =
-    useState<Recipient | null>(null);
-
-  const [messages, setMessages] = useState<MessageRecord[]>([]);
-  const [messageText, setMessageText] = useState("");
-  const [messagesLoading, setMessagesLoading] = useState(false);
+    useState<
+      "DAY" | "WEEK" | "MONTH" | "YEAR"
+    >("DAY");
 
   const registrarId =
     account.firebaseUid ||
@@ -282,7 +297,8 @@ export default function RegistrarDashboard({
     "registrar";
 
   const registrarName =
-    account.name || "Registrar Staff";
+    account.name ||
+    "Registrar Staff";
 
   /*
    * DOCUMENT REQUESTS
@@ -291,19 +307,31 @@ export default function RegistrarDashboard({
     const unsubscribe = onSnapshot(
       collection(db, "document_requests"),
       (snapshot) => {
-        const rows = snapshot.docs.map(
-          (item) =>
-            ({
-              id: item.id,
-              ...item.data(),
-            }) as RequestRecord,
-        );
+        const rows: RequestRecord[] =
+          snapshot.docs.map((item) => {
+            const data =
+              item.data() as Partial<RequestRecord>;
 
-        rows.sort(
-          (a, b) =>
-            (b.created_at?.toMillis?.() ?? 0) -
-            (a.created_at?.toMillis?.() ?? 0),
-        );
+            return {
+              ...data,
+              id: item.id,
+              request_id:
+                String(data.request_id || item.id),
+              student_id:
+                String(data.student_id || ""),
+              status:
+                (data.status as Status) ||
+                "PENDING",
+            };
+          });
+
+        rows.sort((a, b) => {
+          const aTime =
+            toDateValue(a.created_at)?.getTime?.() ?? 0;
+          const bTime =
+            toDateValue(b.created_at)?.getTime?.() ?? 0;
+          return bTime - aTime;
+        });
 
         setRequests(rows);
         setLoading(false);
@@ -320,42 +348,14 @@ export default function RegistrarDashboard({
   }, []);
 
   /*
-   * CLAIMING SCHEDULES
-   */
-  useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "claimingSchedules"),
-      (snapshot) => {
-        setSchedules(
-          snapshot.docs.map(
-            (item) =>
-              ({
-                id: item.id,
-                ...item.data(),
-              }) as ScheduleRecord,
-          ),
-        );
-      },
-      (err) => {
-        setError(
-          `Could not load claiming schedules: ${err.message}`,
-        );
-      },
-    );
-
-    return unsubscribe;
-  }, []);
-
-  /*
    * DOCUMENT REQUEST DETAILS
-   *
-   * Loads all document details once and groups them by
-   * request_id. This lets the Registrar table display
-   * the actual requested document names.
    */
   useEffect(() => {
     const unsubscribe = onSnapshot(
-      collection(db, "document_request_details"),
+      collection(
+        db,
+        "document_request_details",
+      ),
       (snapshot) => {
         const grouped: Record<
           string,
@@ -363,24 +363,25 @@ export default function RegistrarDashboard({
         > = {};
 
         snapshot.docs.forEach((item) => {
-          const data = item.data();
-
-          const detail = {
-            id: item.id,
-            ...data,
-          } as DetailRecord;
+          const data =
+            item.data() as Partial<DetailRecord>;
 
           const requestId = String(
             data.request_id || "",
           );
 
-          if (!requestId) return;
+          if (!requestId) {
+            return;
+          }
 
           if (!grouped[requestId]) {
             grouped[requestId] = [];
           }
 
-          grouped[requestId].push(detail);
+          grouped[requestId].push({
+            ...data,
+            id: item.id,
+          });
         });
 
         setRequestDetails(grouped);
@@ -395,124 +396,41 @@ export default function RegistrarDashboard({
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    if (!selected) {
-      setSelectedDetails([]);
-      return;
-    }
-
-    setSelectedDetails(
-      requestDetails[selected.request_id] || [],
-    );
-  }, [selected, requestDetails]);
-
   /*
-   * MESSAGING RECIPIENTS
-   *
-   * The current project snapshot did not contain an existing
-   * messaging component, so this Registrar implementation
-   * uses the existing accounts collection as the contact list.
+   * CLAIMING SCHEDULES
    */
   useEffect(() => {
-    if (activePage !== "messages") return;
-
-    setMessagesLoading(true);
-
     const unsubscribe = onSnapshot(
-      collection(db, "accounts"),
+      collection(db, "claimingSchedules"),
       (snapshot) => {
-        const rows: Recipient[] = snapshot.docs
-          .map((item) => ({
-            id: item.id,
-            name: String(
-              item.data().name ||
-                item.data().email ||
-                "Account",
-            ),
-            email: String(
-              item.data().email || "",
-            ),
-            role: String(
-              item.data().role || "",
-            ),
-          }))
-          .filter(
-            (recipient) =>
-              recipient.id !== registrarId &&
-              recipient.role !== "registrar",
-          );
+        const rows: ScheduleRecord[] =
+          snapshot.docs.map((item) => {
+            const data =
+              item.data() as Partial<ScheduleRecord>;
 
-        setRecipients(rows);
-      },
-      (err) => {
-        setError(
-          `Could not load message recipients: ${err.message}`,
+            return {
+              ...data,
+              id: item.id,
+            };
+          });
+
+        rows.sort((a, b) =>
+          String(a.claimDate || "").localeCompare(
+            String(b.claimDate || ""),
+          ),
         );
-      },
-    );
 
-    setMessagesLoading(false);
-
-    return unsubscribe;
-  }, [activePage, registrarId]);
-
-  /*
-   * MESSAGES
-   */
-  useEffect(() => {
-    if (!selectedRecipient) {
-      setMessages([]);
-      return;
-    }
-
-    const messagesQuery = query(
-      collection(db, "messages"),
-      where(
-        "participants",
-        "array-contains",
-        registrarId,
-      ),
-    );
-
-    const unsubscribe = onSnapshot(
-      messagesQuery,
-      (snapshot) => {
-        const rows = snapshot.docs
-          .map(
-            (item) =>
-              ({
-                id: item.id,
-                ...item.data(),
-              }) as MessageRecord & {
-                participants?: string[];
-              },
-          )
-          .filter(
-            (message) =>
-              Array.isArray(
-                (message as any).participants,
-              ) &&
-              (message as any).participants.includes(
-                selectedRecipient.id,
-              ),
-          )
-          .sort(
-            (a, b) =>
-              (a.createdAt?.toMillis?.() ?? 0) -
-              (b.createdAt?.toMillis?.() ?? 0),
-          );
-
-        setMessages(rows);
+        setSchedules(rows);
       },
       (err) => {
         setError(
-          `Could not load messages: ${err.message}`,
+          `Could not load claiming schedules: ${err.message}`,
         );
       },
     );
 
     return unsubscribe;
-  }, [selectedRecipient, registrarId]);
+  }, []);
 
   const clearFeedback = () => {
     setError("");
@@ -521,6 +439,7 @@ export default function RegistrarDashboard({
 
   const changePage = (page: string) => {
     setActivePage(page);
+    setMenuOpen(false);
     setNotificationsOpen(false);
     setSelected(null);
     setClaimResult(null);
@@ -535,83 +454,147 @@ export default function RegistrarDashboard({
     setNotificationsOpen(false);
   };
 
-  const getRequestDocuments = (
-    request: RequestRecord,
-  ) =>
-    requestDetails[request.request_id] || [];
+  /*
+   * REQUEST DETAILS
+   */
+  const getRequestDocuments = useCallback(
+    (request: RequestRecord) => {
+      return (
+        requestDetails[request.request_id] || []
+      );
+    },
+    [requestDetails],
+  );
 
+  /*
+   * REQUEST SEARCH
+   */
   const filteredRequests = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term =
+      search.trim().toLowerCase();
 
     return requests.filter((request) => {
-      const names = getRequestDocuments(request)
-        .map(documentName)
-        .join(" ")
-        .toLowerCase();
+      const documents =
+        getRequestDocuments(request)
+          .map(documentName)
+          .join(" ")
+          .toLowerCase();
 
       const matchesSearch =
         !term ||
         [
           request.request_id,
           request.student_id,
-          names,
+          documents,
         ].some((value) =>
           String(value || "")
             .toLowerCase()
             .includes(term),
         );
 
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        request.status === statusFilter;
+
       return (
         matchesSearch &&
-        (statusFilter === "ALL" ||
-          request.status === statusFilter)
+        matchesStatus
       );
     });
   }, [
+    getRequestDocuments,
     requests,
-    requestDetails,
     search,
     statusFilter,
   ]);
 
   const count = (status: Status) =>
     requests.filter(
-      (request) => request.status === status,
+      (request) =>
+        request.status === status,
     ).length;
 
-  const completedToday = requests.filter(
-    (request) =>
-      request.status === "COMPLETED" &&
-      request.updated_at
-        ?.toDate?.()
-        .toLocaleDateString("en-CA") === today(),
-  ).length;
+  const completedToday =
+    requests.filter((request) => {
+      if (
+        request.status !== "COMPLETED"
+      ) {
+        return false;
+      }
 
-  const notifications = requests
-    .filter((request) =>
-      ["PENDING", "READY_FOR_PICKUP"].includes(
-        request.status,
-      ),
-    )
-    .slice(0, 8);
+      const date =
+        toDateValue(request.updated_at);
+
+      if (!date) {
+        return false;
+      }
+
+      return (
+        date.toLocaleDateString(
+          "en-CA",
+        ) === today()
+      );
+    }).length;
+
+  const notifications =
+    requests
+      .filter((request) =>
+        [
+          "PENDING",
+          "READY_FOR_PICKUP",
+        ].includes(request.status),
+      )
+      .slice(0, 8);
 
   /*
-   * STATUS UPDATE
+   * UPDATE REQUEST STATUS
    */
   const updateStatus = async (
     request: RequestRecord,
     status: Status,
   ) => {
+    if (!request.request_id) {
+      setError(
+        "This request is missing its request ID.",
+      );
+      return;
+    }
+
     setBusyId(request.id);
     clearFeedback();
 
     try {
+      const updates: Record<
+        string,
+        unknown
+      > = {
+        status,
+        updated_at:
+          serverTimestamp(),
+      };
+
+      if (
+        status ===
+          "READY_FOR_PICKUP" &&
+        !request.claim_code
+      ) {
+        const generatedCode =
+          Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase();
+
+        updates.claim_code =
+          generatedCode;
+      }
+
       await updateDoc(
-        doc(db, "document_requests", request.id),
-        {
-          status,
-          updated_at: serverTimestamp(),
-        },
+        doc(
+          db,
+          "document_requests",
+          request.id,
+        ),
+        updates,
       );
 
       setNotice(
@@ -620,6 +603,27 @@ export default function RegistrarDashboard({
           " ",
         )}.`,
       );
+
+      if (
+        selected?.id === request.id
+      ) {
+        const nextClaimCode =
+          typeof updates.claim_code ===
+          "string"
+            ? updates.claim_code
+            : undefined;
+
+        setSelected({
+          ...request,
+          status,
+          ...(nextClaimCode
+            ? {
+                claim_code:
+                  nextClaimCode,
+              }
+            : {}),
+        });
+      }
     } catch (err) {
       setError(
         `Could not update request: ${
@@ -634,19 +638,21 @@ export default function RegistrarDashboard({
   };
 
   /*
-   * DECLINE
+   * DECLINE REQUEST
    *
-   * The Registrar does NOT immediately change the request
-   * to DECLINED.
-   *
-   * Instead, the request is sent to adminReviews so Admin
-   * can evaluate the reason first.
+   * Registrar sends the request to Admin
+   * for evaluation instead of immediately
+   * rejecting it.
    */
   const submitDecline = async () => {
-    if (!declineTarget) return;
+    if (!declineTarget) {
+      return;
+    }
 
     if (!declineReason.trim()) {
-      setError("A decline reason is required.");
+      setError(
+        "A decline reason is required.",
+      );
       return;
     }
 
@@ -654,16 +660,24 @@ export default function RegistrarDashboard({
     clearFeedback();
 
     try {
-      await addDoc(collection(db, "adminReviews"), {
-        type: "REQUEST_DECLINE",
-        request_id: declineTarget.request_id,
-        student_id: declineTarget.student_id,
-        reason: declineReason.trim(),
-        status: "PENDING",
-        submitted_by: registrarId,
-        submitted_by_name: registrarName,
-        created_at: serverTimestamp(),
-      });
+      await addDoc(
+        collection(db, "adminReviews"),
+        {
+          type: "REQUEST_DECLINE",
+          request_id:
+            declineTarget.request_id,
+          student_id:
+            declineTarget.student_id,
+          reason:
+            declineReason.trim(),
+          status: "PENDING",
+          submitted_by: registrarId,
+          submitted_by_name:
+            registrarName,
+          created_at:
+            serverTimestamp(),
+        },
+      );
 
       await updateDoc(
         doc(
@@ -676,19 +690,20 @@ export default function RegistrarDashboard({
             declineReason.trim(),
           decline_review_status:
             "PENDING_ADMIN_REVIEW",
-          updated_at: serverTimestamp(),
+          updated_at:
+            serverTimestamp(),
         },
       );
 
       setNotice(
-        `${declineTarget.request_id} was forwarded to Admin for decline review.`,
+        `${declineTarget.request_id} was sent to Admin for decline review.`,
       );
 
       setDeclineTarget(null);
       setDeclineReason("");
     } catch (err) {
       setError(
-        `Could not forward decline request: ${
+        `Could not submit decline review: ${
           err instanceof Error
             ? err.message
             : "Unknown error"
@@ -703,7 +718,9 @@ export default function RegistrarDashboard({
    * RESCHEDULE
    */
   const submitReschedule = async () => {
-    if (!rescheduleTarget) return;
+    if (!rescheduleTarget) {
+      return;
+    }
 
     if (
       !rescheduleDate ||
@@ -726,16 +743,18 @@ export default function RegistrarDashboard({
           rescheduleTarget.id,
         ),
         {
-          requested_date: rescheduleDate,
+          requested_date:
+            rescheduleDate,
           requested_time:
             rescheduleTime.trim(),
           status: "RESCHEDULED",
-          updated_at: serverTimestamp(),
+          updated_at:
+            serverTimestamp(),
         },
       );
 
       setNotice(
-        `${rescheduleTarget.request_id} was rescheduled.`,
+        `${rescheduleTarget.request_id} was rescheduled successfully.`,
       );
 
       setRescheduleTarget(null);
@@ -758,9 +777,8 @@ export default function RegistrarDashboard({
    * CLAIMING SCHEDULE
    */
   const saveSchedule = async () => {
-    const capacity = Number(
-      scheduleCapacity,
-    );
+    const capacity =
+      Number(scheduleCapacity);
 
     if (
       !scheduleDate ||
@@ -786,29 +804,34 @@ export default function RegistrarDashboard({
 
     try {
       if (editingScheduleId) {
-        const current = schedules.find(
-          (schedule) =>
-            schedule.id === editingScheduleId,
-        );
+        const existing =
+          schedules.find(
+            (schedule) =>
+              schedule.id ===
+              editingScheduleId,
+          );
 
         const oldCapacity =
-          current?.slotCapacity ??
+          existing?.slotCapacity ??
           capacity;
 
         const oldAvailable =
-          current?.availableSlot ??
-          current?.availableSlots ??
+          existing?.availableSlot ??
+          existing?.availableSlots ??
           oldCapacity;
 
-        const used = Math.max(
-          0,
-          oldCapacity - oldAvailable,
-        );
+        const used =
+          Math.max(
+            0,
+            oldCapacity -
+              oldAvailable,
+          );
 
-        const available = Math.max(
-          0,
-          capacity - used,
-        );
+        const newAvailable =
+          Math.max(
+            0,
+            capacity - used,
+          );
 
         await updateDoc(
           doc(
@@ -817,13 +840,18 @@ export default function RegistrarDashboard({
             editingScheduleId,
           ),
           {
-            claimDate: scheduleDate,
+            claimDate:
+              scheduleDate,
             timeSlot:
               scheduleTime.trim(),
-            slotCapacity: capacity,
-            availableSlot: available,
-            availableSlots: available,
-            updatedAt: serverTimestamp(),
+            slotCapacity:
+              capacity,
+            availableSlot:
+              newAvailable,
+            availableSlots:
+              newAvailable,
+            updatedAt:
+              serverTimestamp(),
           },
         );
 
@@ -831,23 +859,35 @@ export default function RegistrarDashboard({
           "Claiming schedule updated successfully.",
         );
       } else {
-        const scheduleRef = doc(
-          collection(
-            db,
-            "claimingSchedules",
-          ),
-        );
+        const scheduleRef =
+          doc(
+            collection(
+              db,
+              "claimingSchedules",
+            ),
+          );
 
-        await setDoc(scheduleRef, {
-          scheduleId: scheduleRef.id,
-          claimDate: scheduleDate,
-          timeSlot: scheduleTime.trim(),
-          slotCapacity: capacity,
-          availableSlot: capacity,
-          availableSlots: capacity,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
+        await setDoc(
+          scheduleRef,
+          {
+            scheduleId:
+              scheduleRef.id,
+            claimDate:
+              scheduleDate,
+            timeSlot:
+              scheduleTime.trim(),
+            slotCapacity:
+              capacity,
+            availableSlot:
+              capacity,
+            availableSlots:
+              capacity,
+            createdAt:
+              serverTimestamp(),
+            updatedAt:
+              serverTimestamp(),
+          },
+        );
 
         setNotice(
           "Claiming schedule created successfully.",
@@ -874,9 +914,7 @@ export default function RegistrarDashboard({
   ) => {
     if (
       !window.confirm(
-        `Delete the ${
-          schedule.claimDate || "selected"
-        } claiming schedule?`,
+        "Delete this claiming schedule?",
       )
     ) {
       return;
@@ -908,204 +946,162 @@ export default function RegistrarDashboard({
   };
 
   /*
-   * OVERVIEW CARD FILTERING
+   * REQUEST TABLE
    */
-  const openFilteredRequests = (
-    status?: Status,
-  ) => {
-    setSearch("");
-    setTopSearch("");
-    setStatusFilter(status || "ALL");
-    setActivePage("requests");
-    setSelected(null);
-  };
+  const requestTable = (
+    rows: RequestRecord[],
+  ) => (
+    <div className="rd-table-wrap">
+      <table className="rd-table">
+        <thead>
+          <tr>
+            <th>Request ID</th>
+            <th>Student ID</th>
+            <th>Requested Document/s</th>
+            <th>Requested Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
 
-  /*
-   * REPORT PERIOD
-   */
-  const periodStart = useMemo(() => {
-    const now = new Date();
-    const start = new Date(now);
+        <tbody>
+          {rows.map((request) => {
+            const documents =
+              getRequestDocuments(
+                request,
+              );
 
-    if (reportPeriod === "DAY") {
-      start.setHours(0, 0, 0, 0);
-    }
+            return (
+              <tr
+                key={request.id}
+                className={
+                  selected?.id ===
+                  request.id
+                    ? "selected-row"
+                    : ""
+                }
+              >
+                <td>
+                  {request.request_id ||
+                    request.id}
+                </td>
 
-    if (reportPeriod === "WEEK") {
-      const day = start.getDay();
-      const diff =
-        day === 0 ? -6 : 1 - day;
+                <td>
+                  {request.student_id ||
+                    "—"}
+                </td>
 
-      start.setDate(
-        start.getDate() + diff,
-      );
+                <td>
+                  {documents.length ? (
+                    <div className="document-list-cell">
+                      {documents.map(
+                        (detail) => (
+                          <span
+                            key={
+                              detail.id
+                            }
+                          >
+                            {documentName(
+                              detail,
+                            )}
+                          </span>
+                        ),
+                      )}
+                    </div>
+                  ) : (
+                    "No document details"
+                  )}
+                </td>
 
-      start.setHours(0, 0, 0, 0);
-    }
+                <td>
+                  {request.requested_date ||
+                    "—"}
+                </td>
 
-    if (reportPeriod === "MONTH") {
-      start.setDate(1);
-      start.setHours(0, 0, 0, 0);
-    }
+                <td>
+                  <span
+                    className={`rd-status ${String(
+                      request.status,
+                    ).toLowerCase()}`}
+                  >
+                    {request.status.replace(
+                      /_/g,
+                      " ",
+                    )}
+                  </span>
+                </td>
 
-    if (reportPeriod === "YEAR") {
-      start.setMonth(0, 1);
-      start.setHours(0, 0, 0, 0);
-    }
+                <td>
+                  <button
+                    className="rd-small-button"
+                    onClick={() =>
+                      setSelected(
+                        request,
+                      )
+                    }
+                  >
+                    View
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
 
-    return start;
-  }, [reportPeriod]);
-
-  const periodRequests = requests.filter(
-    (request) => {
-      const created =
-        request.created_at?.toDate?.() ||
-        (request.requested_date
-          ? new Date(
-              request.requested_date,
-            )
-          : null);
-
-      return (
-        created &&
-        created >= periodStart
-      );
-    },
+      {rows.length === 0 && (
+        <p className="rd-empty">
+          {loading
+            ? "Loading requests..."
+            : "No matching document requests found."}
+        </p>
+      )}
+    </div>
   );
 
   /*
-   * SEND MESSAGE
-   */
-  const sendMessage = async () => {
-    if (
-      !selectedRecipient ||
-      !messageText.trim()
-    ) {
-      return;
-    }
-
-    clearFeedback();
-
-    try {
-      await addDoc(
-        collection(db, "messages"),
-        {
-          participants: [
-            registrarId,
-            selectedRecipient.id,
-          ],
-          senderId: registrarId,
-          senderName: registrarName,
-          senderRole:
-            account.role || "registrar",
-          recipientId:
-            selectedRecipient.id,
-          recipientName:
-            selectedRecipient.name,
-          text: messageText.trim(),
-          createdAt: serverTimestamp(),
-        },
-      );
-
-      setMessageText("");
-    } catch (err) {
-      setError(
-        `Could not send message: ${
-          err instanceof Error
-            ? err.message
-            : "Unknown error"
-        }`,
-      );
-    }
-  };
-
-  /*
-   * REPORT EXPORT
-   */
-  const exportReport = () => {
-    const csv = [
-      "Request ID,Student ID,Requested Documents,Requested Date,Status,Amount",
-      ...periodRequests.map(
-        (request) =>
-          [
-            request.request_id,
-            request.student_id,
-            documentNamesFromDetails(
-              getRequestDocuments(request),
-            ),
-            request.requested_date,
-            request.status,
-            request.total_amount,
-          ]
-            .map(
-              (value) =>
-                `"${String(
-                  value ?? "",
-                ).replace(/"/g, '""')}"`,
-            )
-            .join(","),
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csv], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const url =
-      URL.createObjectURL(blob);
-
-    const anchor =
-      document.createElement("a");
-
-    anchor.href = url;
-
-    anchor.download =
-      `campuserve-registrar-${reportPeriod.toLowerCase()}-report.csv`;
-
-    anchor.click();
-
-    URL.revokeObjectURL(url);
-  };
-
-  /*
-   * REQUEST ACTIONS
+   * REQUEST ACTION BUTTONS
    */
   const requestActions = (
     request: RequestRecord,
   ) => (
     <div className="rd-actions">
-      {request.status === "PENDING" && (
-        <button
-          disabled={
-            busyId === request.id
-          }
-          onClick={() =>
-            updateStatus(
-              request,
-              "APPROVED",
-            )
-          }
-        >
-          Approve
-        </button>
+      {request.status ===
+        "PENDING" && (
+        <>
+          <button
+            disabled={
+              busyId === request.id
+            }
+            onClick={() =>
+              updateStatus(
+                request,
+                "APPROVED",
+              )
+            }
+          >
+            Approve
+          </button>
+
+          <button
+            className="danger"
+            disabled={
+              busyId === request.id
+            }
+            onClick={() => {
+              setDeclineTarget(
+                request,
+              );
+              setDeclineReason("");
+            }}
+          >
+            Decline
+          </button>
+        </>
       )}
 
-      {request.status === "PENDING" && (
-        <button
-          className="danger"
-          disabled={
-            busyId === request.id
-          }
-          onClick={() => {
-            setDeclineTarget(request);
-            setDeclineReason("");
-          }}
-        >
-          Decline
-        </button>
-      )}
-
-      {request.status === "APPROVED" && (
+      {request.status ===
+        "APPROVED" && (
         <button
           disabled={
             busyId === request.id
@@ -1121,7 +1117,8 @@ export default function RegistrarDashboard({
         </button>
       )}
 
-      {request.status === "PROCESSING" && (
+      {request.status ===
+        "PROCESSING" && (
         <button
           disabled={
             busyId === request.id
@@ -1159,19 +1156,15 @@ export default function RegistrarDashboard({
         "DECLINED",
       ].includes(request.status) && (
         <button
-          disabled={
-            busyId === request.id
-          }
+          className="secondary-button"
           onClick={() => {
             setRescheduleTarget(
               request,
             );
-
             setRescheduleDate(
               request.requested_date ||
                 "",
             );
-
             setRescheduleTime(
               request.requested_time ||
                 "",
@@ -1185,395 +1178,473 @@ export default function RegistrarDashboard({
   );
 
   /*
-   * REQUEST TABLE + SIDE DETAIL PANEL
+   * REQUEST DETAILS PANEL
    */
-  const requestTable = (
-    rows: RequestRecord[],
-    compact = false,
-  ) => (
-    <div
-      className={`rd-request-workspace ${
-        selected && !compact
-          ? "has-selection"
-          : ""
-      }`}
-    >
-      <div className="rd-table-wrap rd-request-table">
-        <table className="rd-table">
-          <thead>
-            <tr>
-              <th>Request ID</th>
-              <th>Student ID</th>
-              <th>
-                Requested Document/s
-              </th>
-              <th>Date Requested</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {rows.map((request) => (
-              <tr
-                key={request.id}
-                className={
-                  selected?.id ===
-                  request.id
-                    ? "selected-row"
-                    : ""
-                }
-                onClick={() =>
-                  !compact &&
-                  setSelected(request)
-                }
-              >
-                <td>
-                  {request.request_id ||
-                    request.id}
-                </td>
-
-                <td>
-                  {request.student_id ||
-                    "—"}
-                </td>
-
-                <td className="document-list-cell">
-                  {documentNamesFromDetails(
-                    getRequestDocuments(
-                      request,
-                    ),
-                  )}
-                </td>
-
-                <td>
-                  {request.requested_date ||
-                    dateText(
-                      request.created_at,
-                    )}
-                </td>
-
-                <td>
-                  <span
-                    className={`rd-status ${request.status.toLowerCase()}`}
-                  >
-                    {request.status.replace(
-                      /_/g,
-                      " ",
-                    )}
-                  </span>
-                </td>
-
-                <td>
-                  <button
-                    className="rd-small-button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelected(request);
-                    }}
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {!rows.length && (
-          <p className="rd-empty">
-            {loading
-              ? "Loading requests..."
-              : "No matching document requests found."}
-          </p>
-        )}
-      </div>
-
-      {selected && !compact && (
-        <aside className="rd-details-panel">
-          <div className="rd-details-header">
-            <div>
-              <span className="rd-panel-kicker">
-                SELECTED REQUEST
-              </span>
-
-              <h3>
-                {selected.request_id}
-              </h3>
-            </div>
-
-            <button
-              className="rd-modal-close"
-              onClick={() =>
-                setSelected(null)
-              }
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="rd-detail-grid">
-            <div>
-              <span>Student ID</span>
-              <strong>
-                {selected.student_id}
-              </strong>
-            </div>
-
-            <div>
-              <span>Status</span>
-              <strong>
-                {selected.status.replace(
-                  /_/g,
-                  " ",
-                )}
-              </strong>
-            </div>
-
-            <div>
-              <span>Requested Date</span>
-              <strong>
-                {selected.requested_date ||
-                  "—"}
-              </strong>
-            </div>
-
-            <div>
-              <span>Requested Time</span>
-              <strong>
-                {selected.requested_time ||
-                  "—"}
-              </strong>
-            </div>
-
-            <div>
-              <span>Request Method</span>
-              <strong>
-                {selected.request_method ||
-                  "—"}
-              </strong>
-            </div>
-
-            <div>
-              <span>Total Amount</span>
-              <strong>
-                {money(
-                  selected.total_amount,
-                )}
-              </strong>
-            </div>
-          </div>
-
-          <div className="rd-document-breakdown">
-            <h4>
-              Requested Documents & Prices
-            </h4>
-
-            {selectedDetails.length ? (
-              selectedDetails.map(
-                (detail) => (
-                  <div
-                    className="rd-document-line"
-                    key={detail.id}
-                  >
-                    <div>
-                      <strong>
-                        {documentName(
-                          detail,
-                        )}
-                      </strong>
-
-                      <small>
-                        {detail.quantity ??
-                          1}{" "}
-                        copy/copies
-                      </small>
-                    </div>
-
-                    <span>
-                      {money(
-                        detail.subtotal ??
-                          detail.unit_price,
-                      )}
-                    </span>
-                  </div>
-                ),
-              )
-            ) : (
-              <p className="rd-empty">
-                No document detail
-                records found.
-              </p>
-            )}
-          </div>
-
-          <div className="rd-detail-total">
-            <span>
-              Total Amount Paid
+  const requestDetailsPanel =
+    selected && (
+      <aside className="rd-details-panel">
+        <div className="rd-details-header">
+          <div>
+            <span className="rd-panel-kicker">
+              REQUEST DETAILS
             </span>
 
+            <h3>
+              {selected.request_id}
+            </h3>
+          </div>
+
+          <button
+            className="rd-small-button"
+            onClick={() =>
+              setSelected(null)
+            }
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="rd-detail-grid">
+          <div>
+            <span>Student ID</span>
+            <strong>
+              {selected.student_id ||
+                "—"}
+            </strong>
+          </div>
+
+          <div>
+            <span>Request Method</span>
+            <strong>
+              {selected.request_method ||
+                "—"}
+            </strong>
+          </div>
+
+          <div>
+            <span>Purpose</span>
+            <strong>
+              {selected.purpose ||
+                "—"}
+            </strong>
+          </div>
+
+          <div>
+            <span>Requested Date</span>
+            <strong>
+              {selected.requested_date ||
+                "—"}
+            </strong>
+          </div>
+
+          <div>
+            <span>Requested Time</span>
+            <strong>
+              {selected.requested_time ||
+                "—"}
+            </strong>
+          </div>
+
+          <div>
+            <span>Copies</span>
+            <strong>
+              {selected.number_of_copies ??
+                "—"}
+            </strong>
+          </div>
+
+          <div>
+            <span>Created</span>
+            <strong>
+              {dateText(
+                selected.created_at,
+              )}
+            </strong>
+          </div>
+
+          <div>
+            <span>Total</span>
             <strong>
               {money(
                 selected.total_amount,
               )}
             </strong>
           </div>
+        </div>
 
-          {selected.decline_review_status ===
-            "PENDING_ADMIN_REVIEW" && (
-            <div className="rd-review-note">
-              <strong>
-                Pending Admin Review
-              </strong>
+        <div className="rd-document-breakdown">
+          <h4>
+            Requested Document/s
+          </h4>
 
-              <span>
-                {selected.decline_reason}
-              </span>
-            </div>
+          {getRequestDocuments(
+            selected,
+          ).length ? (
+            getRequestDocuments(
+              selected,
+            ).map((detail) => (
+              <div
+                className="rd-document-line"
+                key={detail.id}
+              >
+                <div>
+                  <strong>
+                    {documentName(
+                      detail,
+                    )}
+                  </strong>
+
+                  <span>
+                    Quantity:{" "}
+                    {detail.quantity ??
+                      "—"}
+                  </span>
+                </div>
+
+                <strong>
+                  {money(
+                    detail.subtotal,
+                  )}
+                </strong>
+              </div>
+            ))
+          ) : (
+            <p className="rd-empty">
+              No document details found.
+            </p>
           )}
 
-          <div className="rd-actions rd-detail-actions">
-            {requestActions(selected)}
+          <div className="rd-detail-total">
+            <span>Total</span>
+            <strong>
+              {money(
+                selected.total_amount,
+              )}
+            </strong>
           </div>
-        </aside>
-      )}
-    </div>
-  );
+        </div>
+
+        <div className="rd-detail-status">
+          <span>
+            Current Status
+          </span>
+
+          <strong>
+            {selected.status.replace(
+              /_/g,
+              " ",
+            )}
+          </strong>
+        </div>
+
+        {selected.claim_code && (
+          <div className="rd-review-note">
+            <strong>
+              Claim Code:
+            </strong>{" "}
+            {selected.claim_code}
+          </div>
+        )}
+
+        {selected.decline_review_status && (
+          <div className="rd-review-note">
+            <strong>
+              Decline Review:
+            </strong>{" "}
+            {
+              selected.decline_review_status
+            }
+          </div>
+        )}
+
+        {selected.decline_reason && (
+          <div className="rd-review-note">
+            <strong>
+              Decline Reason:
+            </strong>{" "}
+            {selected.decline_reason}
+          </div>
+        )}
+
+        {requestActions(
+          selected,
+        )}
+      </aside>
+    );
 
   /*
-   * PAGE RENDERING
+   * REPORT PERIOD
+   */
+  const periodRequests = useMemo(() => {
+    const now = new Date();
+
+    return requests.filter(
+      (request) => {
+        const created =
+          toDateValue(request.created_at);
+
+        if (!created) {
+          return false;
+        }
+
+        if (
+          reportPeriod === "DAY"
+        ) {
+          return (
+            created.toLocaleDateString(
+              "en-CA",
+            ) ===
+            now.toLocaleDateString(
+              "en-CA",
+            )
+          );
+        }
+
+        if (
+          reportPeriod === "WEEK"
+        ) {
+          const start =
+            new Date(now);
+
+          start.setDate(
+            now.getDate() - 6,
+          );
+
+          return created >= start;
+        }
+
+        if (
+          reportPeriod === "MONTH"
+        ) {
+          return (
+            created.getMonth() ===
+              now.getMonth() &&
+            created.getFullYear() ===
+              now.getFullYear()
+          );
+        }
+
+        return (
+          created.getFullYear() ===
+          now.getFullYear()
+        );
+      },
+    );
+  }, [
+    requests,
+    reportPeriod,
+  ]);
+
+  /*
+   * EXPORT REPORT
+   */
+  const exportReport = () => {
+    const rows = [
+      [
+        "Request ID",
+        "Student ID",
+        "Requested Documents",
+        "Requested Date",
+        "Status",
+        "Amount",
+      ],
+    ];
+
+    periodRequests.forEach(
+      (request) => {
+        const documents =
+          getRequestDocuments(
+            request,
+          )
+            .map(documentName)
+            .join("; ");
+
+        rows.push([
+          request.request_id,
+          request.student_id,
+          documents,
+          request.requested_date ||
+            "",
+          request.status,
+          String(
+            request.total_amount ||
+              0,
+          ),
+        ]);
+      },
+    );
+
+    const csv = rows
+      .map((row) =>
+        row
+          .map(
+            (value) =>
+              `"${String(
+                value ?? "",
+              ).replace(
+                /"/g,
+                '""',
+              )}"`,
+          )
+          .join(","),
+      )
+      .join("\n");
+
+    const blob = new Blob(
+      [csv],
+      {
+        type:
+          "text/csv;charset=utf-8;",
+      },
+    );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement(
+        "a",
+      );
+
+    link.href = url;
+    link.download =
+      "campuserve-registrar-report.csv";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(
+      link,
+    );
+
+    URL.revokeObjectURL(url);
+  };
+
+  /*
+   * PAGE CONTENT
    */
   const renderPage = () => {
     /*
      * OVERVIEW
      */
-    if (activePage === "overview") {
+    if (
+      activePage ===
+      "overview"
+    ) {
+      const cards = [
+        {
+          label:
+            "Pending Requests",
+          value: count(
+            "PENDING",
+          ),
+          status:
+            "PENDING" as Status,
+          description:
+            "Awaiting review",
+        },
+        {
+          label:
+            "Processing",
+          value:
+            count("APPROVED") +
+            count(
+              "PROCESSING",
+            ),
+          status:
+            "PROCESSING" as Status,
+          description:
+            "Documents being prepared",
+        },
+        {
+          label:
+            "Ready for Claiming",
+          value: count(
+            "READY_FOR_PICKUP",
+          ),
+          status:
+            "READY_FOR_PICKUP" as Status,
+          description:
+            "Ready for student pickup",
+        },
+        {
+          label:
+            "Completed Today",
+          value:
+            completedToday,
+          status:
+            "COMPLETED" as Status,
+          description:
+            "Documents released today",
+        },
+      ];
+
       return (
         <section className="registrar-page">
           <div className="welcome-section">
+            <h1>
+              Registrar Dashboard
+            </h1>
+
             <p className="welcome-text">
-              Welcome, {registrarName}
+              Welcome,{" "}
+              {account.name ||
+                "Registrar Staff"}
             </p>
           </div>
 
+          <div className="overview-header">
+            <h2>Overview</h2>
+          </div>
+
           <div className="stats-grid">
-            <button
-              className="stat-card stat-card-button"
-              onClick={() =>
-                openFilteredRequests(
-                  "PENDING",
-                )
-              }
-            >
-              <div className="stat-card-top">
-                <span>
-                  Pending Requests
-                </span>
+            {cards.map(
+              (card) => (
+                <button
+                  key={
+                    card.label
+                  }
+                  className="stat-card stat-card-button"
+                  onClick={() => {
+                    setStatusFilter(
+                      card.status,
+                    );
+                    setSearch("");
+                    setTopSearch("");
+                    setActivePage(
+                      "requests",
+                    );
+                  }}
+                >
+                  <div className="stat-card-top">
+                    <span>
+                      {
+                        card.label
+                      }
+                    </span>
 
-                <span className="stat-label">
-                  LIVE
-                </span>
-              </div>
+                    <span className="stat-label">
+                      LIVE
+                    </span>
+                  </div>
 
-              <strong>
-                {count("PENDING")}
-              </strong>
+                  <strong>
+                    {card.value}
+                  </strong>
 
-              <p>Awaiting review</p>
-            </button>
-
-            <button
-              className="stat-card stat-card-button"
-              onClick={() => {
-                setSearch("");
-                setTopSearch("");
-                setStatusFilter(
-                  "PROCESSING",
-                );
-                setActivePage(
-                  "requests",
-                );
-              }}
-            >
-              <div className="stat-card-top">
-                <span>
-                  Processing
-                </span>
-
-                <span className="stat-label">
-                  LIVE
-                </span>
-              </div>
-
-              <strong>
-                {count("PROCESSING") +
-                  count("APPROVED")}
-              </strong>
-
-              <p>
-                Documents being prepared
-              </p>
-            </button>
-
-            <button
-              className="stat-card stat-card-button"
-              onClick={() =>
-                openFilteredRequests(
-                  "READY_FOR_PICKUP",
-                )
-              }
-            >
-              <div className="stat-card-top">
-                <span>
-                  Ready for Claiming
-                </span>
-
-                <span className="stat-label">
-                  LIVE
-                </span>
-              </div>
-
-              <strong>
-                {count(
-                  "READY_FOR_PICKUP",
-                )}
-              </strong>
-
-              <p>
-                Ready for student pickup
-              </p>
-            </button>
-
-            <button
-              className="stat-card stat-card-button"
-              onClick={() =>
-                openFilteredRequests(
-                  "COMPLETED",
-                )
-              }
-            >
-              <div className="stat-card-top">
-                <span>
-                  Completed Today
-                </span>
-
-                <span className="stat-label">
-                  LIVE
-                </span>
-              </div>
-
-              <strong>
-                {completedToday}
-              </strong>
-
-              <p>
-                Documents released today
-              </p>
-            </button>
+                  <p>
+                    {
+                      card.description
+                    }
+                  </p>
+                </button>
+              ),
+            )}
           </div>
 
           <div className="services-heading">
-            <h2>Registrar Services</h2>
+            <h2>
+              Registrar Services
+            </h2>
           </div>
 
           <div className="services-grid">
@@ -1582,15 +1653,18 @@ export default function RegistrarDashboard({
             )
               .filter(
                 ([key]) =>
-                  key !== "overview",
+                  key !==
+                  "overview",
               )
               .map(
                 ([key, title]) => (
                   <button
-                    className="service-card"
                     key={key}
+                    className="service-card"
                     onClick={() =>
-                      changePage(key)
+                      changePage(
+                        key,
+                      )
                     }
                   >
                     <span className="service-content">
@@ -1606,46 +1680,6 @@ export default function RegistrarDashboard({
                 ),
               )}
           </div>
-
-          <div className="rd-panel document-reference-panel">
-            <div className="document-reference-heading">
-              <div>
-                <span className="rd-panel-kicker">
-                  UNIVERSITY CLAIM STUB
-                  REFERENCE
-                </span>
-
-                <h3>
-                  Registrar Document List
-                </h3>
-              </div>
-
-              <span>Prices</span>
-            </div>
-
-            <div className="document-reference-list">
-              {DOCUMENT_CATALOG.map(
-                (document) => (
-                  <div
-                    key={document.name}
-                  >
-                    <span>
-                      {document.name}
-                    </span>
-
-                    <strong>
-                      {document.price ==
-                      null
-                        ? "Specify"
-                        : money(
-                            document.price,
-                          )}
-                    </strong>
-                  </div>
-                ),
-              )}
-            </div>
-          </div>
         </section>
       );
     }
@@ -1653,14 +1687,19 @@ export default function RegistrarDashboard({
     /*
      * DOCUMENT REQUESTS
      */
-    if (activePage === "requests") {
+    if (
+      activePage ===
+      "requests"
+    ) {
       return (
         <section className="registrar-page">
           <div className="page-heading-row">
             <button
               className="back-button"
               onClick={() =>
-                changePage("overview")
+                changePage(
+                  "overview",
+                )
               }
             >
               ← Back
@@ -1676,17 +1715,21 @@ export default function RegistrarDashboard({
               value={search}
               onChange={(event) =>
                 setSearch(
-                  event.target.value,
+                  event.target
+                    .value,
                 )
               }
               placeholder="Search Request ID, Student ID, or Document name"
             />
 
             <select
-              value={statusFilter}
+              value={
+                statusFilter
+              }
               onChange={(event) =>
                 setStatusFilter(
-                  event.target.value,
+                  event.target
+                    .value,
                 )
               }
             >
@@ -1698,7 +1741,9 @@ export default function RegistrarDashboard({
                 (status) => (
                   <option
                     key={status}
-                    value={status}
+                    value={
+                      status
+                    }
                   >
                     {status.replace(
                       /_/g,
@@ -1710,9 +1755,13 @@ export default function RegistrarDashboard({
             </select>
           </div>
 
-          {requestTable(
-            filteredRequests,
-          )}
+          <div className="rd-request-workspace">
+            {requestTable(
+              filteredRequests,
+            )}
+
+            {requestDetailsPanel}
+          </div>
         </section>
       );
     }
@@ -1720,14 +1769,19 @@ export default function RegistrarDashboard({
     /*
      * CLAIMING
      */
-    if (activePage === "claiming") {
+    if (
+      activePage ===
+      "claiming"
+    ) {
       return (
         <section className="registrar-page">
           <div className="page-heading-row">
             <button
               className="back-button"
               onClick={() =>
-                changePage("overview")
+                changePage(
+                  "overview",
+                )
               }
             >
               ← Back
@@ -1739,20 +1793,21 @@ export default function RegistrarDashboard({
           </div>
 
           <div className="rd-panel">
-            <label htmlFor="claim-code">
-              Claim code
-            </label>
+            <h3>
+              Verify Claim Code
+            </h3>
 
             <div className="rd-toolbar">
               <input
-                id="claim-code"
                 value={claimCode}
                 onChange={(event) => {
                   setClaimCode(
-                    event.target.value.toUpperCase(),
+                    event.target.value
+                      .toUpperCase(),
                   );
-
-                  setClaimResult(null);
+                  setClaimResult(
+                    null,
+                  );
                 }}
                 placeholder="Enter claim code"
               />
@@ -1764,11 +1819,14 @@ export default function RegistrarDashboard({
                     requests.find(
                       (request) =>
                         request.claim_code?.toUpperCase() ===
-                        claimCode.trim(),
+                        claimCode
+                          .trim()
+                          .toUpperCase(),
                     );
 
                   setClaimResult(
-                    found || null,
+                    found ||
+                      null,
                   );
 
                   setError(
@@ -1785,33 +1843,17 @@ export default function RegistrarDashboard({
             {claimResult && (
               <div className="rd-detail">
                 <h3>
-                  {claimResult.request_id}
+                  {
+                    claimResult.request_id
+                  }
                 </h3>
 
                 <p>
                   Student ID:{" "}
-                  {claimResult.student_id}
+                  {
+                    claimResult.student_id
+                  }
                 </p>
-
-                <h4>Documents</h4>
-
-                {getRequestDocuments(
-                  claimResult,
-                ).map((detail) => (
-                  <p key={detail.id}>
-                    {documentName(
-                      detail,
-                    )}{" "}
-                    ×{" "}
-                    {detail.quantity ??
-                      1}{" "}
-                    —{" "}
-                    {money(
-                      detail.subtotal ??
-                        detail.unit_price,
-                    )}
-                  </p>
-                ))}
 
                 <p>
                   Status:{" "}
@@ -1821,10 +1863,21 @@ export default function RegistrarDashboard({
                   )}
                 </p>
 
+                <p>
+                  Total:{" "}
+                  {money(
+                    claimResult.total_amount,
+                  )}
+                </p>
+
                 {claimResult.status ===
                 "READY_FOR_PICKUP" ? (
                   <button
                     className="primary-button"
+                    disabled={
+                      busyId ===
+                      claimResult.id
+                    }
                     onClick={() =>
                       updateStatus(
                         claimResult,
@@ -1836,14 +1889,18 @@ export default function RegistrarDashboard({
                   </button>
                 ) : (
                   <p>
-                    This request is not
-                    currently marked ready
-                    for pickup.
+                    This request is
+                    not currently
+                    ready for pickup.
                   </p>
                 )}
               </div>
             )}
           </div>
+
+          <h3>
+            Ready for Pickup
+          </h3>
 
           {requestTable(
             requests.filter(
@@ -1851,7 +1908,6 @@ export default function RegistrarDashboard({
                 request.status ===
                 "READY_FOR_PICKUP",
             ),
-            true,
           )}
         </section>
       );
@@ -1860,14 +1916,19 @@ export default function RegistrarDashboard({
     /*
      * CLAIMING SCHEDULE
      */
-    if (activePage === "schedule") {
+    if (
+      activePage ===
+      "schedule"
+    ) {
       return (
         <section className="registrar-page">
           <div className="page-heading-row">
             <button
               className="back-button"
               onClick={() =>
-                changePage("overview")
+                changePage(
+                  "overview",
+                )
               }
             >
               ← Back
@@ -1878,78 +1939,87 @@ export default function RegistrarDashboard({
             </h2>
           </div>
 
-          <div className="rd-panel schedule-form">
-            <div className="schedule-form-grid">
-              <label>
-                Claim Date
+          <div className="rd-panel">
+            <h3>
+              {editingScheduleId
+                ? "Edit Claiming Schedule"
+                : "Create Claiming Schedule"}
+            </h3>
 
-                <input
-                  type="date"
-                  min={today()}
-                  value={scheduleDate}
-                  onChange={(event) =>
-                    setScheduleDate(
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
+            <div className="rd-toolbar">
+              <input
+                type="date"
+                value={
+                  scheduleDate
+                }
+                min={today()}
+                onChange={(event) =>
+                  setScheduleDate(
+                    event.target
+                      .value,
+                  )
+                }
+              />
 
-              <label>
-                Time Slot
+              <input
+                type="text"
+                value={
+                  scheduleTime
+                }
+                onChange={(event) =>
+                  setScheduleTime(
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="e.g. 9:00 AM - 10:00 AM"
+              />
 
-                <input
-                  type="text"
-                  value={scheduleTime}
-                  onChange={(event) =>
-                    setScheduleTime(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="8:00 AM – 9:00 AM"
-                />
-              </label>
+              <input
+                type="number"
+                min="1"
+                value={
+                  scheduleCapacity
+                }
+                onChange={(event) =>
+                  setScheduleCapacity(
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Capacity"
+              />
 
-              <label>
-                Capacity
-
-                <input
-                  type="number"
-                  min="1"
-                  value={scheduleCapacity}
-                  onChange={(event) =>
-                    setScheduleCapacity(
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-            </div>
-
-            <div className="rd-actions">
               <button
                 className="primary-button"
-                onClick={saveSchedule}
+                onClick={
+                  saveSchedule
+                }
               >
                 {editingScheduleId
-                  ? "Update Schedule"
+                  ? "Save Changes"
                   : "Create Schedule"}
               </button>
 
               {editingScheduleId && (
                 <button
+                  className="secondary-button"
                   onClick={() => {
                     setEditingScheduleId(
                       "",
                     );
-                    setScheduleDate("");
-                    setScheduleTime("");
+                    setScheduleDate(
+                      "",
+                    );
+                    setScheduleTime(
+                      "",
+                    );
                     setScheduleCapacity(
                       "10",
                     );
                   }}
                 >
-                  Clear
+                  Cancel Edit
                 </button>
               )}
             </div>
@@ -1962,19 +2032,15 @@ export default function RegistrarDashboard({
                   <th>
                     Claim Date
                   </th>
-
                   <th>
                     Time Slot
                   </th>
-
                   <th>
                     Capacity
                   </th>
-
                   <th>
-                    Available Slots
+                    Available
                   </th>
-
                   <th>
                     Actions
                   </th>
@@ -1985,27 +2051,35 @@ export default function RegistrarDashboard({
                 {schedules.map(
                   (schedule) => (
                     <tr
-                      key={schedule.id}
+                      key={
+                        schedule.id
+                      }
                     >
                       <td>
-                        {schedule.claimDate ||
-                          "—"}
+                        {
+                          schedule.claimDate
+                        }
                       </td>
 
                       <td>
-                        {schedule.timeSlot ||
-                          "—"}
+                        {
+                          schedule.timeSlot
+                        }
                       </td>
 
                       <td>
-                        {schedule.slotCapacity ??
-                          "—"}
+                        {
+                          schedule.slotCapacity ??
+                          "—"
+                        }
                       </td>
 
                       <td>
-                        {schedule.availableSlot ??
+                        {
+                          schedule.availableSlot ??
                           schedule.availableSlots ??
-                          "—"}
+                          "—"
+                        }
                       </td>
 
                       <td>
@@ -2015,17 +2089,14 @@ export default function RegistrarDashboard({
                               setEditingScheduleId(
                                 schedule.id,
                               );
-
                               setScheduleDate(
                                 schedule.claimDate ||
                                   "",
                               );
-
                               setScheduleTime(
                                 schedule.timeSlot ||
                                   "",
                               );
-
                               setScheduleCapacity(
                                 String(
                                   schedule.slotCapacity ??
@@ -2057,7 +2128,8 @@ export default function RegistrarDashboard({
 
             {!schedules.length && (
               <p className="rd-empty">
-                No claiming schedules found.
+                No claiming schedules
+                found.
               </p>
             )}
           </div>
@@ -2068,52 +2140,71 @@ export default function RegistrarDashboard({
     /*
      * RESCHEDULING
      */
-    if (activePage === "reschedule") {
+    if (
+      activePage ===
+      "reschedule"
+    ) {
       return (
         <section className="registrar-page">
           <div className="page-heading-row">
             <button
               className="back-button"
               onClick={() =>
-                changePage("overview")
+                changePage(
+                  "overview",
+                )
               }
             >
               ← Back
             </button>
 
-            <h2>Rescheduling</h2>
-          </div>
-
-          <div className="rd-toolbar">
-            <input
-              value={search}
-              onChange={(event) =>
-                setSearch(
-                  event.target.value,
-                )
-              }
-              placeholder="Search Request ID, Student ID, or Document name"
-            />
+            <h2>
+              Rescheduling
+            </h2>
           </div>
 
           {requestTable(
-            filteredRequests,
+            requests.filter(
+              (request) =>
+                request.status !==
+                  "COMPLETED" &&
+                request.status !==
+                  "DECLINED",
+            ),
           )}
         </section>
       );
     }
 
     /*
-     * REPORTS + DAILY SUMMARY
+     * REPORTS
      */
-    if (activePage === "reports") {
+    if (
+      activePage ===
+      "reports"
+    ) {
+      const periodStatuses =
+        STATUSES.map(
+          (status) => ({
+            status,
+            count:
+              periodRequests.filter(
+                (request) =>
+                  request.status ===
+                  status,
+              ).length,
+          }),
+        );
+
       return (
         <section className="registrar-page">
           <div className="page-heading-row">
             <button
               className="back-button"
               onClick={() =>
-                changePage("overview")
+                changePage(
+                  "overview",
+                )
               }
             >
               ← Back
@@ -2132,41 +2223,53 @@ export default function RegistrarDashboard({
                 "MONTH",
                 "YEAR",
               ] as const
-            ).map((period) => (
-              <button
-                key={period}
-                className={
-                  reportPeriod === period
-                    ? "active"
-                    : ""
-                }
-                onClick={() =>
-                  setReportPeriod(
-                    period,
-                  )
-                }
-              >
-                {period === "DAY"
-                  ? "Day"
-                  : period === "WEEK"
-                  ? "Week"
-                  : period === "MONTH"
-                  ? "Month"
-                  : "Year"}
-              </button>
-            ))}
+            ).map(
+              (period) => (
+                <button
+                  key={period}
+                  className={
+                    reportPeriod ===
+                    period
+                      ? "active"
+                      : ""
+                  }
+                  onClick={() =>
+                    setReportPeriod(
+                      period,
+                    )
+                  }
+                >
+                  {period ===
+                  "DAY"
+                    ? "Day"
+                    : period ===
+                      "WEEK"
+                    ? "Week"
+                    : period ===
+                      "MONTH"
+                    ? "Month"
+                    : "Year"}
+                </button>
+              ),
+            )}
           </div>
 
           <div className="report-summary-grid">
             <div>
-              <span>Requests</span>
+              <span>
+                Requests
+              </span>
               <strong>
-                {periodRequests.length}
+                {
+                  periodRequests.length
+                }
               </strong>
             </div>
 
             <div>
-              <span>Pending</span>
+              <span>
+                Pending
+              </span>
               <strong>
                 {
                   periodRequests.filter(
@@ -2179,7 +2282,9 @@ export default function RegistrarDashboard({
             </div>
 
             <div>
-              <span>Ready</span>
+              <span>
+                Ready
+              </span>
               <strong>
                 {
                   periodRequests.filter(
@@ -2192,7 +2297,9 @@ export default function RegistrarDashboard({
             </div>
 
             <div>
-              <span>Completed</span>
+              <span>
+                Completed
+              </span>
               <strong>
                 {
                   periodRequests.filter(
@@ -2205,12 +2312,17 @@ export default function RegistrarDashboard({
             </div>
 
             <div>
-              <span>Total Amount</span>
+              <span>
+                Total Amount
+              </span>
               <strong>
                 {money(
                   periodRequests.reduce(
-                    (sum, request) =>
-                      sum +
+                    (
+                      total,
+                      request,
+                    ) =>
+                      total +
                       Number(
                         request.total_amount ||
                           0,
@@ -2224,21 +2336,18 @@ export default function RegistrarDashboard({
 
           <div className="report-layout">
             <div className="rd-panel">
-              <h3>Status Summary</h3>
+              <h3>
+                Status Summary
+              </h3>
 
-              {STATUSES.map(
-                (status) => {
-                  const statusCount =
-                    periodRequests.filter(
-                      (request) =>
-                        request.status ===
-                        status,
-                    ).length;
-
+              {periodStatuses.map(
+                ({
+                  status,
+                  count: statusCount,
+                }) => {
                   const percentage =
                     periodRequests.length
-                      ? Math.min(
-                          100,
+                      ? Math.round(
                           (statusCount /
                             periodRequests.length) *
                             100,
@@ -2266,7 +2375,9 @@ export default function RegistrarDashboard({
                       </div>
 
                       <strong>
-                        {statusCount}
+                        {
+                          statusCount
+                        }
                       </strong>
                     </div>
                   );
@@ -2282,7 +2393,9 @@ export default function RegistrarDashboard({
               <p>
                 Completed today:{" "}
                 <strong>
-                  {completedToday}
+                  {
+                    completedToday
+                  }
                 </strong>
               </p>
 
@@ -2290,14 +2403,19 @@ export default function RegistrarDashboard({
                 Requests in selected
                 period:{" "}
                 <strong>
-                  {periodRequests.length}
+                  {
+                    periodRequests.length
+                  }
                 </strong>
               </p>
 
               <p>
-                Total recorded requests:{" "}
+                Total recorded
+                requests:{" "}
                 <strong>
-                  {requests.length}
+                  {
+                    requests.length
+                  }
                 </strong>
               </p>
 
@@ -2318,14 +2436,19 @@ export default function RegistrarDashboard({
     /*
      * HISTORY
      */
-    if (activePage === "history") {
+    if (
+      activePage ===
+      "history"
+    ) {
       return (
         <section className="registrar-page">
           <div className="page-heading-row">
             <button
               className="back-button"
               onClick={() =>
-                changePage("overview")
+                changePage(
+                  "overview",
+                )
               }
             >
               ← Back
@@ -2354,6 +2477,10 @@ export default function RegistrarDashboard({
 
     /*
      * MESSAGES
+     *
+     * This is intentionally left as an
+     * integration point because your groupmate
+     * is handling Messages.
      */
     return (
       <section className="registrar-page">
@@ -2361,171 +2488,47 @@ export default function RegistrarDashboard({
           <button
             className="back-button"
             onClick={() =>
-              changePage("overview")
+              changePage(
+                "overview",
+              )
             }
           >
             ← Back
           </button>
 
-          <h2>Messages</h2>
+          <h2>
+            Messages
+          </h2>
         </div>
 
-        <div className="message-workspace">
-          <aside className="message-contacts">
-            <h3>Contacts</h3>
+        <div className="empty-state">
+          <h3>
+            Messaging Integration
+          </h3>
 
-            {messagesLoading && (
-              <p className="rd-empty">
-                Loading...
-              </p>
-            )}
-
-            {recipients.map(
-              (recipient) => (
-                <button
-                  key={recipient.id}
-                  className={
-                    selectedRecipient?.id ===
-                    recipient.id
-                      ? "selected"
-                      : ""
-                  }
-                  onClick={() =>
-                    setSelectedRecipient(
-                      recipient,
-                    )
-                  }
-                >
-                  <strong>
-                    {recipient.name}
-                  </strong>
-
-                  <small>
-                    {recipient.role}
-                    {recipient.email
-                      ? ` · ${recipient.email}`
-                      : ""}
-                  </small>
-                </button>
-              ),
-            )}
-
-            {!recipients.length &&
-              !messagesLoading && (
-                <p className="rd-empty">
-                  No other accounts
-                  available.
-                </p>
-              )}
-          </aside>
-
-          <section className="message-thread">
-            {selectedRecipient ? (
-              <>
-                <div className="message-thread-header">
-                  <strong>
-                    {selectedRecipient.name}
-                  </strong>
-
-                  <span>
-                    {selectedRecipient.role}
-                  </span>
-                </div>
-
-                <div className="message-list">
-                  {messages.length ? (
-                    messages.map(
-                      (message) => (
-                        <div
-                          key={message.id}
-                          className={`message-bubble ${
-                            message.senderId ===
-                            registrarId
-                              ? "mine"
-                              : "theirs"
-                          }`}
-                        >
-                          <p>
-                            {message.text}
-                          </p>
-
-                          <small>
-                            {message.senderName ||
-                              "User"}{" "}
-                            ·{" "}
-                            {dateText(
-                              message.createdAt,
-                            )}
-                          </small>
-                        </div>
-                      ),
-                    )
-                  ) : (
-                    <p className="rd-empty">
-                      No messages yet.
-                      Start the
-                      conversation.
-                    </p>
-                  )}
-                </div>
-
-                <div className="message-compose">
-                  <input
-                    value={messageText}
-                    onChange={(event) =>
-                      setMessageText(
-                        event.target.value,
-                      )
-                    }
-                    onKeyDown={(event) => {
-                      if (
-                        event.key ===
-                          "Enter" &&
-                        !event.shiftKey
-                      ) {
-                        event.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                    placeholder="Type a message..."
-                  />
-
-                  <button
-                    className="primary-button"
-                    onClick={
-                      sendMessage
-                    }
-                  >
-                    Send
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="message-empty">
-                <h3>
-                  Select a contact
-                </h3>
-
-                <p>
-                  Choose an account to
-                  start messaging.
-                </p>
-              </div>
-            )}
-          </section>
+          <p>
+            The messaging feature is
+            being handled by another
+            CampuServe member and will
+            be connected here during
+            integration.
+          </p>
         </div>
       </section>
     );
   };
 
   return (
-    <div
-      className={`registrar-layout ${
-        menuOpen
-          ? "sidebar-open"
-          : ""
-      }`}
-    >
+    <div className="registrar-layout">
+      {menuOpen && (
+        <div
+          className="menu-overlay"
+          onClick={() =>
+            setMenuOpen(false)
+          }
+        />
+      )}
+
       <aside
         className={`registrar-menu ${
           menuOpen ? "open" : ""
@@ -2547,6 +2550,15 @@ export default function RegistrarDashboard({
               </span>
             </div>
           </div>
+
+          <button
+            className="close-menu"
+            onClick={() =>
+              setMenuOpen(false)
+            }
+          >
+            ×
+          </button>
         </div>
 
         <nav className="registrar-nav">
@@ -2562,7 +2574,9 @@ export default function RegistrarDashboard({
                     : ""
                 }`}
                 onClick={() =>
-                  changePage(key)
+                  changePage(
+                    key,
+                  )
                 }
               >
                 {title}
@@ -2574,14 +2588,18 @@ export default function RegistrarDashboard({
         <div className="menu-bottom">
           <div className="staff-profile">
             <div className="staff-avatar">
-              {registrarName
+              {(
+                account.name ||
+                "R"
+              )
                 .charAt(0)
                 .toUpperCase()}
             </div>
 
             <div>
               <strong>
-                {registrarName}
+                {account.name ||
+                  "Registrar Staff"}
               </strong>
 
               <span>
@@ -2595,7 +2613,9 @@ export default function RegistrarDashboard({
             className="logout-button"
             onClick={async () => {
               try {
-                await signOut(auth);
+                await signOut(
+                  auth,
+                );
               } catch (err) {
                 setError(
                   err instanceof Error
@@ -2616,11 +2636,9 @@ export default function RegistrarDashboard({
             <button
               className="menu-button"
               onClick={() =>
-                setMenuOpen(
-                  (open) => !open,
-                )
+                setMenuOpen(true)
               }
-              aria-label="Toggle menu"
+              aria-label="Open menu"
             >
               <span />
               <span />
@@ -2633,29 +2651,33 @@ export default function RegistrarDashboard({
               </span>
 
               <h3>
-                {PAGE_TITLES[
-                  activePage
-                ]}
+                {
+                  PAGE_TITLES[
+                    activePage
+                  ]
+                }
               </h3>
             </div>
           </div>
 
           <div className="registrar-topbar-actions">
             <div className="registrar-top-search">
-              <span aria-hidden="true">
+              <span>
                 ⌕
               </span>
 
               <input
                 type="search"
-                value={topSearch}
+                value={
+                  topSearch
+                }
                 onChange={(event) =>
                   openSearch(
-                    event.target.value,
+                    event.target
+                      .value,
                   )
                 }
                 placeholder="Search requests..."
-                aria-label="Search document requests"
               />
             </div>
 
@@ -2664,18 +2686,20 @@ export default function RegistrarDashboard({
                 className="registrar-icon-button"
                 onClick={() =>
                   setNotificationsOpen(
-                    (open) => !open,
+                    (open) =>
+                      !open,
                   )
                 }
                 aria-label="Notifications"
-                title="Notifications"
               >
                 🔔
 
                 {notifications.length >
                   0 && (
                   <span className="registrar-notification-count">
-                    {notifications.length}
+                    {
+                      notifications.length
+                    }
                   </span>
                 )}
               </button>
@@ -2698,37 +2722,36 @@ export default function RegistrarDashboard({
                     </button>
                   </div>
 
-                  {notifications.length ? (
+                  {notifications.length ===
+                  0 ? (
+                    <p className="registrar-notifications-empty">
+                      No new request
+                      updates.
+                    </p>
+                  ) : (
                     notifications.map(
                       (request) => (
                         <button
+                          key={
+                            request.id
+                          }
                           className="registrar-notification-item"
-                          key={request.id}
                           onClick={() => {
                             setSelected(
                               request,
                             );
-
                             setActivePage(
                               "requests",
                             );
-
                             setNotificationsOpen(
                               false,
                             );
                           }}
                         >
-                          <span
-                            className={`rd-status ${request.status.toLowerCase()}`}
-                          >
-                            {request.status.replace(
-                              /_/g,
-                              " ",
-                            )}
-                          </span>
-
                           <strong>
-                            {request.request_id}
+                            {
+                              request.request_id
+                            }
                           </strong>
 
                           <small>
@@ -2737,14 +2760,18 @@ export default function RegistrarDashboard({
                               request.student_id
                             }
                           </small>
+
+                          <small>
+                            {
+                              request.status.replace(
+                                /_/g,
+                                " ",
+                              )
+                            }
+                          </small>
                         </button>
                       ),
                     )
-                  ) : (
-                    <p className="registrar-notifications-empty">
-                      No new request
-                      updates.
-                    </p>
                   )}
 
                   <button
@@ -2769,7 +2796,6 @@ export default function RegistrarDashboard({
                 )
               }
               aria-label="Messages"
-              title="Messages"
             >
               ✉
             </button>
@@ -2796,68 +2822,70 @@ export default function RegistrarDashboard({
        */
       {declineTarget && (
         <div className="rd-modal-backdrop">
-          <section className="rd-modal">
+          <section
+            className="rd-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
             <button
               className="rd-modal-close"
-              onClick={() =>
+              onClick={() => {
                 setDeclineTarget(
                   null,
-                )
-              }
+                );
+                setDeclineReason(
+                  "",
+                );
+              }}
             >
               ×
             </button>
 
             <h2>
-              Decline Request
+              Submit Decline Review
             </h2>
 
             <p>
+              Request:{" "}
               <strong>
-                {declineTarget.request_id}
-              </strong>{" "}
-              will be sent to Admin for
-              validity review.
+                {
+                  declineTarget.request_id
+                }
+              </strong>
             </p>
 
-            <label>
-              Reason for decline
+            <p>
+              The request will be
+              forwarded to Admin for
+              evaluation.
+            </p>
 
-              <textarea
-                value={declineReason}
-                onChange={(event) =>
-                  setDeclineReason(
-                    event.target.value,
-                  )
-                }
-                placeholder="Enter the reason..."
-              />
-            </label>
+            <textarea
+              value={
+                declineReason
+              }
+              onChange={(event) =>
+                setDeclineReason(
+                  event.target.value,
+                )
+              }
+              placeholder="Enter the reason for recommending decline..."
+              rows={5}
+            />
 
-            <div className="rd-actions">
-              <button
-                onClick={() =>
-                  setDeclineTarget(
-                    null,
-                  )
-                }
-              >
-                Back
-              </button>
-
-              <button
-                className="danger"
-                disabled={
-                  busyId ===
-                  declineTarget.id
-                }
-                onClick={
-                  submitDecline
-                }
-              >
-                Send to Admin
-              </button>
-            </div>
+            <button
+              className="primary-button"
+              disabled={
+                busyId ===
+                declineTarget.id
+              }
+              onClick={
+                submitDecline
+              }
+            >
+              Submit for Admin Review
+            </button>
           </section>
         </div>
       )}
@@ -2867,7 +2895,12 @@ export default function RegistrarDashboard({
        */
       {rescheduleTarget && (
         <div className="rd-modal-backdrop">
-          <section className="rd-modal">
+          <section
+            className="rd-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
             <button
               className="rd-modal-close"
               onClick={() =>
@@ -2884,68 +2917,66 @@ export default function RegistrarDashboard({
             </h2>
 
             <p>
+              Request:{" "}
               <strong>
-                {rescheduleTarget.request_id}
+                {
+                  rescheduleTarget.request_id
+                }
               </strong>
             </p>
 
             <label>
-              New date
-
-              <input
-                type="date"
-                value={rescheduleDate}
-                min={today()}
-                onChange={(event) =>
-                  setRescheduleDate(
-                    event.target.value,
-                  )
-                }
-              />
+              New Date
             </label>
+
+            <input
+              type="date"
+              value={
+                rescheduleDate
+              }
+              onChange={(event) =>
+                setRescheduleDate(
+                  event.target
+                    .value,
+                )
+              }
+            />
 
             <label>
-              New time
-
-              <input
-                type="text"
-                value={rescheduleTime}
-                onChange={(event) =>
-                  setRescheduleTime(
-                    event.target.value,
-                  )
-                }
-                placeholder="8:00 AM – 9:00 AM"
-              />
+              New Time
             </label>
 
-            <div className="rd-actions">
-              <button
-                onClick={() =>
-                  setRescheduleTarget(
-                    null,
-                  )
-                }
-              >
-                Back
-              </button>
+            <input
+              type="text"
+              value={
+                rescheduleTime
+              }
+              onChange={(event) =>
+                setRescheduleTime(
+                  event.target
+                    .value,
+                )
+              }
+              placeholder="e.g. 9:00 AM"
+            />
 
-              <button
-                className="primary-button"
-                disabled={
-                  busyId ===
-                  rescheduleTarget.id
-                }
-                onClick={
-                  submitReschedule
-                }
-              >
-                Save Reschedule
-              </button>
-            </div>
+            <button
+              className="primary-button"
+              disabled={
+                busyId ===
+                rescheduleTarget.id
+              }
+              onClick={
+                submitReschedule
+              }
+            >
+              Save Reschedule
+            </button>
           </section>
         </div>
       )}
     </div>
   );
 }
+
+export default RegistrarDashboard;

@@ -4,6 +4,7 @@ import ItemStocks from "../../pages/student/ItemStocks";
 import ItemReservation from "../../pages/student/ItemReservation";
 import DocumentRequestWizard from "../../pages/student/DocumentRequestWizard";
 import DocumentRequestList from "../../pages/student/DocumentRequestList";
+import ClaimStubPage from "../../pages/student/ClaimStubPage";
 
 import "./StudentDashboard.css";
 
@@ -18,17 +19,20 @@ type StudentDashboardProps = {
 export default function StudentDashboard({
   account,
 }: StudentDashboardProps) {
+
   const studentId =
     account.student_id ||
     account.email?.split("@")[0].replace("dummytest", "") ||
     "";
 
   const [activePage, setActivePage] = useState<
-  "dashboard" |
-  "request" |
-  "requests" |
-  "itemReservation"
->("dashboard");
+    | "dashboard"
+    | "request"
+    | "requests"
+    | "itemReservation"
+    | "claimStub"
+  >("dashboard");
+
 
   // --------------------------------------------------
   // DOCUMENT REQUEST PAGE
@@ -45,13 +49,14 @@ export default function StudentDashboard({
           ← Back to Dashboard
         </button>
 
-       <DocumentRequestWizard
-  studentId={studentId}
-/>
+        <DocumentRequestWizard
+          studentId={studentId}
+        />
 
       </div>
     );
   }
+
 
   // --------------------------------------------------
   // MY REQUESTS PAGE
@@ -68,9 +73,9 @@ export default function StudentDashboard({
           ← Back to Dashboard
         </button>
 
-       <DocumentRequestList
-  studentId={studentId}
-/>
+        <DocumentRequestList
+          studentId={studentId}
+        />
 
       </div>
     );
@@ -78,23 +83,44 @@ export default function StudentDashboard({
 
 
   // --------------------------------------------------
-// ITEM RESERVATION PAGE
-// --------------------------------------------------
+  // ITEM RESERVATION PAGE
+  // --------------------------------------------------
 
-if (activePage === "itemReservation") {
-  return (
-    <div className="student-dashboard">
+  if (activePage === "itemReservation") {
+    return (
+      <div className="student-dashboard">
 
-      <ItemReservation
-        studentId={studentId}
-        onBack={() =>
-          setActivePage("dashboard")
-        }
-      />
+        <ItemReservation
+          studentId={studentId}
+          onBack={() =>
+            setActivePage("dashboard")
+          }
+        />
 
-    </div>
-  );
-}
+      </div>
+    );
+  }
+
+
+  // --------------------------------------------------
+  // CLAIM STUB PAGE
+  // --------------------------------------------------
+
+  if (activePage === "claimStub") {
+    return (
+      <div className="student-dashboard">
+
+        <ClaimStubPage
+          studentId={studentId}
+         // studentName={account.name}
+          onBack={() =>
+            setActivePage("dashboard")
+          }
+        />
+
+      </div>
+    );
+  }
 
 
   // --------------------------------------------------
@@ -106,11 +132,15 @@ if (activePage === "itemReservation") {
 
       {/* HEADER */}
       <div className="student-header">
+
         <div>
-          <h1>CampuServe</h1>
+
+          <h1>
+            CampuServe
+          </h1>
 
           <p>
-            Welcome,{" "}
+            Welcome{" "}
             <strong>
               {account.name ||
                 account.email ||
@@ -120,16 +150,22 @@ if (activePage === "itemReservation") {
 
           {account.student_id && (
             <p>
-              Student ID: {account.student_id}
+              Student ID:{" "}
+              {account.student_id}
             </p>
           )}
+
         </div>
+
       </div>
+
 
       {/* CONTENT */}
       <div className="student-content">
 
-        <h2>Student Dashboard</h2>
+        <h2>
+          Student Dashboard
+        </h2>
 
         <p>
           Access CampuServe services
@@ -137,13 +173,16 @@ if (activePage === "itemReservation") {
           different offices.
         </p>
 
+
         {/* ------------------------------------------ */}
         {/* DOCUMENT REQUEST */}
         {/* ------------------------------------------ */}
 
         <div className="dashboard-card">
 
-          <h3>Document Services</h3>
+          <h3>
+            Document Services
+          </h3>
 
           <p>
             Request official school
@@ -170,29 +209,62 @@ if (activePage === "itemReservation") {
 
         </div>
 
+
         {/* ------------------------------------------ */}
         {/* ITEM RESERVATION */}
         {/* ------------------------------------------ */}
 
         <div className="dashboard-card">
 
-          <h3>Item Reservation</h3>
+          <h3>
+            Item Reservation
+          </h3>
 
           <p>
             Reserve school items and
             supplies.
           </p>
 
- <button
-  type="button"
-  onClick={() =>
-    setActivePage("itemReservation")
-  }
->
-  Reserve an Item
-</button>
+          <button
+            type="button"
+            onClick={() =>
+              setActivePage("itemReservation")
+            }
+          >
+            Reserve an Item
+          </button>
 
         </div>
+
+
+        {/* ------------------------------------------ */}
+        {/* CLAIM STUB */}
+        {/* ------------------------------------------ */}
+
+        <div className="dashboard-card">
+
+          <h3>
+            Claim Stub
+          </h3>
+
+          <p>
+            Enter the code from your
+            claim stub to notify the
+            Registrar that you are ready
+            to claim your document or item.
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              setActivePage("claimStub")
+            }
+          >
+            Claim Stub
+          </button>
+
+        </div>
+
 
         {/* ------------------------------------------ */}
         {/* TRANSACTIONS */}
@@ -200,7 +272,9 @@ if (activePage === "itemReservation") {
 
         <div className="dashboard-card">
 
-          <h3>Transactions</h3>
+          <h3>
+            Transactions
+          </h3>
 
           <p>
             View your previous
@@ -217,14 +291,14 @@ if (activePage === "itemReservation") {
         </div>
 
 
+        {/* ------------------------------------------ */}
+        {/* ITEM STOCKS */}
+        {/* ------------------------------------------ */}
 
-<ItemStocks />
-
-
+        <ItemStocks />
 
       </div>
+
     </div>
   );
 }
-
-
