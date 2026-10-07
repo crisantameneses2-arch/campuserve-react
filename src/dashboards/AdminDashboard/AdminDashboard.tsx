@@ -1,6 +1,6 @@
 import "./AdminDashboard.css";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   collection,
@@ -10,6 +10,12 @@ import {
 import { db } from "../../../firebase";
 
 import UserAccounts from "./UserAccounts";
+import RolesPermissions from "./RolesPermissions";
+import DocumentRequests from "./DocumentRequests";
+import ItemReservations from "./ItemReservations";
+import ReportsAnalytics from "./ReportsAnalytics";
+import ActivityLogs from "./ActivityLogs";
+import SystemSettings from "./SystemSettings";
 
 type RecordData = {
   id: string;
@@ -32,6 +38,10 @@ type AdminDashboardProps = {
 function AdminDashboard({
   account,
 }: AdminDashboardProps) {
+  /* =====================================================
+     STATE
+  ===================================================== */
+
   const [selectedCollection, setSelectedCollection] =
     useState("");
 
@@ -50,12 +60,131 @@ function AdminDashboard({
   const [showProfile, setShowProfile] =
     useState(false);
 
+  /*
+    Controls which admin page is currently displayed.
+  */
   const [currentPage, setCurrentPage] =
     useState("dashboard");
 
+    const [dashboardStats, setDashboardStats] = useState({
+  totalStudents: 0,
+  pendingRequests: 0,
+  activeReservations: 0,
+  systemAlerts: 0,
+});
+
+const [statsLoading, setStatsLoading] = useState(false);
+
+const loadDashboardStats = async () => {
+  setStatsLoading(true);
+
+  try {
+    // ==============================
+    // TOTAL STUDENTS
+    // ==============================
+    const accountsSnapshot = await getDocs(
+      collection(db, "accounts")
+    );
+
+    const totalStudents = accountsSnapshot.docs.filter(
+      (document) => {
+        const data = document.data();
+
+        return (
+          data.role === "student" &&
+          data.status !== "deleted"
+        );
+      }
+    ).length;
+
+    // ==============================
+    // PENDING DOCUMENT REQUESTS
+    // ==============================
+    const requestsSnapshot = await getDocs(
+      collection(db, "documentRequests")
+    );
+
+    const pendingRequests =
+      requestsSnapshot.docs.filter((document) => {
+        const data = document.data();
+
+        const status = String(
+          data.status ?? data.Status ?? ""
+        ).toLowerCase();
+
+        return status === "pending";
+      }).length;
+
+    // ==============================
+    // ACTIVE ITEM RESERVATIONS
+    // ==============================
+    const reservationsSnapshot = await getDocs(
+      collection(db, "itemReservations")
+    );
+
+    const activeReservations =
+      reservationsSnapshot.docs.filter((document) => {
+        const data = document.data();
+
+        const status = String(
+          data.status ?? data.Status ?? ""
+        ).toLowerCase();
+
+        return (
+          status === "active" ||
+          status === "approved"
+        );
+      }).length;
+
+    // ==============================
+    // SYSTEM ALERTS
+    // ==============================
+    const notificationsSnapshot = await getDocs(
+      collection(db, "notifications")
+    );
+
+    const systemAlerts =
+      notificationsSnapshot.docs.filter((document) => {
+        const data = document.data();
+
+        return (
+          data.Is_Read === false ||
+          data.isRead === false
+        );
+      }).length;
+
+    // ==============================
+    // UPDATE DASHBOARD
+    // ==============================
+    setDashboardStats({
+      totalStudents,
+      pendingRequests,
+      activeReservations,
+      systemAlerts,
+    });
+  } catch (error) {
+    console.error(
+      "Error loading dashboard statistics:",
+      error
+    );
+  } finally {
+    setStatsLoading(false);
+  }
+};
+
+useEffect(() => {
+  if (currentPage === "dashboard") {
+    loadDashboardStats();
+  }
+}, [currentPage]);
+
+  /* =====================================================
+     FIRESTORE COLLECTIONS
+  ===================================================== */
+
   const collections = [
     "accounts",
-    "document_requests",
+    "documentRequests",
     "groupRequestMembers",
     "documentRequestDetails",
     "itemReservations",
@@ -70,6 +199,11 @@ function AdminDashboard({
     "activityLogs",
     "reports",
   ];
+
+
+  /* =====================================================
+     RETRIEVE FIRESTORE DATA
+  ===================================================== */
 
   const handleRetrieve = async (
     deletedView = showDeletedAccounts
@@ -94,6 +228,13 @@ function AdminDashboard({
           ...document.data(),
         }));
 
+      /*
+        For the accounts collection:
+        - Active Accounts = everything except deleted
+        - Deleted Accounts = status === deleted
+
+        Other collections are displayed normally.
+      */
       const filteredRecords =
         selectedCollection === "accounts"
           ? data.filter((record) =>
@@ -104,6 +245,7 @@ function AdminDashboard({
           : data;
 
       setRecords(filteredRecords);
+
     } catch (error) {
       console.error(
         "Error retrieving data:",
@@ -113,10 +255,16 @@ function AdminDashboard({
       setError(
         "Failed to retrieve data from Firestore."
       );
+
     } finally {
       setLoading(false);
     }
   };
+
+
+  /* =====================================================
+     DISPLAY FIRESTORE VALUES
+  ===================================================== */
 
   const displayValue = (
     value: unknown
@@ -141,10 +289,18 @@ function AdminDashboard({
     return String(value);
   };
 
+
+  /* =====================================================
+     PAGE
+  ===================================================== */
+
   return (
     <div className="admin-dashboard">
 
-      {/* SIDEBAR */}
+      {/* =================================================
+          SIDEBAR
+      ================================================= */}
+
       <aside className="admin-sidebar">
 
         <div className="sidebar-logo">
@@ -152,9 +308,11 @@ function AdminDashboard({
           <span>Administrator</span>
         </div>
 
+
         <nav className="sidebar-navigation">
 
-          {/* Dashboard */}
+          {/* ================= DASHBOARD ================= */}
+
           <button
             className={`sidebar-item ${
               currentPage === "dashboard"
@@ -169,7 +327,9 @@ function AdminDashboard({
             Dashboard
           </button>
 
-          {/* User Accounts */}
+
+          {/* ================= USER ACCOUNTS ================= */}
+
           <button
             className={`sidebar-item ${
               currentPage === "userAccounts"
@@ -184,49 +344,103 @@ function AdminDashboard({
             User accounts
           </button>
 
-          {/* Roles & Permissions */}
+
+          {/* ================= ROLES & PERMISSIONS ================= */}
+
           <button
-            className="sidebar-item"
+            className={`sidebar-item ${
+              currentPage === "rolesPermissions"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setCurrentPage("rolesPermissions")
+            }
           >
             <span>🔐</span>
             Roles & permissions
           </button>
 
-          {/* Document Requests */}
+
+          {/* ================= DOCUMENT REQUESTS ================= */}
+
           <button
-            className="sidebar-item"
+            className={`sidebar-item ${
+              currentPage === "documentRequests"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setCurrentPage("documentRequests")
+            }
           >
             <span>📄</span>
             Document requests
           </button>
 
-          {/* Item Reservations */}
+
+          {/* ================= ITEM RESERVATIONS ================= */}
+
           <button
-            className="sidebar-item"
+            className={`sidebar-item ${
+              currentPage === "itemReservations"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setCurrentPage("itemReservations")
+            }
           >
             <span>📦</span>
             Item reservations
           </button>
 
-          {/* Reports & Analytics */}
+
+          {/* ================= REPORTS & ANALYTICS ================= */}
+
           <button
-            className="sidebar-item"
+            className={`sidebar-item ${
+              currentPage === "reportsAnalytics"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setCurrentPage("reportsAnalytics")
+            }
           >
             <span>📊</span>
             Reports & analytics
           </button>
 
-          {/* Activity Logs */}
+
+          {/* ================= ACTIVITY LOGS ================= */}
+
           <button
-            className="sidebar-item"
+            className={`sidebar-item ${
+              currentPage === "activityLogs"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setCurrentPage("activityLogs")
+            }
           >
             <span>📝</span>
             Activity logs
           </button>
 
-          {/* System Settings */}
+
+          {/* ================= SYSTEM SETTINGS ================= */}
+
           <button
-            className="sidebar-item"
+            className={`sidebar-item ${
+              currentPage === "systemSettings"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setCurrentPage("systemSettings")
+            }
           >
             <span>⚙</span>
             System settings
@@ -236,13 +450,22 @@ function AdminDashboard({
 
       </aside>
 
-      {/* MAIN AREA */}
+
+      {/* =================================================
+          MAIN AREA
+      ================================================= */}
+
       <main className="admin-main">
 
-        {/* HEADER */}
+
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
         <header className="admin-header">
 
           <div>
+
             <h1>
               Administrator Dashboard
             </h1>
@@ -251,7 +474,11 @@ function AdminDashboard({
               Manage CampuServe system data
               and users.
             </p>
+
           </div>
+
+
+          {/* ================= PROFILE ================= */}
 
           <div className="admin-profile-container">
 
@@ -263,6 +490,7 @@ function AdminDashboard({
                 )
               }
             >
+
               <span className="profile-avatar">
                 👤
               </span>
@@ -274,7 +502,11 @@ function AdminDashboard({
               <span>
                 ▾
               </span>
+
             </button>
+
+
+            {/* PROFILE DROPDOWN */}
 
             {showProfile && (
               <div className="profile-panel">
@@ -286,6 +518,7 @@ function AdminDashboard({
                   </div>
 
                   <div>
+
                     <strong>
                       {account.name ||
                         "Administrator"}
@@ -294,43 +527,50 @@ function AdminDashboard({
                     <span>
                       Administrator
                     </span>
+
                   </div>
 
                 </div>
 
+
                 <div className="profile-details">
 
                   <div>
+
                     <small>
                       Email
                     </small>
 
                     <p>
-                      {account.email ||
-                        "—"}
+                      {account.email}
                     </p>
+
                   </div>
 
+
                   <div>
+
                     <small>
                       Role
                     </small>
 
                     <p>
-                      {account.role ||
-                        "—"}
+                      {account.role}
                     </p>
+
                   </div>
 
+
                   <div>
+
                     <small>
                       Status
                     </small>
 
                     <p>
-                      {account.status ||
-                        "—"}
+                      {account.status}
                     </p>
+
                   </div>
 
                 </div>
@@ -342,103 +582,178 @@ function AdminDashboard({
 
         </header>
 
-        {/* CONTENT */}
+
+        {/* =================================================
+            CONTENT
+        ================================================= */}
+
         <div className="admin-content">
+
+
+          {/* =================================================
+              USER ACCOUNTS
+          ================================================= */}
 
           {currentPage === "userAccounts" ? (
 
             <UserAccounts />
 
+
+          /* =================================================
+             ROLES & PERMISSIONS
+          ================================================= */
+
+          ) : currentPage === "rolesPermissions" ? (
+
+            <RolesPermissions />
+
+
+          /* =================================================
+             DOCUMENT REQUESTS
+          ================================================= */
+
+          ) : currentPage === "documentRequests" ? (
+
+            <DocumentRequests />
+
+
+          /* =================================================
+             ITEM RESERVATIONS
+          ================================================= */
+
+          ) : currentPage === "itemReservations" ? (
+
+            <ItemReservations />
+
+
+          /* =================================================
+             REPORTS & ANALYTICS
+          ================================================= */
+
+          ) : currentPage === "reportsAnalytics" ? (
+
+            <ReportsAnalytics />
+
+
+          /* =================================================
+             ACTIVITY LOGS
+          ================================================= */
+
+          ) : currentPage === "activityLogs" ? (
+
+            <ActivityLogs />
+
+
+          /* =================================================
+             SYSTEM SETTINGS
+          ================================================= */
+
+          ) : currentPage === "systemSettings" ? (
+
+            <SystemSettings />
+
+
+          /* =================================================
+             DASHBOARD
+          ================================================= */
+
           ) : (
 
             <>
 
-              {/* DASHBOARD INTRODUCTION */}
+
+              {/* ================= DESCRIPTION ================= */}
+
               <p className="dashboard-description">
-                View and monitor CampuServe
-                system data.
+                View and monitor CampuServe system data.
               </p>
 
 
-              {/* SUMMARY CARDS */}
+              {/* =================================================
+                  SUMMARY CARDS
+              ================================================= */}
+
               <section className="dashboard-summary">
 
-                <div className="dashboard-summary-card">
-                  <span>
-                    Total Students
-                  </span>
+  <div className="dashboard-summary-card">
+    <span>Total Students</span>
 
-                  <strong>
-                    0
-                  </strong>
-                </div>
+    <strong>
+      {statsLoading
+        ? "..."
+        : dashboardStats.totalStudents}
+    </strong>
+  </div>
 
+  <div className="dashboard-summary-card">
+    <span>Pending Requests</span>
 
-                <div className="dashboard-summary-card">
-                  <span>
-                    Pending Requests
-                  </span>
+    <strong>
+      {statsLoading
+        ? "..."
+        : dashboardStats.pendingRequests}
+    </strong>
+  </div>
 
-                  <strong>
-                    0
-                  </strong>
-                </div>
+  <div className="dashboard-summary-card">
+    <span>Active Reservations</span>
 
+    <strong>
+      {statsLoading
+        ? "..."
+        : dashboardStats.activeReservations}
+    </strong>
+  </div>
 
-                <div className="dashboard-summary-card">
-                  <span>
-                    Active Reservations
-                  </span>
+  <div className="dashboard-summary-card">
+    <span>System Alerts</span>
 
-                  <strong>
-                    0
-                  </strong>
-                </div>
+    <strong>
+      {statsLoading
+        ? "..."
+        : dashboardStats.systemAlerts}
+    </strong>
+  </div>
 
-
-                <div className="dashboard-summary-card">
-                  <span>
-                    System Alerts
-                  </span>
-
-                  <strong>
-                    0
-                  </strong>
-                </div>
-
-              </section>
+</section>
 
 
-              {/* RETRIEVE DATA */}
+              {/* =================================================
+                  RETRIEVE SYSTEM DATA
+              ================================================= */}
+
               <section className="retrieve-data-section">
+
 
                 <div className="retrieve-data-header">
 
                   <div>
+
                     <h3>
                       Retrieve System Data
                     </h3>
 
                     <p>
-                      Search and view records
-                      from the CampuServe system.
+                      Search and view records from the CampuServe system.
                     </p>
+
                   </div>
 
                 </div>
 
 
-                {/* SEARCH-STYLE RETRIEVE BAR */}
+                {/* ================= SEARCH BAR ================= */}
+
                 <div className="retrieve-search-bar">
+
 
                   <span className="retrieve-search-icon">
                     🔍
                   </span>
 
+
                   <select
-                    value={
-                      selectedCollection
-                    }
+                    value={selectedCollection}
                     onChange={(event) => {
 
                       setSelectedCollection(
@@ -455,18 +770,17 @@ function AdminDashboard({
                       Select collection...
                     </option>
 
+
                     {collections.map(
                       (collectionName) => (
+
                         <option
-                          key={
-                            collectionName
-                          }
-                          value={
-                            collectionName
-                          }
+                          key={collectionName}
+                          value={collectionName}
                         >
                           {collectionName}
                         </option>
+
                       )
                     )}
 
@@ -482,19 +796,28 @@ function AdminDashboard({
                       !selectedCollection
                     }
                   >
+
                     {loading
                       ? "Loading..."
                       : "Retrieve Data"}
+
                   </button>
+
 
                 </div>
 
 
-                {/* ACCOUNT FILTERS */}
+                {/* =================================================
+                    ACCOUNT FILTERS
+                ================================================= */}
+
                 {selectedCollection ===
                   "accounts" && (
 
                   <div className="account-filter-buttons">
+
+
+                    {/* ACTIVE ACCOUNTS */}
 
                     <button
                       className={
@@ -508,15 +831,15 @@ function AdminDashboard({
                           false
                         );
 
-                        handleRetrieve(
-                          false
-                        );
+                        handleRetrieve(false);
 
                       }}
                     >
                       Active Accounts
                     </button>
 
+
+                    {/* DELETED ACCOUNTS */}
 
                     <button
                       className={
@@ -530,14 +853,13 @@ function AdminDashboard({
                           true
                         );
 
-                        handleRetrieve(
-                          true
-                        );
+                        handleRetrieve(true);
 
                       }}
                     >
                       Deleted Accounts
                     </button>
+
 
                   </div>
 
@@ -546,7 +868,10 @@ function AdminDashboard({
               </section>
 
 
-              {/* ERROR */}
+              {/* =================================================
+                  ERROR MESSAGE
+              ================================================= */}
+
               {error && (
 
                 <div className="retrieve-error">
@@ -562,12 +887,19 @@ function AdminDashboard({
               )}
 
 
-              {/* RETRIEVED RECORDS */}
+              {/* =================================================
+                  RETRIEVED RECORDS
+              ================================================= */}
+
               {records.length > 0 && (
 
                 <section className="retrieved-records-section">
 
+
+                  {/* ================= RECORD HEADER ================= */}
+
                   <div className="retrieved-records-header">
+
 
                     <div>
 
@@ -581,33 +913,41 @@ function AdminDashboard({
                         <strong>
                           {selectedCollection}
                         </strong>
+
                       </p>
 
                     </div>
 
 
                     <span className="records-count">
-                      {records.length}{" "}
-                      {records.length === 1
-                        ? "record"
-                        : "records"}
+
+                      {records.length} records
+
                     </span>
+
 
                   </div>
 
+
+                  {/* ================= TABLE ================= */}
 
                   <div className="retrieved-table-container">
 
                     <table className="retrieved-data-table">
 
+
+                      {/* TABLE HEADER */}
+
                       <thead>
 
                         <tr>
+
 
                           {selectedCollection ===
                           "accounts" ? (
 
                             <>
+
                               <th>
                                 Name
                               </th>
@@ -627,52 +967,54 @@ function AdminDashboard({
                               <th>
                                 Student ID
                               </th>
+
                             </>
 
                           ) : (
 
-                            Object.keys(
-                              records[0]
-                            )
+                            Object.keys(records[0])
+
                               .filter(
                                 (key) =>
-                                  key !==
-                                  "id"
-                              )
-                              .map(
-                                (key) => (
-                                  <th
-                                    key={
-                                      key
-                                    }
-                                  >
-                                    {key}
-                                  </th>
-                                )
+                                  key !== "id"
                               )
 
+                              .map((key) => (
+
+                                <th key={key}>
+                                  {key}
+                                </th>
+
+                              ))
+
                           )}
+
 
                         </tr>
 
                       </thead>
 
 
+                      {/* TABLE BODY */}
+
                       <tbody>
+
 
                         {records.map(
                           (record) => (
 
                             <tr
-                              key={
-                                record.id
-                              }
+                              key={record.id}
                             >
+
+
+                              {/* ================= ACCOUNTS ================= */}
 
                               {selectedCollection ===
                               "accounts" ? (
 
                                 <>
+
 
                                   <td>
                                     {displayValue(
@@ -680,11 +1022,13 @@ function AdminDashboard({
                                     )}
                                   </td>
 
+
                                   <td>
                                     {displayValue(
                                       record.email
                                     )}
                                   </td>
+
 
                                   <td>
                                     {displayValue(
@@ -692,19 +1036,23 @@ function AdminDashboard({
                                     )}
                                   </td>
 
+
                                   <td>
 
                                     <span
-                                      className={`table-status ${
-                                        record.status
-                                      }`}
+                                      className={`table-status ${String(
+                                        record.status || ""
+                                      )}`}
                                     >
+
                                       {displayValue(
                                         record.status
                                       )}
+
                                     </span>
 
                                   </td>
+
 
                                   <td>
                                     {displayValue(
@@ -712,18 +1060,23 @@ function AdminDashboard({
                                     )}
                                   </td>
 
+
                                 </>
+
+
+                              /* ================= OTHER COLLECTIONS ================= */
 
                               ) : (
 
                                 Object.entries(
                                   record
                                 )
+
                                   .filter(
                                     ([key]) =>
-                                      key !==
-                                      "id"
+                                      key !== "id"
                                   )
+
                                   .map(
                                     ([
                                       key,
@@ -731,9 +1084,7 @@ function AdminDashboard({
                                     ]) => (
 
                                       <td
-                                        key={
-                                          key
-                                        }
+                                        key={key}
                                       >
                                         {displayValue(
                                           value
@@ -745,33 +1096,43 @@ function AdminDashboard({
 
                               )}
 
+
                             </tr>
 
                           )
                         )}
 
+
                       </tbody>
+
 
                     </table>
 
                   </div>
+
 
                 </section>
 
               )}
 
 
-              {/* NO RESULTS */}
+              {/* =================================================
+                  NO RESULTS
+              ================================================= */}
+
               {selectedCollection &&
                 records.length === 0 &&
                 !loading &&
                 !error && (
 
                   <div className="no-records-message">
+
                     No records found.
+
                   </div>
 
                 )}
+
 
             </>
 
