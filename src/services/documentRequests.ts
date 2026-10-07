@@ -34,9 +34,12 @@ interface DocumentDetailInput {
   subtotal: number | null;
 }
 
-interface GroupMemberInput {
+export interface GroupMemberInput {
   student_id: string;
-  invitation_status: "PENDING" | "ACCEPTED" | "DECLINED";
+  invitation_status:
+    | "PENDING"
+    | "ACCEPTED"
+    | "DECLINED";
 }
 
 /*
@@ -53,6 +56,12 @@ export interface AvailableClaimingSchedule {
    REQUEST ID
 ========================================================= */
 
+/*
+ * Generates a unique document request ID.
+ *
+ * Example:
+ * DR-A8K29F
+ */
 export function generateRequestId(): string {
   const random = Math.random()
     .toString(36)
@@ -63,9 +72,169 @@ export function generateRequestId(): string {
 }
 
 /* =========================================================
+   CREATE DRAFT GROUP DOCUMENT REQUEST
+========================================================= */
+
+/*
+ * A group request needs a request_id BEFORE the host
+ * finishes the document request.
+ *
+ * This is because the invitation is sent immediately
+ * after the host adds a student.
+ *
+ * Workflow:
+ *
+ * Host enters Student ID
+ *       ↓
+ * Student found
+ *       ↓
+ * Create DRAFT request
+ *       ↓
+ * Create group member
+ *       ↓
+ * Send Gmail invitation
+ *       ↓
+ * Student responds
+ *       ↓
+ * Host continues request
+ *
+ * The request remains DRAFT while the host waits
+ * for the invited student's response.
+ */
+export async function createDraftGroupDocumentRequest(
+  student_id: string
+): Promise<string> {
+  const request_id = generateRequestId();
+
+  const requestData = {
+    request_id,
+
+    /*
+     * The student who created the group request.
+     */
+    student_id,
+
+    /*
+     * This is specifically a group request.
+     */
+    request_method: "WITH_OTHERS",
+
+    /*
+     * These fields will be completed later
+     * when the host finishes the request wizard.
+     */
+    purpose: "",
+
+    number_of_copies: 0,
+
+    total_amount: 0,
+
+    requested_date: "",
+
+    requested_time: "",
+
+    /*
+     * Creation timestamp.
+     */
+    created_at: serverTimestamp(),
+
+    /*
+     * IMPORTANT:
+     * The request is not yet an actual submitted
+     * document request.
+     */
+    status: "DRAFT",
+
+    /*
+     * Generated later by the office/admin side.
+     */
+    claim_code: null,
+  };
+
+  await setDoc(
+    doc(
+      db,
+      "document_requests",
+      request_id
+    ),
+    requestData
+  );
+
+  return request_id;
+}
+
+/* =========================================================
+   FINALIZE DRAFT GROUP DOCUMENT REQUEST
+========================================================= */
+
+/*
+ * Once all invited students have responded and the
+ * host confirms the group request, the DRAFT request
+ * becomes a normal PENDING request.
+ *
+ * This avoids creating a second request_id.
+ */
+export async function finalizeDraftGroupDocumentRequest(
+  request_id: string,
+  input: {
+    purpose: string;
+    requested_date: string;
+    requested_time: string;
+    number_of_copies: number;
+    total_amount: number;
+  }
+): Promise<void> {
+  const requestRef = doc(
+    db,
+    "document_requests",
+    request_id
+  );
+
+  await updateDoc(
+    requestRef,
+    {
+      purpose:
+        input.purpose,
+
+      requested_date:
+        input.requested_date,
+
+      requested_time:
+        input.requested_time,
+
+      number_of_copies:
+        input.number_of_copies,
+
+      total_amount:
+        input.total_amount,
+
+      /*
+       * The group request is now officially
+       * submitted.
+       */
+      status: "PENDING",
+
+      finalized_at:
+        serverTimestamp(),
+    }
+  );
+}
+
+/* =========================================================
    CREATE DOCUMENT REQUEST
 ========================================================= */
 
+/*
+ * Used for normal / OWN requests.
+ *
+ * Group requests should use:
+ *
+ * createDraftGroupDocumentRequest()
+ *
+ * followed later by:
+ *
+ * finalizeDraftGroupDocumentRequest()
+ */
 export async function createDocumentRequest(
   input: CreateDocumentRequestInput
 ): Promise<string> {
@@ -73,11 +242,15 @@ export async function createDocumentRequest(
 
   const requestData = {
     request_id,
-    student_id: input.student_id,
 
-    request_method: input.request_method,
+    student_id:
+      input.student_id,
 
-    purpose: input.purpose,
+    request_method:
+      input.request_method,
+
+    purpose:
+      input.purpose,
 
     number_of_copies:
       input.number_of_copies,
@@ -94,11 +267,15 @@ export async function createDocumentRequest(
     created_at:
       serverTimestamp(),
 
-    // Initial status of every new request.
+    /*
+     * Normal submitted requests start as PENDING.
+     */
     status: "PENDING",
 
-    // Claim code is generated later
-    // by the office/admin side.
+    /*
+     * Claim code is generated later
+     * by the office/admin side.
+     */
     claim_code: null,
   };
 
@@ -157,36 +334,167 @@ export async function createDocumentDetails(
 }
 
 /* =========================================================
+   CREATE GROUP MEMBER
+========================================================= */
+
+/*
+ * Creates ONE group member.
+ *
+ * This is useful when the host enters a Student ID.
+ *
+ * The invitation_status initially starts as PENDING.
+ *
+ * The actual Gmail invitation will be handled by
+ * the secure backend / Resend integration.
+ */
+export async function createGroupMember(
+  request_id: string,
+  student_id: string
+): Promise<string> {
+  const member_id = crypto.randomUUID();
+
+  const invitation_token = crypto.randomUUID();
+
+  await setDoc(
+    doc(db, "group_request_members", member_id),
+    {
+      member_id,
+      request_id,
+      student_id,
+
+      invitation_status: "PENDING",
+
+      invitation_token,
+
+      invitation_sent: false,
+
+      invited_at: serverTimestamp(),
+      responded_at: null,
+      last_resend_at: null,
+    }
+  );
+
+  return member_id;
+}
+
+/* =========================================================
    CREATE GROUP MEMBERS
 ========================================================= */
 
+/*
+ * Kept for compatibility with the existing
+ * DocumentRequestWizard.
+ *
+ * New group-request flow should preferably use
+ * createGroupMember() because invitations are
+ * now created one student at a time.
+ */
 export async function createGroupMembers(
   request_id: string,
   members: GroupMemberInput[]
 ): Promise<void> {
   for (const member of members) {
-    const member_id =
-      crypto.randomUUID();
-
-    await setDoc(
-      doc(
-        db,
-        "group_request_members",
-        member_id
-      ),
-      {
-        member_id,
-
-        request_id,
-
-        student_id:
-          member.student_id,
-
-        invitation_status:
-          member.invitation_status,
-      }
+    await createGroupMember(
+      request_id,
+      member.student_id
     );
   }
+}
+
+/* =========================================================
+   SUBSCRIBE TO GROUP REQUEST MEMBERS
+========================================================= */
+
+/*
+ * Watches all participants belonging to a group request.
+ *
+ * This is what will allow the HOST UI to automatically
+ * update:
+ *
+ * PENDING
+ *    ↓
+ * ACCEPTED
+ *
+ * or:
+ *
+ * PENDING
+ *    ↓
+ * DECLINED
+ *
+ * without refreshing the page.
+ */
+export function subscribeToGroupRequestMembers(
+  request_id: string,
+  callback: (
+    data: Record<string, unknown>[]
+  ) => void
+): () => void {
+  const membersQuery =
+    query(
+      collection(
+        db,
+        "group_request_members"
+      ),
+      where(
+        "request_id",
+        "==",
+        request_id
+      )
+    );
+
+  return onSnapshot(
+    membersQuery,
+    (snapshot) => {
+      const members =
+        snapshot.docs.map(
+          (item) => ({
+            ...item.data(),
+          })
+        );
+
+      callback(members);
+    }
+  );
+}
+
+/* =========================================================
+   UPDATE GROUP MEMBER INVITATION STATUS
+========================================================= */
+
+/*
+ * This function will be used by the secure
+ * Gmail Accept / Decline endpoint later.
+ *
+ * Example:
+ *
+ * PENDING → ACCEPTED
+ *
+ * or:
+ *
+ * PENDING → DECLINED
+ */
+export async function updateGroupMemberInvitationStatus(
+  member_id: string,
+  invitation_status:
+    | "PENDING"
+    | "ACCEPTED"
+    | "DECLINED"
+): Promise<void> {
+  const memberRef = doc(
+    db,
+    "group_request_members",
+    member_id
+  );
+
+  await updateDoc(
+    memberRef,
+    {
+      invitation_status,
+
+      responded_at:
+        serverTimestamp(),
+    }
+  );
 }
 
 /* =========================================================
@@ -199,11 +507,12 @@ export function subscribeToDocumentRequest(
     data: Record<string, unknown> | null
   ) => void
 ): () => void {
-  const requestRef = doc(
-    db,
-    "document_requests",
-    request_id
-  );
+  const requestRef =
+    doc(
+      db,
+      "document_requests",
+      request_id
+    );
 
   return onSnapshot(
     requestRef,
@@ -229,17 +538,18 @@ export function subscribeToStudentDocumentRequests(
     data: Record<string, unknown>[]
   ) => void
 ): () => void {
-  const requestsQuery = query(
-    collection(
-      db,
-      "document_requests"
-    ),
-    where(
-      "student_id",
-      "==",
-      student_id
-    )
-  );
+  const requestsQuery =
+    query(
+      collection(
+        db,
+        "document_requests"
+      ),
+      where(
+        "student_id",
+        "==",
+        student_id
+      )
+    );
 
   return onSnapshot(
     requestsQuery,
@@ -266,17 +576,18 @@ export function subscribeToDocumentRequestDetails(
     data: Record<string, unknown>[]
   ) => void
 ): () => void {
-  const detailsQuery = query(
-    collection(
-      db,
-      "document_request_details"
-    ),
-    where(
-      "request_id",
-      "==",
-      request_id
-    )
-  );
+  const detailsQuery =
+    query(
+      collection(
+        db,
+        "document_request_details"
+      ),
+      where(
+        "request_id",
+        "==",
+        request_id
+      )
+    );
 
   return onSnapshot(
     detailsQuery,
@@ -304,11 +615,12 @@ export function subscribeToDocumentRequestDetails(
 export async function cancelDocumentRequest(
   request_id: string
 ): Promise<void> {
-  const requestRef = doc(
-    db,
-    "document_requests",
-    request_id
-  );
+  const requestRef =
+    doc(
+      db,
+      "document_requests",
+      request_id
+    );
 
   await updateDoc(
     requestRef,
@@ -335,15 +647,19 @@ export async function cancelDocumentRequest(
 export async function getAvailableClaimingSchedules(): Promise<
   AvailableClaimingSchedule[]
 > {
-  const schedulesSnapshot = await getDocs(
-    collection(
-      db,
-      "claimingSchedules"
-    )
-  );
+  const schedulesSnapshot =
+    await getDocs(
+      collection(
+        db,
+        "claimingSchedules"
+      )
+    );
 
-  // Today
-  const today = new Date();
+  /*
+   * Today
+   */
+  const today =
+    new Date();
 
   today.setHours(
     0,
@@ -352,11 +668,12 @@ export async function getAvailableClaimingSchedules(): Promise<
     0
   );
 
-  // Maximum rescheduling date:
-  // 14 days from today
-  const maximumDate = new Date(
-    today
-  );
+  /*
+   * Maximum rescheduling date:
+   * 14 days from today.
+   */
+  const maximumDate =
+    new Date(today);
 
   maximumDate.setDate(
     maximumDate.getDate() + 14
@@ -369,7 +686,8 @@ export async function getAvailableClaimingSchedules(): Promise<
           scheduleDoc.data();
 
         return {
-          id: scheduleDoc.id,
+          id:
+            scheduleDoc.id,
 
           claimDate:
             data.claimDate ?? "",
@@ -398,9 +716,9 @@ export async function getAvailableClaimingSchedules(): Promise<
         }
 
         /*
-         * Convert Firebase date:
+         * Convert:
          *
-         * "2026-10-05"
+         * 2026-10-05
          *
          * into a JavaScript Date.
          */
@@ -461,7 +779,6 @@ export async function rescheduleDocumentRequest(
   newTime: string,
   currentStatus: string
 ): Promise<void> {
-
   /*
    * Only PENDING and APPROVED requests
    * may be rescheduled.
@@ -475,20 +792,19 @@ export async function rescheduleDocumentRequest(
     );
   }
 
-  const requestRef = doc(
-    db,
-    "document_requests",
-    request_id
-  );
+  const requestRef =
+    doc(
+      db,
+      "document_requests",
+      request_id
+    );
 
   /*
    * Determine the new status.
    *
-   * PENDING stays PENDING because
-   * the Registrar has not approved it yet.
+   * PENDING stays PENDING.
    *
-   * APPROVED becomes RESCHEDULED because
-   * an already-approved schedule was changed.
+   * APPROVED becomes RESCHEDULED.
    */
   const newStatus =
     currentStatus === "APPROVED"
@@ -499,16 +815,13 @@ export async function rescheduleDocumentRequest(
     requestRef,
     {
       /*
-       * Preserve the current status
-       * according to the workflow above.
+       * Preserve the current workflow status.
        */
-      status: newStatus,
+      status:
+        newStatus,
 
       /*
        * Preserve the original schedule.
-       *
-       * This is the schedule that existed
-       * immediately before this reschedule.
        */
       original_requested_date:
         originalDate,
@@ -528,7 +841,7 @@ export async function rescheduleDocumentRequest(
       /*
        * Update the main schedule fields.
        *
-       * These always represent the student's
+       * These represent the student's
        * current claiming schedule.
        */
       requested_date:
@@ -540,7 +853,8 @@ export async function rescheduleDocumentRequest(
       /*
        * First rescheduling attempt.
        */
-      reschedule_count: 1,
+      reschedule_count:
+        1,
 
       /*
        * Timestamp of the reschedule.

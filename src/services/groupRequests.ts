@@ -14,6 +14,42 @@ import { millis, normalizeStatus } from "../utils/format";
 import { notify, studentAudience } from "./notifications";
 import { lookupStudent } from "./messages";
 
+export interface GroupStudent {
+  studentId: string;
+  name: string;
+  email: string;
+}
+
+export async function lookupGroupStudent(
+  studentId: string
+): Promise<GroupStudent | null> {
+  const id = studentId.trim();
+
+  if (!id) {
+    return null;
+  }
+
+  const snap = await getDocs(
+    query(
+      collection(db, "accounts"),
+      where("student_id", "==", id)
+    )
+  );
+
+  if (snap.empty) {
+    return null;
+  }
+
+  const data = snap.docs[0].data();
+
+  return {
+    studentId: id,
+    name: String(data.name ?? id),
+    email: String(data.email ?? ""),
+  };
+}
+
+
 /* Group document requests: a student adds classmates to a request,
    and each classmate accepts or declines from their Messages > Group Request inbox. */
 
