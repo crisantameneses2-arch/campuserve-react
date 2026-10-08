@@ -7,7 +7,6 @@ import {
 } from "react-router-dom";
 
 import ClaimStub from "./pages/student/ClaimStub";
-import DocumentRequestList from "./pages/student/DocumentRequestList";
 
 import "./App.css";
 
@@ -1354,21 +1353,11 @@ function App() {
         <Route
           path="/student/requests"
           element={
-            account.role ===
-                "student" ||
-            account.role ===
-                "alumni" ? (
-              <DocumentRequestList
-                studentId={
-                  account.student_id ||
-                  ""
-                }
-              />
+            account.role === "student" ||
+            account.role === "alumni" ? (
+              <Navigate to="/student" replace />
             ) : (
-              <Navigate
-                to="/student"
-                replace
-              />
+              <Navigate to="/student" replace />
             )
           }
         />

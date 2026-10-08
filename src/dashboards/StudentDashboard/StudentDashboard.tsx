@@ -12,8 +12,11 @@ import { db } from "../../../firebase";
 import ItemStocks from "../../pages/student/ItemStocks";
 import ItemReservation from "../../pages/student/ItemReservation";
 import DocumentRequestWizard from "../../pages/student/DocumentRequestWizard";
-import DocumentRequestList from "../../pages/student/DocumentRequestList";
 import ClaimStubPage from "../../pages/student/ClaimStubPage";
+import {
+  HistoryTransactions,
+  MyRequests,
+} from "../../pages/student/StudentTransactionPages";
 
 import { useNotifications } from "../../hooks/useNotifications";
 import {
@@ -52,7 +55,7 @@ type DashboardPage =
   | "transactions"
   | "notifications";
 
-type StudentTransaction = {
+export type StudentTransaction = {
   key: string;
   id: string;
   kind: "DOCUMENT" | "ITEM";
@@ -209,17 +212,15 @@ export default function StudentDashboard({
                 data.reservationId || document.id
               ),
               kind: "ITEM",
-              title: String(
-                data.itemName || "Item Reservation"
-              ),
+              title: getItemReservationTitle(data),
               status: String(
                 data.status || "PENDING"
               ),
               date: String(
-                data.requestedDate || ""
+                data.pickupDate || data.requestedDate || ""
               ),
               time: String(
-                data.requestedTime || ""
+                data.pickupTime || data.requestedTime || ""
               ),
               createdAt: data.createdAt,
             };
@@ -512,8 +513,9 @@ export default function StudentDashboard({
           )}
 
           {activePage === "requests" && (
-            <DocumentRequestList
-              studentId={studentId}
+            <MyRequests
+              transactions={transactions}
+              loading={transactionsLoading}
             />
           )}
 
@@ -538,7 +540,7 @@ export default function StudentDashboard({
 
           {activePage ===
             "transactions" && (
-            <TransactionHistory
+            <HistoryTransactions
               transactions={transactions}
               loading={transactionsLoading}
             />
@@ -1199,7 +1201,18 @@ function DashboardHeader({
               )
             }
           >
-            Transaction History
+            My Requests
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              onNavigate(
+                "transactions"
+              )
+            }
+          >
+            History Transactions
           </button>
 
           <button
@@ -1470,50 +1483,6 @@ function TransactionRow({
   );
 }
 
-/* -------------------------------------------
-   TRANSACTION HISTORY
-------------------------------------------- */
-
-function TransactionHistory({
-  transactions,
-  loading,
-}: {
-  transactions: StudentTransaction[];
-  loading: boolean;
-}) {
-  return (
-    <section className="page-card">
-      <PageHeading
-        eyebrow="TRANSACTIONS"
-        title="Transaction History"
-        text="Every document request and item reservation."
-      />
-
-      {loading ? (
-        <DashboardLoading />
-      ) : transactions.length === 0 ? (
-        <EmptyWidget
-          icon="clock"
-          title="No transactions yet"
-          text="Your requests and reservations will appear here."
-        />
-      ) : (
-        <div className="recent-transaction-list">
-          {transactions.map(
-            (transaction) => (
-              <TransactionRow
-                key={transaction.key}
-                transaction={
-                  transaction
-                }
-              />
-            )
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
 
 /* -------------------------------------------
    NOTIFICATION PAGE
@@ -1710,6 +1679,22 @@ function StatusBadge({
 /* -------------------------------------------
    HELPERS
 ------------------------------------------- */
+
+function getItemReservationTitle(data: Record<string, any>) {
+  const items = Array.isArray(data.items) ? data.items : [];
+
+  if (items.length === 0) {
+    return String(data.itemName || "Item Reservation");
+  }
+
+  const firstName = String(items[0]?.itemName || "Item Reservation");
+
+  if (items.length === 1) {
+    return firstName;
+  }
+
+  return `${firstName} + ${items.length - 1} more`;
+}
 
 function getKindLabel(
   kind: StudentTransaction["kind"]
