@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyA0u3y0y3DCGxwDEDmVxOFjwxhuTFcf8LE",
   authDomain: "campuserve-react.firebaseapp.com",
   projectId: "campuserve-react",

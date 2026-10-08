@@ -10,7 +10,21 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import { db } from "../../../firebase";
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  signOut,
+} from "firebase/auth";
+
+import {
+  initializeApp,
+  deleteApp,
+} from "firebase/app";
+
+import {
+  db,
+  firebaseConfig,
+} from "../../../firebase";
 
 type Account = {
   id: string;
@@ -22,13 +36,11 @@ type Account = {
   firebaseUid?: string;
 };
 
-
 // ========================================
 // COMPONENT
 // ========================================
 
 function UserAccounts() {
-
   // ========================================
   // CREATE ACCOUNT STATE
   // ========================================
@@ -42,6 +54,9 @@ function UserAccounts() {
   const [createEmail, setCreateEmail] =
     useState("");
 
+  const [createPassword, setCreatePassword] =
+    useState("");
+
   const [createRole, setCreateRole] =
     useState("student");
 
@@ -52,7 +67,7 @@ function UserAccounts() {
     useState("");
 
   const [showCreateForm, setShowCreateForm] =
-  useState(false);
+    useState(false);
 
   // ========================================
   // ACCOUNT DATA STATE
@@ -67,7 +82,6 @@ function UserAccounts() {
   const [error, setError] =
     useState("");
 
-
   // ========================================
   // SEARCH STATE
   // ========================================
@@ -80,7 +94,6 @@ function UserAccounts() {
 
   const [showDeletedAccounts, setShowDeletedAccounts] =
     useState(false);
-
 
   // ========================================
   // EDIT ACCOUNT STATE
@@ -107,18 +120,15 @@ function UserAccounts() {
   const [editMessage, setEditMessage] =
     useState("");
 
-
   // ========================================
   // RETRIEVE ACCOUNTS
   // ========================================
 
   const retrieveAccounts = async () => {
-
     setLoading(true);
     setError("");
 
     try {
-
       const snapshot = await getDocs(
         collection(db, "accounts")
       );
@@ -130,9 +140,7 @@ function UserAccounts() {
         }));
 
       setAccounts(accountData);
-
     } catch (error) {
-
       console.error(
         "Error retrieving accounts:",
         error
@@ -141,21 +149,16 @@ function UserAccounts() {
       setError(
         "Failed to retrieve accounts from Firestore."
       );
-
     } finally {
-
       setLoading(false);
-
     }
   };
-
 
   // ========================================
   // CREATE ACCOUNT
   // ========================================
 
   const handleCreateAccount = async () => {
-
     setCreateMessage("");
     setError("");
 
@@ -168,58 +171,99 @@ function UserAccounts() {
     const normalizedStudentId =
       createStudentId.trim();
 
+    const normalizedPassword =
+      createPassword;
 
+    // Validate name
     if (!normalizedName) {
-
       setCreateMessage(
         "Please enter a name."
       );
-
       return;
     }
 
-
+    // Validate email
     if (!normalizedEmail) {
-
       setCreateMessage(
         "Please enter an email."
       );
-
       return;
     }
 
+    // Validate password
+    if (!normalizedPassword) {
+      setCreateMessage(
+        "Please enter a password."
+      );
+      return;
+    }
 
+    if (normalizedPassword.length < 6) {
+      setCreateMessage(
+        "Password must be at least 6 characters."
+      );
+      return;
+    }
+
+    // Validate student ID
     if (
       createRole === "student" &&
       !normalizedStudentId
     ) {
-
       setCreateMessage(
         "Student accounts require a student ID."
       );
-
       return;
     }
 
+    let secondaryApp;
 
     try {
+      /*
+       * Create a SECONDARY Firebase app.
+       *
+       * This prevents the Admin's current
+       * Firebase Authentication session from
+       * being replaced by the new user's account.
+       */
+      secondaryApp = initializeApp(
+        firebaseConfig,
+        `AccountCreationApp-${Date.now()}`
+      );
 
+      const secondaryAuth =
+        getAuth(secondaryApp);
+
+      /*
+       * Create the user's Firebase
+       * Authentication account.
+       */
+      const userCredential =
+        await createUserWithEmailAndPassword(
+          secondaryAuth,
+          normalizedEmail,
+          normalizedPassword
+        );
+
+      const firebaseUser =
+        userCredential.user;
+
+      /*
+       * Create the matching Firestore
+       * account document.
+       */
       const accountRef = doc(
         db,
         "accounts",
         normalizedEmail
       );
 
-
       await setDoc(accountRef, {
-
         name: normalizedName,
-
         email: normalizedEmail,
-
         role: createRole,
-
         status: createStatus,
+        firebaseUid: firebaseUser.uid,
 
         ...(createRole === "student"
           ? {
@@ -227,41 +271,77 @@ function UserAccounts() {
                 normalizedStudentId,
             }
           : {}),
-
       });
 
+      /*
+       * Sign out the temporary authentication
+       * session.
+       */
+      await signOut(secondaryAuth);
 
       setCreateMessage(
-        "Account pre-registered successfully."
+        "Account created successfully. The user can now log in using the email and password."
       );
 
-
+      // Clear form
       setCreateStudentId("");
-
       setCreateName("");
-
       setCreateEmail("");
-
+      setCreatePassword("");
       setCreateRole("student");
-
       setCreateStatus("active");
 
-
+      // Refresh account list
       await retrieveAccounts();
-
-    } catch (error) {
-
+    } catch (error: any) {
       console.error(
         "Error creating account:",
         error
       );
 
-      setCreateMessage(
-        "Failed to create account."
-      );
+      if (
+        error?.code ===
+        "auth/email-already-in-use"
+      ) {
+        setCreateMessage(
+          "This email already has a Firebase Authentication account."
+        );
+      } else if (
+        error?.code ===
+        "auth/invalid-email"
+      ) {
+        setCreateMessage(
+          "Please enter a valid email address."
+        );
+      } else if (
+        error?.code ===
+        "auth/weak-password"
+      ) {
+        setCreateMessage(
+          "Password is too weak. Please use at least 6 characters."
+        );
+      } else {
+        setCreateMessage(
+          "Failed to create account."
+        );
+      }
+    } finally {
+      /*
+       * Always clean up the temporary Firebase
+       * application.
+       */
+      if (secondaryApp) {
+        try {
+          await deleteApp(secondaryApp);
+        } catch (cleanupError) {
+          console.error(
+            "Error cleaning up secondary Firebase app:",
+            cleanupError
+          );
+        }
+      }
     }
   };
-
 
   // ========================================
   // START EDITING ACCOUNT
@@ -270,7 +350,6 @@ function UserAccounts() {
   const handleEditAccount = (
     account: Account
   ) => {
-
     setEditingAccount(account);
 
     setEditStudentId(
@@ -294,47 +373,34 @@ function UserAccounts() {
     );
 
     setEditMessage("");
-
   };
-
 
   // ========================================
   // CANCEL EDIT
   // ========================================
 
   const handleCancelEdit = () => {
-
     setEditingAccount(null);
 
     setEditStudentId("");
-
     setEditName("");
-
     setEditEmail("");
-
     setEditRole("student");
-
     setEditStatus("active");
-
     setEditMessage("");
-
   };
-
 
   // ========================================
   // UPDATE ACCOUNT
   // ========================================
 
   const handleUpdateAccount = async () => {
-
     if (!editingAccount) {
       return;
     }
 
-
     setEditMessage("");
     setError("");
-
 
     const normalizedName =
       editName.trim();
@@ -345,71 +411,54 @@ function UserAccounts() {
     const normalizedStudentId =
       editStudentId.trim();
 
-
     if (!normalizedName) {
-
       setEditMessage(
         "Please enter a name."
       );
-
       return;
     }
 
-
     if (!normalizedEmail) {
-
       setEditMessage(
         "Please enter an email."
       );
-
       return;
     }
-
 
     if (
       editRole === "student" &&
       !normalizedStudentId
     ) {
-
       setEditMessage(
         "Student accounts require a student ID."
       );
-
       return;
     }
 
-
     try {
-
       const oldDocumentId =
         editingAccount.id;
 
-
-      // If the email has NOT changed,
-      // simply update the existing document.
-
+      /*
+       * If the email has NOT changed,
+       * simply update the existing document.
+       */
       if (
         normalizedEmail ===
         oldDocumentId
       ) {
-
         const accountRef = doc(
           db,
           "accounts",
           oldDocumentId
         );
 
-
         await updateDoc(
           accountRef,
           {
-
             name: normalizedName,
-
             email: normalizedEmail,
-
             role: editRole,
-
             status: editStatus,
 
             ...(editRole === "student"
@@ -420,32 +469,29 @@ function UserAccounts() {
               : {
                   student_id: "",
                 }),
-
           }
         );
-
       } else {
-
-        // If the email changed, create the
-        // new document first.
-
+        /*
+         * If the email changed, create the
+         * new Firestore document first.
+         *
+         * NOTE:
+         * This does NOT change the Firebase
+         * Authentication email.
+         */
         const newAccountRef = doc(
           db,
           "accounts",
           normalizedEmail
         );
 
-
         await setDoc(
           newAccountRef,
           {
-
             name: normalizedName,
-
             email: normalizedEmail,
-
             role: editRole,
-
             status: editStatus,
 
             ...(editRole === "student"
@@ -461,20 +507,19 @@ function UserAccounts() {
                     editingAccount.firebaseUid,
                 }
               : {}),
-
           }
         );
 
-
-        // Delete the old document by
-        // marking it deleted.
-
+        /*
+         * Mark the old Firestore document
+         * as deleted instead of permanently
+         * removing it.
+         */
         const oldAccountRef = doc(
           db,
           "accounts",
           oldDocumentId
         );
-
 
         await updateDoc(
           oldAccountRef,
@@ -482,21 +527,16 @@ function UserAccounts() {
             status: "deleted",
           }
         );
-
       }
-
 
       setEditMessage(
         "Account updated successfully."
       );
 
-
       setEditingAccount(null);
 
       await retrieveAccounts();
-
     } catch (error) {
-
       console.error(
         "Error updating account:",
         error
@@ -505,11 +545,8 @@ function UserAccounts() {
       setEditMessage(
         "Failed to update account."
       );
-
     }
-
   };
-
 
   // ========================================
   // DELETE ACCOUNT
@@ -518,7 +555,6 @@ function UserAccounts() {
   const handleDeleteAccount = async (
     account: Account
   ) => {
-
     const confirmed =
       window.confirm(
         `Are you sure you want to delete the account for ${
@@ -526,20 +562,16 @@ function UserAccounts() {
         }?`
       );
 
-
     if (!confirmed) {
       return;
     }
 
-
     try {
-
       const accountRef = doc(
         db,
         "accounts",
         account.id
       );
-
 
       await updateDoc(
         accountRef,
@@ -548,11 +580,8 @@ function UserAccounts() {
         }
       );
 
-
       await retrieveAccounts();
-
     } catch (error) {
-
       console.error(
         "Error deleting account:",
         error
@@ -564,7 +593,6 @@ function UserAccounts() {
     }
   };
 
-
   // ========================================
   // RESTORE ACCOUNT
   // ========================================
@@ -572,15 +600,12 @@ function UserAccounts() {
   const handleRestoreAccount = async (
     account: Account
   ) => {
-
     try {
-
       const accountRef = doc(
         db,
         "accounts",
         account.id
       );
-
 
       await updateDoc(
         accountRef,
@@ -589,11 +614,8 @@ function UserAccounts() {
         }
       );
 
-
       await retrieveAccounts();
-
     } catch (error) {
-
       console.error(
         "Error restoring account:",
         error
@@ -605,29 +627,22 @@ function UserAccounts() {
     }
   };
 
-
   // ========================================
   // LOAD ACCOUNTS WHEN PAGE OPENS
   // ========================================
 
   useEffect(() => {
-
     retrieveAccounts();
-
   }, []);
-
 
   // ========================================
   // FILTER ACCOUNTS
   // ========================================
 
   const displayedAccounts = useMemo(() => {
-
     let filteredAccounts = accounts;
 
-
     if (!showDeletedAccounts) {
-
       filteredAccounts =
         filteredAccounts.filter(
           (account) =>
@@ -635,22 +650,18 @@ function UserAccounts() {
         );
     }
 
-
     if (
       hasSearched &&
       searchTerm.trim() !== ""
     ) {
-
       const search =
         searchTerm
           .trim()
           .toLowerCase();
 
-
       filteredAccounts =
         filteredAccounts.filter(
           (account) =>
-
             (account.name || "")
               .toLowerCase()
               .includes(search) ||
@@ -669,9 +680,7 @@ function UserAccounts() {
         );
     }
 
-
     return filteredAccounts;
-
   }, [
     accounts,
     searchTerm,
@@ -679,95 +688,71 @@ function UserAccounts() {
     showDeletedAccounts,
   ]);
 
-
   // ========================================
   // SUMMARY COUNTS
   // ========================================
 
   const totalAccounts = useMemo(() => {
-
     return accounts.filter(
       (account) =>
         account.status !== "deleted"
     ).length;
-
   }, [accounts]);
 
-
   const studentCount = useMemo(() => {
-
     return accounts.filter(
       (account) =>
         account.status !== "deleted" &&
         account.role === "student"
     ).length;
-
   }, [accounts]);
 
-
   const generalOfficeCount = useMemo(() => {
-
     return accounts.filter(
       (account) =>
         account.status !== "deleted" &&
         account.role === "general_office"
     ).length;
-
   }, [accounts]);
 
-
   const registrarCount = useMemo(() => {
-
     return accounts.filter(
       (account) =>
         account.status !== "deleted" &&
         account.role === "registrar"
     ).length;
-
   }, [accounts]);
 
-
   const adminCount = useMemo(() => {
-
     return accounts.filter(
       (account) =>
         account.status !== "deleted" &&
         account.role === "admin"
     ).length;
-
   }, [accounts]);
-
 
   // ========================================
   // SEARCH
   // ========================================
 
   const handleSearch = () => {
-
     setHasSearched(true);
-
   };
-
 
   // ========================================
   // SHOW ALL
   // ========================================
 
   const handleShowAll = () => {
-
     setSearchTerm("");
-
     setHasSearched(false);
-
   };
-
 
   // ========================================
   // PAGE
   // ========================================
 
   return (
-
     <div className="user-accounts-page">
 
       {/* ========================================
@@ -775,9 +760,7 @@ function UserAccounts() {
       ======================================== */}
 
       <div className="user-accounts-header">
-
         <div>
-
           <h2>
             User Accounts
           </h2>
@@ -786,9 +769,7 @@ function UserAccounts() {
             Manage registered students,
             staff, and administrators.
           </p>
-
         </div>
-
 
         <button
           className="refresh-accounts-button"
@@ -796,9 +777,7 @@ function UserAccounts() {
         >
           ↻ Refresh
         </button>
-
       </div>
-
 
       {/* ========================================
           SUMMARY
@@ -807,7 +786,6 @@ function UserAccounts() {
       <div className="account-summary">
 
         <div className="account-summary-card">
-
           <span>
             Total Accounts
           </span>
@@ -815,12 +793,9 @@ function UserAccounts() {
           <strong>
             {totalAccounts}
           </strong>
-
         </div>
 
-
         <div className="account-summary-card">
-
           <span>
             Students
           </span>
@@ -828,12 +803,9 @@ function UserAccounts() {
           <strong>
             {studentCount}
           </strong>
-
         </div>
 
-
         <div className="account-summary-card">
-
           <span>
             General Office
           </span>
@@ -841,12 +813,9 @@ function UserAccounts() {
           <strong>
             {generalOfficeCount}
           </strong>
-
         </div>
 
-
         <div className="account-summary-card">
-
           <span>
             Registrar
           </span>
@@ -854,12 +823,9 @@ function UserAccounts() {
           <strong>
             {registrarCount}
           </strong>
-
         </div>
 
-
         <div className="account-summary-card">
-
           <span>
             Administrators
           </span>
@@ -867,237 +833,243 @@ function UserAccounts() {
           <strong>
             {adminCount}
           </strong>
-
         </div>
 
       </div>
-
 
       {/* ========================================
           CREATE ACCOUNT
       ======================================== */}
 
-<div className="create-account-button-wrapper">
+      <div className="create-account-button-wrapper">
 
-  <button
-    className="show-create-account-button"
-    onClick={() =>
-      setShowCreateForm(true)
-    }
-  >
-    + Create Account
-  </button>
+        <button
+          className="show-create-account-button"
+          onClick={() =>
+            setShowCreateForm(true)
+          }
+        >
+          + Create Account
+        </button>
 
-</div>
+      </div>
 
+      {showCreateForm && (
+        <div className="create-account-section">
 
-{showCreateForm && (
-  <div className="create-account-section">
+          <div className="create-account-header">
 
-        <div className="create-account-header">
+            <h3>
+              Create Account
+            </h3>
 
-          <h3>
-            Create Account
-          </h3>
+            <p>
+              Create a Firebase Authentication
+              account and register the user
+              in CampuServe.
+            </p>
 
-          <p>
-            Pre-register a user before they
-            sign in to CampuServe.
-          </p>
+          </div>
+
+          <div className="create-account-form">
+
+            {/* NAME */}
+
+            <div className="create-account-field">
+
+              <label>
+                Name
+              </label>
+
+              <input
+                type="text"
+                placeholder="Enter full name"
+                value={createName}
+                onChange={(event) =>
+                  setCreateName(
+                    event.target.value
+                  )
+                }
+              />
+
+            </div>
+
+            {/* EMAIL */}
+
+            <div className="create-account-field">
+
+              <label>
+                Email
+              </label>
+
+              <input
+                type="email"
+                placeholder="Enter email address"
+                value={createEmail}
+                onChange={(event) =>
+                  setCreateEmail(
+                    event.target.value
+                  )
+                }
+              />
+
+            </div>
+
+            {/* PASSWORD */}
+
+            <div className="create-account-field">
+
+              <label>
+                Password
+              </label>
+
+              <input
+                type="password"
+                placeholder="Enter initial password"
+                value={createPassword}
+                onChange={(event) =>
+                  setCreatePassword(
+                    event.target.value
+                  )
+                }
+              />
+
+            </div>
+
+            {/* ROLE */}
+
+            <div className="create-account-field">
+
+              <label>
+                Role
+              </label>
+
+              <select
+                value={createRole}
+                onChange={(event) =>
+                  setCreateRole(
+                    event.target.value
+                  )
+                }
+              >
+
+                <option value="student">
+                  Student
+                </option>
+
+                <option value="general_office">
+                  General Office
+                </option>
+
+                <option value="registrar">
+                  Registrar
+                </option>
+
+                <option value="admin">
+                  Administrator
+                </option>
+
+              </select>
+
+            </div>
+
+            {/* STUDENT ID */}
+
+            <div className="create-account-field">
+
+              <label>
+                Student ID
+              </label>
+
+              <input
+                type="text"
+                placeholder={
+                  createRole === "student"
+                    ? "Enter student ID"
+                    : "Not required"
+                }
+                value={createStudentId}
+                disabled={
+                  createRole !== "student"
+                }
+                onChange={(event) =>
+                  setCreateStudentId(
+                    event.target.value
+                  )
+                }
+              />
+
+            </div>
+
+            {/* STATUS */}
+
+            <div className="create-account-field">
+
+              <label>
+                Status
+              </label>
+
+              <select
+                value={createStatus}
+                onChange={(event) =>
+                  setCreateStatus(
+                    event.target.value
+                  )
+                }
+              >
+
+                <option value="active">
+                  Active
+                </option>
+
+                <option value="inactive">
+                  Inactive
+                </option>
+
+              </select>
+
+            </div>
+
+            {/* CREATE BUTTON */}
+
+            <div className="create-account-button-container">
+
+              <button
+                className="create-account-button"
+                onClick={
+                  handleCreateAccount
+                }
+              >
+                + Create Account
+              </button>
+
+            </div>
+
+          </div>
+
+          {createMessage && (
+            <p className="create-account-message">
+              {createMessage}
+            </p>
+          )}
+
+          <button
+            className="cancel-create-account-button"
+            onClick={() =>
+              setShowCreateForm(false)
+            }
+          >
+            Cancel
+          </button>
 
         </div>
-
-
-        <div className="create-account-form">
-
-          {/* NAME */}
-
-          <div className="create-account-field">
-
-            <label>
-              Name
-            </label>
-
-            <input
-              type="text"
-              placeholder="Enter full name"
-              value={createName}
-              onChange={(event) =>
-                setCreateName(
-                  event.target.value
-                )
-              }
-            />
-
-          </div>
-
-
-          {/* EMAIL */}
-
-          <div className="create-account-field">
-
-            <label>
-              Email
-            </label>
-
-            <input
-              type="email"
-              placeholder="Enter email address"
-              value={createEmail}
-              onChange={(event) =>
-                setCreateEmail(
-                  event.target.value
-                )
-              }
-            />
-
-          </div>
-
-
-          {/* ROLE */}
-
-          <div className="create-account-field">
-
-            <label>
-              Role
-            </label>
-
-            <select
-              value={createRole}
-              onChange={(event) =>
-                setCreateRole(
-                  event.target.value
-                )
-              }
-            >
-
-              <option value="student">
-                Student
-              </option>
-
-              <option value="general_office">
-                General Office
-              </option>
-
-              <option value="registrar">
-                Registrar
-              </option>
-
-              <option value="admin">
-                Administrator
-              </option>
-
-            </select>
-
-          </div>
-
-
-          {/* STUDENT ID */}
-
-          <div className="create-account-field">
-
-            <label>
-              Student ID
-            </label>
-
-            <input
-              type="text"
-              placeholder={
-                createRole === "student"
-                  ? "Enter student ID"
-                  : "Not required"
-              }
-              value={createStudentId}
-              disabled={
-                createRole !== "student"
-              }
-              onChange={(event) =>
-                setCreateStudentId(
-                  event.target.value
-                )
-              }
-            />
-
-          </div>
-
-
-          {/* STATUS */}
-
-          <div className="create-account-field">
-
-            <label>
-              Status
-            </label>
-
-            <select
-              value={createStatus}
-              onChange={(event) =>
-                setCreateStatus(
-                  event.target.value
-                )
-              }
-            >
-
-              <option value="active">
-                Active
-              </option>
-
-              <option value="inactive">
-                Inactive
-              </option>
-
-            </select>
-
-          </div>
-
-
-          {/* CREATE BUTTON */}
-
-          <div className="create-account-button-container">
-
-  <button
-    className="create-account-button"
-    onClick={
-      handleCreateAccount
-    }
-  >
-    + Create Account
-  </button>
-
-  
-
-</div>
-
-        </div>
-
-
-        {createMessage && (
-
-  <p className="create-account-message">
-    {createMessage}
-  </p>
-
-)}
-
-<button
-  className="cancel-create-account-button"
-  onClick={() =>
-    setShowCreateForm(false)
-  }
->
-  Cancel
-</button>
-
-  </div>
-)}
-
+      )}
 
       {/* ========================================
           EDIT ACCOUNT
       ======================================== */}
 
       {editingAccount && (
-
         <div className="edit-account-section">
 
           <div className="edit-account-header">
@@ -1116,7 +1088,6 @@ function UserAccounts() {
             </div>
 
           </div>
-
 
           <div className="edit-account-form">
 
@@ -1140,7 +1111,6 @@ function UserAccounts() {
 
             </div>
 
-
             {/* EMAIL */}
 
             <div className="edit-account-field">
@@ -1160,7 +1130,6 @@ function UserAccounts() {
               />
 
             </div>
-
 
             {/* ROLE */}
 
@@ -1199,7 +1168,6 @@ function UserAccounts() {
 
             </div>
 
-
             {/* STUDENT ID */}
 
             <div className="edit-account-field">
@@ -1227,7 +1195,6 @@ function UserAccounts() {
               />
 
             </div>
-
 
             {/* STATUS */}
 
@@ -1262,7 +1229,6 @@ function UserAccounts() {
 
             </div>
 
-
             {/* BUTTONS */}
 
             <div className="edit-account-buttons">
@@ -1275,7 +1241,6 @@ function UserAccounts() {
               >
                 Save Changes
               </button>
-
 
               <button
                 className="cancel-edit-button"
@@ -1290,19 +1255,14 @@ function UserAccounts() {
 
           </div>
 
-
           {editMessage && (
-
             <p className="edit-account-message">
               {editMessage}
             </p>
-
           )}
 
         </div>
-
       )}
-
 
       {/* ========================================
           SEARCH
@@ -1322,14 +1282,11 @@ function UserAccounts() {
               )
             }
             onKeyDown={(event) => {
-
               if (event.key === "Enter") {
                 handleSearch();
               }
-
             }}
           />
-
 
           <button
             onClick={handleSearch}
@@ -1338,7 +1295,6 @@ function UserAccounts() {
           </button>
 
         </div>
-
 
         <div className="user-accounts-search-options">
 
@@ -1360,7 +1316,6 @@ function UserAccounts() {
 
           </label>
 
-
           <button
             onClick={handleShowAll}
           >
@@ -1371,39 +1326,31 @@ function UserAccounts() {
 
       </div>
 
-
       {/* ========================================
           ERROR
       ======================================== */}
 
       {error && (
-
         <p className="user-accounts-error">
           {error}
         </p>
-
       )}
-
 
       {/* ========================================
           LOADING
       ======================================== */}
 
       {loading && (
-
         <p className="user-accounts-loading">
           Loading accounts...
         </p>
-
       )}
-
 
       {/* ========================================
           TABLE
       ======================================== */}
 
       {!loading && (
-
         <div className="user-accounts-table-container">
 
           <table className="user-accounts-table">
@@ -1439,7 +1386,6 @@ function UserAccounts() {
               </tr>
 
             </thead>
-
 
             <tbody>
 
@@ -1497,7 +1443,6 @@ function UserAccounts() {
 
                       </td>
 
-
                       <td>
 
                         {account.status ===
@@ -1529,7 +1474,6 @@ function UserAccounts() {
                               Edit
                             </button>
 
-
                             <button
                               className="account-action-button account-delete-button"
                               onClick={() =>
@@ -1559,11 +1503,9 @@ function UserAccounts() {
           </table>
 
         </div>
-
       )}
 
     </div>
-
   );
 }
 
