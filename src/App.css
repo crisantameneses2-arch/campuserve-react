@@ -1,42 +1,683 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+/* =========================================================
+   CAMPUSERVE - UNIVERSITY PORTAL LOGIN
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  background: #f3f6fb;
+  color: #172033;
+}
+
+/* =========================================================
+   LOGIN PAGE
+   ========================================================= */
+
+.campuserve-login-page {
+  min-height: 100vh;
+  display: flex;
+  background: #f3f6fb;
+}
+
+/* Left university branding panel */
+
+.campuserve-brand-panel {
+  width: 45%;
+  min-height: 100vh;
+
+  background:
+    linear-gradient(
+      145deg,
+      #092c5c 0%,
+      #0b3d78 50%,
+      #15579c 100%
+    );
+
+  color: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.campuserve-brand-panel::before {
+  content: "";
+  position: absolute;
+
+  width: 450px;
+  height: 450px;
+
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.05);
+
+  top: -180px;
+  left: -180px;
+}
+
+.campuserve-brand-panel::after {
+  content: "";
+  position: absolute;
+
+  width: 500px;
+  height: 500px;
+
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.04);
+
+  bottom: -250px;
+  right: -200px;
+}
+
+.campuserve-brand-content {
+  position: relative;
+  z-index: 2;
+  max-width: 480px;
+}
+
+.campuserve-logo {
+  width: 72px;
+  height: 72px;
+
+  border-radius: 18px;
+
+  background: white;
+  color: #0b3d78;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 32px;
+  font-weight: 800;
+
+  margin-bottom: 28px;
+
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+.campuserve-brand-content h1 {
+  margin: 0;
+
+  font-size: 48px;
+  line-height: 1.05;
+
+  letter-spacing: -1.5px;
+}
+
+.campuserve-brand-content .brand-tagline {
+  margin-top: 16px;
+
+  font-size: 20px;
+  line-height: 1.6;
+
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.campuserve-university {
+  margin-top: 38px;
+
+  padding-top: 24px;
+
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+
+  font-size: 14px;
+  line-height: 1.7;
+
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* =========================================================
+   RIGHT LOGIN AREA
+   ========================================================= */
+
+.campuserve-login-area {
+  width: 55%;
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 40px;
+}
+
+.campuserve-login-card {
+  width: 100%;
+  max-width: 470px;
+
+  background: white;
+
+  border-radius: 22px;
+
+  padding: 42px;
+
+  box-shadow:
+    0 20px 60px rgba(24, 39, 75, 0.10),
+    0 2px 8px rgba(24, 39, 75, 0.04);
+
+  border: 1px solid #e8edf5;
+}
+
+.campuserve-login-heading {
+  margin-bottom: 30px;
+}
+
+.campuserve-login-heading h2 {
+  margin: 0;
+
+  font-size: 30px;
+  font-weight: 750;
+
+  letter-spacing: -0.6px;
+
+  color: #172033;
+}
+
+.campuserve-login-heading p {
+  margin: 9px 0 0;
+
+  color: #6c7688;
+
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+.campuserve-form-group {
+  margin-bottom: 20px;
+}
+
+.campuserve-form-group label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  color: #344054;
+}
+
+.campuserve-input-wrapper {
+  position: relative;
+}
+
+.campuserve-input {
+  width: 100%;
+
+  height: 50px;
+
+  border: 1px solid #d7deea;
+
+  border-radius: 11px;
+
+  padding: 0 15px;
+
+  font-size: 15px;
+
+  color: #172033;
+
+  background: #fbfcfe;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.campuserve-input:focus {
+  border-color: #1769c2;
+
+  background: white;
+
+  box-shadow:
+    0 0 0 4px rgba(23, 105, 194, 0.10);
+}
+
+.campuserve-input::placeholder {
+  color: #a2aaba;
+}
+
+/* Password input */
+
+.campuserve-password-input {
+  padding-right: 52px;
+}
+
+.campuserve-password-toggle {
+  position: absolute;
+
+  right: 8px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  width: 36px;
+  height: 36px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #667085;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  font-size: 17px;
+}
+
+.campuserve-password-toggle:hover {
+  background: #eef3f9;
+  color: #1769c2;
+}
+
+/* Forgot password */
+
+.campuserve-forgot-row {
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: -8px;
+  margin-bottom: 20px;
+}
+
+.campuserve-link-button {
+  border: none;
+
+  background: transparent;
+
+  padding: 0;
+
+  color: #1769c2;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  cursor: pointer;
+}
+
+.campuserve-link-button:hover {
+  text-decoration: underline;
+}
+
+/* =========================================================
+   PRIMARY BUTTON
+   ========================================================= */
+
+.campuserve-primary-button {
+  width: 100%;
+
+  height: 50px;
+
+  border: none;
+
+  border-radius: 11px;
+
+  background: #0b4f96;
+
+  color: white;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.1s ease,
+    box-shadow 0.2s ease;
+}
+
+.campuserve-primary-button:hover {
+  background: #083f79;
+
+  box-shadow:
+    0 7px 18px rgba(11, 79, 150, 0.20);
+}
+
+.campuserve-primary-button:active {
+  transform: translateY(1px);
+}
+
+.campuserve-primary-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   DIVIDER
+   ========================================================= */
+
+.campuserve-divider {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  margin: 25px 0;
+}
+
+.campuserve-divider::before,
+.campuserve-divider::after {
+  content: "";
+
+  height: 1px;
+
+  flex: 1;
+
+  background: #e4e8ef;
+}
+
+.campuserve-divider span {
+  font-size: 12px;
+
+  color: #98a2b3;
+
+  font-weight: 600;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.5px;
+}
+
+/* =========================================================
+   GOOGLE BUTTON
+   ========================================================= */
+
+.campuserve-google-button {
+  width: 100%;
+
+  height: 50px;
+
+  border-radius: 11px;
+
+  border: 1px solid #d7deea;
+
+  background: white;
+
+  color: #344054;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.campuserve-google-button:hover {
+  background: #f8fafc;
+
+  border-color: #bfc8d6;
+
+  box-shadow:
+    0 4px 12px rgba(24, 39, 75, 0.07);
+}
+
+.campuserve-google-icon {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   ALUMNI SECTION
+   ========================================================= */
+
+.campuserve-alumni-box {
+  margin-top: 30px;
+
+  padding: 20px;
+
+  border-radius: 14px;
+
+  background: #f5f8fc;
+
+  border: 1px solid #e3eaf3;
+
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.campuserve-alumni-box h3 {
+  margin: 0 0 6px;
+
+  font-size: 15px;
+
+  color: #24324a;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+.campuserve-alumni-box p {
+  margin: 0;
+
+  font-size: 12px;
+
+  line-height: 1.55;
+
+  color: #737f91;
+}
+
+/* =========================================================
+   ERROR / SUCCESS MESSAGES
+   ========================================================= */
+
+.campuserve-error {
+  margin: 16px 0;
+
+  padding: 12px 14px;
+
+  border-radius: 10px;
+
+  background: #fff1f2;
+
+  border: 1px solid #fecdd3;
+
+  color: #be123c;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+.campuserve-success {
+  margin: 16px 0;
+
+  padding: 12px 14px;
+
+  border-radius: 10px;
+
+  background: #ecfdf3;
+
+  border: 1px solid #bbf7d0;
+
+  color: #15803d;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+/* =========================================================
+   SECONDARY BUTTON
+   ========================================================= */
+
+.campuserve-secondary-button {
+  width: 100%;
+
+  height: 48px;
+
+  border-radius: 10px;
+
+  border: 1px solid #d7deea;
+
+  background: white;
+
+  color: #344054;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  margin-top: 10px;
+}
+
+.campuserve-secondary-button:hover {
+  background: #f8fafc;
+}
+
+/* =========================================================
+   PASSWORD SETUP / FORGOT PASSWORD
+   ========================================================= */
+
+.campuserve-info-box {
+  margin-bottom: 22px;
+
+  padding: 14px 16px;
+
+  border-radius: 11px;
+
+  background: #f4f8fd;
+
+  border: 1px solid #dce8f6;
+
+  font-size: 13px;
+
+  line-height: 1.55;
+
+  color: #526174;
+}
+
+.campuserve-email-badge {
+  display: inline-block;
+
+  margin-top: 5px;
+
+  padding: 6px 10px;
+
+  border-radius: 7px;
+
+  background: #e9f1fb;
+
+  color: #174a7c;
+
+  font-size: 12px;
+
+  font-weight: 600;
+}
+
+.campuserve-password-requirement {
+  margin-top: 8px;
+
+  font-size: 12px;
+
+  color: #7a8494;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 850px) {
+  .campuserve-login-page {
+    display: block;
   }
-  to {
-    transform: rotate(360deg);
+
+  .campuserve-brand-panel {
+    width: 100%;
+    min-height: auto;
+
+    padding: 38px 28px;
+  }
+
+  .campuserve-brand-content {
+    max-width: 600px;
+  }
+
+  .campuserve-brand-content h1 {
+    font-size: 38px;
+  }
+
+  .campuserve-brand-content .brand-tagline {
+    font-size: 17px;
+  }
+
+  .campuserve-university {
+    margin-top: 25px;
+  }
+
+  .campuserve-login-area {
+    width: 100%;
+    min-height: auto;
+
+    padding: 30px 18px 50px;
+  }
+
+  .campuserve-login-card {
+    padding: 30px 24px;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@media (max-width: 480px) {
+  .campuserve-brand-panel {
+    padding: 30px 22px;
   }
-}
 
-.card {
-  padding: 2em;
-}
+  .campuserve-brand-content h1 {
+    font-size: 32px;
+  }
 
-.read-the-docs {
-  color: #888;
+  .campuserve-logo {
+    width: 58px;
+    height: 58px;
+
+    font-size: 25px;
+
+    border-radius: 14px;
+  }
+
+  .campuserve-login-card {
+    padding: 26px 20px;
+
+    border-radius: 17px;
+  }
+
+  .campuserve-login-heading h2 {
+    font-size: 25px;
+  }
 }
