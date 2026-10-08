@@ -1,21 +1,16 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
 } from "firebase/firestore";
 import { signOut } from "firebase/auth";
-
 import { auth, db } from "../../../firebase";
 import "./RegistrarDashboard.css";
 
@@ -38,18 +33,8 @@ type Status =
   | "READY_FOR_PICKUP"
   | "COMPLETED"
   | "DECLINED"
+  | "CANCELLED"
   | "RESCHEDULED";
-
-type FirestoreValue =
-  | Date
-  | string
-  | number
-  | {
-      toDate?: () => Date;
-      toMillis?: () => number;
-    }
-  | null
-  | undefined;
 
 type RequestRecord = {
   id: string;
@@ -61,10 +46,15 @@ type RequestRecord = {
   total_amount?: number;
   requested_date?: string;
   requested_time?: string;
-  created_at?: FirestoreValue;
-  updated_at?: FirestoreValue;
-  status: Status;
+  previous_requested_date?: string;
+  previous_requested_time?: string;
+  rescheduled_at?: any;
+  reschedule_count?: number;
+  created_at?: any;
+  updated_at?: any;
+  status?: Status;
   claim_code?: string | null;
+  cancellation_reason?: string;
   decline_reason?: string;
   decline_review_status?: string;
 };
@@ -87,8 +77,8 @@ type ScheduleRecord = {
   slotCapacity?: number;
   availableSlot?: number;
   availableSlots?: number;
-  createdAt?: FirestoreValue;
-  updatedAt?: FirestoreValue;
+  createdAt?: any;
+  updatedAt?: any;
 };
 
 const PAGE_TITLES: Record<string, string> = {
@@ -97,9 +87,10 @@ const PAGE_TITLES: Record<string, string> = {
   claiming: "Claiming & Release",
   schedule: "Claiming Schedule",
   reschedule: "Rescheduling",
-  reports: "Reports & Daily Summary",
   history: "Transaction History",
+  reports: "Reports & Daily Summary",
   messages: "Messages",
+  settings: "Settings",
 };
 
 const STATUSES: Status[] = [
@@ -109,7 +100,14 @@ const STATUSES: Status[] = [
   "READY_FOR_PICKUP",
   "COMPLETED",
   "DECLINED",
+  "CANCELLED",
   "RESCHEDULED",
+];
+
+const TERMINAL_STATUSES: Status[] = [
+  "COMPLETED",
+  "DECLINED",
+  "CANCELLED",
 ];
 
 const money = (value?: number | null) =>
@@ -118,45 +116,24 @@ const money = (value?: number | null) =>
     maximumFractionDigits: 2,
   })}`;
 
-const toDateValue = (
-  value: FirestoreValue,
-): Date | null => {
-  if (value == null) {
-    return null;
+const getDateValue = (value: any): Date | null => {
+  if (!value) return null;
+
+  if (typeof value?.toDate === "function") {
+    const date = value.toDate();
+
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 
-  if (
-    typeof value === "object" &&
-    "toDate" in value &&
-    typeof value.toDate === "function"
-  ) {
-    return value.toDate();
-  }
+  const date = new Date(value);
 
-  if (
-    value instanceof Date ||
-    typeof value === "string" ||
-    typeof value === "number"
-  ) {
-    const date =
-      value instanceof Date
-        ? value
-        : new Date(value);
-
-    return Number.isNaN(date.getTime())
-      ? null
-      : date;
-  }
-
-  return null;
+  return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const dateText = (value: FirestoreValue) => {
-  const date = toDateValue(value);
+const dateText = (value: any) => {
+  const date = getDateValue(value);
 
-  if (!date) {
-    return value == null ? "—" : String(value);
-  }
+  if (!date) return "—";
 
   return date.toLocaleString("en-PH", {
     dateStyle: "medium",
@@ -164,21 +141,37 @@ const dateText = (value: FirestoreValue) => {
   });
 };
 
-const today = () =>
-  new Date().toLocaleDateString("en-CA");
+const dateOnly = (value: any) => {
+  const date = getDateValue(value);
+
+  if (!date) return "—";
+
+  return date.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const today = () => {
+  const now = new Date();
+
+  return `${now.getFullYear()}-${String(
+    now.getMonth() + 1,
+  ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+};
+
+const statusLabel = (status?: Status) =>
+  String(status || "PENDING").replace(/_/g, " ");
 
 const documentName = (detail?: DetailRecord) => {
-  if (!detail) {
-    return "Document";
-  }
+  if (!detail) return "Document";
 
   if (detail.custom_document_name) {
     return detail.custom_document_name;
   }
 
-  const raw = String(
-    detail.document_type || "Document",
-  )
+  const raw = String(detail.document_type || "Document")
     .toLowerCase()
     .replace(/[_-]+/g, " ")
     .trim();
@@ -188,108 +181,136 @@ const documentName = (detail?: DetailRecord) => {
     diploma: "Diploma – 2nd Copy",
     transfer: "Transfer Credential",
     "transfer credential": "Transfer Credential",
-    cav: "CAV",
+    cav: "Cert. of Auth. & Verification (CAV)",
     "certificate of authentication & verification":
-      "CAV",
+      "Cert. of Auth. & Verification (CAV)",
     authentication: "Authentication – per set",
     "certified true copy": "Certified True Copy",
-    report_rating:
-      "Report of Rating / Certificate of Grades",
-    "report of rating":
-      "Report of Rating / Certificate of Grades",
+    certified_true_copy: "Certified True Copy",
+    report_rating: "Report of Rating / Cert. of Grades",
+    "report of rating/certificate of grades":
+      "Report of Rating / Cert. of Grades",
     certification: "Certification",
     others: "Others",
   };
 
-  return (
-    aliases[raw] ||
-    detail.document_type ||
-    "Document"
-  );
+  return aliases[raw] || detail.document_type || "Document";
 };
 
-function RegistrarDashboard({
+const generateClaimCode = () => {
+  const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+  let result = "";
+
+  for (let i = 0; i < 6; i += 1) {
+    result += characters.charAt(
+      Math.floor(Math.random() * characters.length),
+    );
+  }
+
+  return result;
+};
+
+const csvValue = (value: unknown) =>
+  `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+const BellIcon = () => (
+  <svg
+    className="topbar-svg-icon"
+    viewBox="0 0 24 24"
+    width="19"
+    height="19"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+    <path d="M10 21h4" />
+  </svg>
+);
+
+const MessageIcon = () => (
+  <svg
+    className="topbar-svg-icon"
+    viewBox="0 0 24 24"
+    width="19"
+    height="19"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.4 8.4 0 0 1-3.4-.7L4 20l1.5-3.5A7.2 7.2 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z" />
+    <path d="M8 11.5h.01" />
+    <path d="M12 11.5h.01" />
+    <path d="M16 11.5h.01" />
+  </svg>
+);
+
+export default function RegistrarDashboard({
   account,
 }: RegistrarDashboardProps) {
-  const [activePage, setActivePage] =
-    useState("overview");
+  const [activePage, setActivePage] = useState("overview");
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const [menuOpen, setMenuOpen] =
-    useState(false);
+  const [requests, setRequests] = useState<RequestRecord[]>([]);
+  const [requestDetails, setRequestDetails] = useState<
+    Record<string, DetailRecord[]>
+  >({});
 
-  const [requests, setRequests] =
-    useState<RequestRecord[]>([]);
-
-  const [requestDetails, setRequestDetails] =
-    useState<Record<string, DetailRecord[]>>({});
-
-  const [schedules, setSchedules] =
-    useState<ScheduleRecord[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [busyId, setBusyId] =
-    useState("");
-
-  const [error, setError] =
-    useState("");
-
-  const [notice, setNotice] =
-    useState("");
-
-  const [search, setSearch] =
-    useState("");
-
-  const [topSearch, setTopSearch] =
-    useState("");
-
-  const [statusFilter, setStatusFilter] =
-    useState("ALL");
+  const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
 
   const [selected, setSelected] =
     useState<RequestRecord | null>(null);
 
-  const [claimCode, setClaimCode] =
-    useState("");
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  const [claimResult, setClaimResult] =
-    useState<RequestRecord | null>(null);
+  const [search, setSearch] = useState("");
+  const [topSearch, setTopSearch] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState<Status | "ALL">("ALL");
 
   const [notificationsOpen, setNotificationsOpen] =
     useState(false);
 
-  const [declineTarget, setDeclineTarget] =
+  const [approveTarget, setApproveTarget] =
     useState<RequestRecord | null>(null);
 
-  const [declineReason, setDeclineReason] =
-    useState("");
+  const [declineTarget, setDeclineTarget] =
+    useState<RequestRecord | null>(null);
+  const [declineReason, setDeclineReason] = useState("");
+
+  const [cancelTarget, setCancelTarget] =
+    useState<RequestRecord | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const [rescheduleTarget, setRescheduleTarget] =
     useState<RequestRecord | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
 
-  const [rescheduleDate, setRescheduleDate] =
-    useState("");
+  const [claimCode, setClaimCode] = useState("");
+  const [claimResult, setClaimResult] =
+    useState<RequestRecord | null>(null);
 
-  const [rescheduleTime, setRescheduleTime] =
-    useState("");
-
-  const [scheduleDate, setScheduleDate] =
-    useState("");
-
-  const [scheduleTime, setScheduleTime] =
-    useState("");
-
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
   const [scheduleCapacity, setScheduleCapacity] =
     useState("10");
-
   const [editingScheduleId, setEditingScheduleId] =
     useState("");
 
-  const [reportPeriod, setReportPeriod] =
-    useState<
-      "DAY" | "WEEK" | "MONTH" | "YEAR"
-    >("DAY");
+  const [reportPeriod, setReportPeriod] = useState<
+    "DAY" | "WEEK" | "MONTH" | "YEAR"
+  >("DAY");
 
   const registrarId =
     account.firebaseUid ||
@@ -297,48 +318,35 @@ function RegistrarDashboard({
     "registrar";
 
   const registrarName =
-    account.name ||
-    "Registrar Staff";
+    account.name || "Registrar Staff";
 
-  /*
-   * DOCUMENT REQUESTS
-   */
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "document_requests"),
       (snapshot) => {
-        const rows: RequestRecord[] =
-          snapshot.docs.map((item) => {
-            const data =
-              item.data() as Partial<RequestRecord>;
-
-            return {
-              ...data,
+        const rows = snapshot.docs.map(
+          (item) =>
+            ({
               id: item.id,
-              request_id:
-                String(data.request_id || item.id),
-              student_id:
-                String(data.student_id || ""),
-              status:
-                (data.status as Status) ||
-                "PENDING",
-            };
-          });
+              ...item.data(),
+            }) as RequestRecord,
+        );
 
         rows.sort((a, b) => {
-          const aTime =
-            toDateValue(a.created_at)?.getTime?.() ?? 0;
-          const bTime =
-            toDateValue(b.created_at)?.getTime?.() ?? 0;
-          return bTime - aTime;
+          const first =
+            getDateValue(a.created_at)?.getTime() || 0;
+          const second =
+            getDateValue(b.created_at)?.getTime() || 0;
+
+          return second - first;
         });
 
         setRequests(rows);
         setLoading(false);
       },
-      (err) => {
+      (snapshotError) => {
         setError(
-          `Could not load document requests: ${err.message}`,
+          `Could not load document requests: ${snapshotError.message}`,
         );
         setLoading(false);
       },
@@ -347,15 +355,9 @@ function RegistrarDashboard({
     return unsubscribe;
   }, []);
 
-  /*
-   * DOCUMENT REQUEST DETAILS
-   */
   useEffect(() => {
     const unsubscribe = onSnapshot(
-      collection(
-        db,
-        "document_request_details",
-      ),
+      collection(db, "document_request_details"),
       (snapshot) => {
         const grouped: Record<
           string,
@@ -363,32 +365,31 @@ function RegistrarDashboard({
         > = {};
 
         snapshot.docs.forEach((item) => {
-          const data =
-            item.data() as Partial<DetailRecord>;
+          const data = item.data();
+
+          const detail = {
+            id: item.id,
+            ...data,
+          } as DetailRecord;
 
           const requestId = String(
             data.request_id || "",
           );
 
-          if (!requestId) {
-            return;
-          }
+          if (!requestId) return;
 
           if (!grouped[requestId]) {
             grouped[requestId] = [];
           }
 
-          grouped[requestId].push({
-            ...data,
-            id: item.id,
-          });
+          grouped[requestId].push(detail);
         });
 
         setRequestDetails(grouped);
       },
-      (err) => {
+      (snapshotError) => {
         setError(
-          `Could not load requested documents: ${err.message}`,
+          `Could not load requested documents: ${snapshotError.message}`,
         );
       },
     );
@@ -396,35 +397,34 @@ function RegistrarDashboard({
     return unsubscribe;
   }, []);
 
-  /*
-   * CLAIMING SCHEDULES
-   */
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "claimingSchedules"),
       (snapshot) => {
-        const rows: ScheduleRecord[] =
-          snapshot.docs.map((item) => {
-            const data =
-              item.data() as Partial<ScheduleRecord>;
-
-            return {
-              ...data,
+        const rows = snapshot.docs.map(
+          (item) =>
+            ({
               id: item.id,
-            };
-          });
-
-        rows.sort((a, b) =>
-          String(a.claimDate || "").localeCompare(
-            String(b.claimDate || ""),
-          ),
+              ...item.data(),
+            }) as ScheduleRecord,
         );
+
+        rows.sort((a, b) => {
+          const first = String(
+            a.claimDate || "",
+          );
+          const second = String(
+            b.claimDate || "",
+          );
+
+          return first.localeCompare(second);
+        });
 
         setSchedules(rows);
       },
-      (err) => {
+      (snapshotError) => {
         setError(
-          `Could not load claiming schedules: ${err.message}`,
+          `Could not load claiming schedules: ${snapshotError.message}`,
         );
       },
     );
@@ -439,7 +439,6 @@ function RegistrarDashboard({
 
   const changePage = (page: string) => {
     setActivePage(page);
-    setMenuOpen(false);
     setNotificationsOpen(false);
     setSelected(null);
     setClaimResult(null);
@@ -452,33 +451,33 @@ function RegistrarDashboard({
     setStatusFilter("ALL");
     setActivePage("requests");
     setNotificationsOpen(false);
+    setSelected(null);
   };
 
-  /*
-   * REQUEST DETAILS
-   */
-  const getRequestDocuments = useCallback(
-    (request: RequestRecord) => {
-      return (
-        requestDetails[request.request_id] || []
-      );
-    },
-    [requestDetails],
-  );
+  const getRequestDocuments = (
+    request: RequestRecord,
+  ) => requestDetails[request.request_id] || [];
 
-  /*
-   * REQUEST SEARCH
-   */
+  const getDocumentNames = (
+    request: RequestRecord,
+  ) => {
+    const details = getRequestDocuments(request);
+
+    if (details.length === 0) {
+      return "No document details";
+    }
+
+    return details
+      .map((detail) => documentName(detail))
+      .join(", ");
+  };
+
   const filteredRequests = useMemo(() => {
-    const term =
-      search.trim().toLowerCase();
+    const term = search.trim().toLowerCase();
 
     return requests.filter((request) => {
-      const documents =
-        getRequestDocuments(request)
-          .map(documentName)
-          .join(" ")
-          .toLowerCase();
+      const documents = getDocumentNames(request)
+        .toLowerCase();
 
       const matchesSearch =
         !term ||
@@ -486,6 +485,8 @@ function RegistrarDashboard({
           request.request_id,
           request.student_id,
           documents,
+          request.purpose,
+          request.claim_code,
         ].some((value) =>
           String(value || "")
             .toLowerCase()
@@ -496,96 +497,64 @@ function RegistrarDashboard({
         statusFilter === "ALL" ||
         request.status === statusFilter;
 
-      return (
-        matchesSearch &&
-        matchesStatus
-      );
+      return matchesSearch && matchesStatus;
     });
   }, [
-    getRequestDocuments,
     requests,
+    requestDetails,
     search,
     statusFilter,
   ]);
 
   const count = (status: Status) =>
     requests.filter(
-      (request) =>
-        request.status === status,
+      (request) => request.status === status,
     ).length;
 
-  const completedToday =
-    requests.filter((request) => {
-      if (
-        request.status !== "COMPLETED"
-      ) {
+  const processingCount =
+    count("APPROVED") + count("PROCESSING");
+
+  const completedToday = requests.filter(
+    (request) => {
+      if (request.status !== "COMPLETED") {
         return false;
       }
 
       const date =
-        toDateValue(request.updated_at);
+        getDateValue(request.updated_at);
 
-      if (!date) {
-        return false;
-      }
+      if (!date) return false;
 
-      return (
-        date.toLocaleDateString(
-          "en-CA",
-        ) === today()
-      );
-    }).length;
+      return date.toISOString().slice(0, 10) === today();
+    },
+  ).length;
 
-  const notifications =
-    requests
-      .filter((request) =>
-        [
-          "PENDING",
-          "READY_FOR_PICKUP",
-        ].includes(request.status),
-      )
-      .slice(0, 8);
+  const notifications = requests
+    .filter((request) =>
+      ["PENDING", "READY_FOR_PICKUP"].includes(
+        request.status || "",
+      ),
+    )
+    .slice(0, 8);
 
-  /*
-   * UPDATE REQUEST STATUS
-   */
   const updateStatus = async (
     request: RequestRecord,
     status: Status,
   ) => {
-    if (!request.request_id) {
-      setError(
-        "This request is missing its request ID.",
-      );
-      return;
-    }
-
     setBusyId(request.id);
     clearFeedback();
 
     try {
-      const updates: Record<
-        string,
-        unknown
-      > = {
+      const updates: Record<string, unknown> = {
         status,
-        updated_at:
-          serverTimestamp(),
+        updated_at: serverTimestamp(),
       };
 
       if (
-        status ===
-          "READY_FOR_PICKUP" &&
+        status === "READY_FOR_PICKUP" &&
         !request.claim_code
       ) {
-        const generatedCode =
-          Math.random()
-            .toString(36)
-            .substring(2, 8)
-            .toUpperCase();
-
-        updates.claim_code =
-          generatedCode;
+        updates.claim_code = generateClaimCode();
       }
 
       await updateDoc(
@@ -598,37 +567,15 @@ function RegistrarDashboard({
       );
 
       setNotice(
-        `${request.request_id} updated to ${status.replace(
-          /_/g,
-          " ",
+        `${request.request_id} updated to ${statusLabel(
+          status,
         )}.`,
       );
-
-      if (
-        selected?.id === request.id
-      ) {
-        const nextClaimCode =
-          typeof updates.claim_code ===
-          "string"
-            ? updates.claim_code
-            : undefined;
-
-        setSelected({
-          ...request,
-          status,
-          ...(nextClaimCode
-            ? {
-                claim_code:
-                  nextClaimCode,
-              }
-            : {}),
-        });
-      }
-    } catch (err) {
+    } catch (updateError) {
       setError(
         `Could not update request: ${
-          err instanceof Error
-            ? err.message
+          updateError instanceof Error
+            ? updateError.message
             : "Unknown error"
         }`,
       );
@@ -637,22 +584,49 @@ function RegistrarDashboard({
     }
   };
 
-  /*
-   * DECLINE REQUEST
-   *
-   * Registrar sends the request to Admin
-   * for evaluation instead of immediately
-   * rejecting it.
-   */
-  const submitDecline = async () => {
-    if (!declineTarget) {
-      return;
+  const confirmApprove = async () => {
+    if (!approveTarget) return;
+
+    setBusyId(approveTarget.id);
+    clearFeedback();
+
+    try {
+      await updateDoc(
+        doc(
+          db,
+          "document_requests",
+          approveTarget.id,
+        ),
+        {
+          status: "APPROVED",
+          updated_at: serverTimestamp(),
+        },
+      );
+
+      setNotice(
+        `${approveTarget.request_id} was approved and is ready for processing.`,
+      );
+
+      setApproveTarget(null);
+      setSelected(null);
+    } catch (approveError) {
+      setError(
+        `Could not approve request: ${
+          approveError instanceof Error
+            ? approveError.message
+            : "Unknown error"
+        }`,
+      );
+    } finally {
+      setBusyId("");
     }
+  };
+
+  const submitDecline = async () => {
+    if (!declineTarget) return;
 
     if (!declineReason.trim()) {
-      setError(
-        "A decline reason is required.",
-      );
+      setError("A decline reason is required.");
       return;
     }
 
@@ -660,25 +634,6 @@ function RegistrarDashboard({
     clearFeedback();
 
     try {
-      await addDoc(
-        collection(db, "adminReviews"),
-        {
-          type: "REQUEST_DECLINE",
-          request_id:
-            declineTarget.request_id,
-          student_id:
-            declineTarget.student_id,
-          reason:
-            declineReason.trim(),
-          status: "PENDING",
-          submitted_by: registrarId,
-          submitted_by_name:
-            registrarName,
-          created_at:
-            serverTimestamp(),
-        },
-      );
-
       await updateDoc(
         doc(
           db,
@@ -686,26 +641,26 @@ function RegistrarDashboard({
           declineTarget.id,
         ),
         {
+          status: "DECLINED",
           decline_reason:
             declineReason.trim(),
-          decline_review_status:
-            "PENDING_ADMIN_REVIEW",
-          updated_at:
-            serverTimestamp(),
+          decline_review_status: "COMPLETED",
+          updated_at: serverTimestamp(),
         },
       );
 
       setNotice(
-        `${declineTarget.request_id} was sent to Admin for decline review.`,
+        `${declineTarget.request_id} was declined.`,
       );
 
       setDeclineTarget(null);
       setDeclineReason("");
-    } catch (err) {
+      setSelected(null);
+    } catch (declineError) {
       setError(
-        `Could not submit decline review: ${
-          err instanceof Error
-            ? err.message
+        `Could not decline request: ${
+          declineError instanceof Error
+            ? declineError.message
             : "Unknown error"
         }`,
       );
@@ -714,13 +669,54 @@ function RegistrarDashboard({
     }
   };
 
-  /*
-   * RESCHEDULE
-   */
-  const submitReschedule = async () => {
-    if (!rescheduleTarget) {
+  const submitCancel = async () => {
+    if (!cancelTarget) return;
+
+    if (!cancelReason.trim()) {
+      setError("A cancellation reason is required.");
       return;
     }
+
+    setBusyId(cancelTarget.id);
+    clearFeedback();
+
+    try {
+      await updateDoc(
+        doc(
+          db,
+          "document_requests",
+          cancelTarget.id,
+        ),
+        {
+          status: "CANCELLED",
+          cancellation_reason:
+            cancelReason.trim(),
+          updated_at: serverTimestamp(),
+        },
+      );
+
+      setNotice(
+        `${cancelTarget.request_id} was cancelled.`,
+      );
+
+      setCancelTarget(null);
+      setCancelReason("");
+      setSelected(null);
+    } catch (cancelError) {
+      setError(
+        `Could not cancel request: ${
+          cancelError instanceof Error
+            ? cancelError.message
+            : "Unknown error"
+        }`,
+      );
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const submitReschedule = async () => {
+    if (!rescheduleTarget) return;
 
     if (
       !rescheduleDate ||
@@ -736,6 +732,14 @@ function RegistrarDashboard({
     clearFeedback();
 
     try {
+      const currentStatus =
+        rescheduleTarget.status || "PENDING";
+
+      const currentCount =
+        Number(
+          rescheduleTarget.reschedule_count || 0,
+        );
+
       await updateDoc(
         doc(
           db,
@@ -743,11 +747,25 @@ function RegistrarDashboard({
           rescheduleTarget.id,
         ),
         {
-          requested_date:
-            rescheduleDate,
+          previous_requested_date:
+            rescheduleTarget.requested_date || null,
+
+          previous_requested_time:
+            rescheduleTarget.requested_time || null,
+
+          requested_date: rescheduleDate,
+
           requested_time:
             rescheduleTime.trim(),
-          status: "RESCHEDULED",
+
+          rescheduled_at:
+            serverTimestamp(),
+
+          reschedule_count:
+            currentCount + 1,
+
+          status: currentStatus,
+
           updated_at:
             serverTimestamp(),
         },
@@ -760,11 +778,12 @@ function RegistrarDashboard({
       setRescheduleTarget(null);
       setRescheduleDate("");
       setRescheduleTime("");
-    } catch (err) {
+      setSelected(null);
+    } catch (rescheduleError) {
       setError(
         `Could not reschedule request: ${
-          err instanceof Error
-            ? err.message
+          rescheduleError instanceof Error
+            ? rescheduleError.message
             : "Unknown error"
         }`,
       );
@@ -773,19 +792,100 @@ function RegistrarDashboard({
     }
   };
 
-  /*
-   * CLAIMING SCHEDULE
-   */
+  const verifyClaim = () => {
+    clearFeedback();
+
+    const code = claimCode
+      .trim()
+      .toUpperCase();
+
+    if (!code) {
+      setClaimResult(null);
+      setError("Enter a claim code.");
+      return;
+    }
+
+    const result = requests.find(
+      (request) =>
+        String(request.claim_code || "")
+          .trim()
+          .toUpperCase() === code,
+    );
+
+    if (!result) {
+      setClaimResult(null);
+      setError(
+        "No request was found for that claim code.",
+      );
+      return;
+    }
+
+    if (result.status !== "READY_FOR_PICKUP") {
+      setClaimResult(result);
+      setError(
+        `This request is currently ${statusLabel(
+          result.status,
+        )}.`,
+      );
+      return;
+    }
+
+    setClaimResult(result);
+    setNotice(
+      `${result.request_id} is ready for release.`,
+    );
+  };
+
+  const releaseClaim = async () => {
+    if (!claimResult) return;
+
+    await updateStatus(
+      claimResult,
+      "COMPLETED",
+    );
+
+    setClaimCode("");
+    setClaimResult(null);
+  };
+
+  const startEditingSchedule = (
+    schedule: ScheduleRecord,
+  ) => {
+    setEditingScheduleId(schedule.id);
+    setScheduleDate(
+      schedule.claimDate || "",
+    );
+    setScheduleTime(
+      schedule.timeSlot || "",
+    );
+    setScheduleCapacity(
+      String(
+        schedule.slotCapacity ||
+          schedule.availableSlots ||
+          10,
+      ),
+    );
+    clearFeedback();
+  };
+
+  const clearScheduleForm = () => {
+    setEditingScheduleId("");
+    setScheduleDate("");
+    setScheduleTime("");
+    setScheduleCapacity("10");
+  };
+
   const saveSchedule = async () => {
-    const capacity =
-      Number(scheduleCapacity);
+    const capacity = Number(
+      scheduleCapacity,
+    );
 
     if (
       !scheduleDate ||
       !scheduleTime.trim()
     ) {
       setError(
-        "Enter a claim date and time slot.",
+        "Enter a claiming date and time slot.",
       );
       return;
     }
@@ -804,34 +904,30 @@ function RegistrarDashboard({
 
     try {
       if (editingScheduleId) {
-        const existing =
-          schedules.find(
-            (schedule) =>
-              schedule.id ===
-              editingScheduleId,
-          );
+        const current = schedules.find(
+          (schedule) =>
+            schedule.id ===
+            editingScheduleId,
+        );
 
         const oldCapacity =
-          existing?.slotCapacity ??
+          current?.slotCapacity ||
           capacity;
 
         const oldAvailable =
-          existing?.availableSlot ??
-          existing?.availableSlots ??
+          current?.availableSlot ??
+          current?.availableSlots ??
           oldCapacity;
 
-        const used =
-          Math.max(
-            0,
-            oldCapacity -
-              oldAvailable,
-          );
+        const usedSlots = Math.max(
+          0,
+          oldCapacity - oldAvailable,
+        );
 
-        const newAvailable =
-          Math.max(
-            0,
-            capacity - used,
-          );
+        const available = Math.max(
+          0,
+          capacity - usedSlots,
+        );
 
         await updateDoc(
           doc(
@@ -840,18 +936,13 @@ function RegistrarDashboard({
             editingScheduleId,
           ),
           {
-            claimDate:
-              scheduleDate,
+            claimDate: scheduleDate,
             timeSlot:
               scheduleTime.trim(),
-            slotCapacity:
-              capacity,
-            availableSlot:
-              newAvailable,
-            availableSlots:
-              newAvailable,
-            updatedAt:
-              serverTimestamp(),
+            slotCapacity: capacity,
+            availableSlot: available,
+            availableSlots: available,
+            updatedAt: serverTimestamp(),
           },
         );
 
@@ -859,50 +950,36 @@ function RegistrarDashboard({
           "Claiming schedule updated successfully.",
         );
       } else {
-        const scheduleRef =
-          doc(
-            collection(
-              db,
-              "claimingSchedules",
-            ),
-          );
-
-        await setDoc(
-          scheduleRef,
-          {
-            scheduleId:
-              scheduleRef.id,
-            claimDate:
-              scheduleDate,
-            timeSlot:
-              scheduleTime.trim(),
-            slotCapacity:
-              capacity,
-            availableSlot:
-              capacity,
-            availableSlots:
-              capacity,
-            createdAt:
-              serverTimestamp(),
-            updatedAt:
-              serverTimestamp(),
-          },
+        const scheduleRef = doc(
+          collection(
+            db,
+            "claimingSchedules",
+          ),
         );
+
+        await setDoc(scheduleRef, {
+          scheduleId: scheduleRef.id,
+          claimDate: scheduleDate,
+          timeSlot:
+            scheduleTime.trim(),
+          slotCapacity: capacity,
+          availableSlot: capacity,
+          availableSlots: capacity,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
 
         setNotice(
           "Claiming schedule created successfully.",
         );
       }
 
-      setScheduleDate("");
-      setScheduleTime("");
-      setScheduleCapacity("10");
-      setEditingScheduleId("");
-    } catch (err) {
+      clearScheduleForm();
+    } catch (scheduleError) {
       setError(
         `Could not save claiming schedule: ${
-          err instanceof Error
-            ? err.message
+          scheduleError instanceof Error
+            ? scheduleError.message
             : "Unknown error"
         }`,
       );
@@ -914,7 +991,9 @@ function RegistrarDashboard({
   ) => {
     if (
       !window.confirm(
-        "Delete this claiming schedule?",
+        `Delete the claiming schedule for ${
+          schedule.claimDate || "this date"
+        }?`,
       )
     ) {
       return;
@@ -934,20 +1013,288 @@ function RegistrarDashboard({
       setNotice(
         "Claiming schedule deleted.",
       );
-    } catch (err) {
+
+      if (
+        editingScheduleId === schedule.id
+      ) {
+        clearScheduleForm();
+      }
+    } catch (scheduleError) {
       setError(
         `Could not delete schedule: ${
-          err instanceof Error
-            ? err.message
+          scheduleError instanceof Error
+            ? scheduleError.message
             : "Unknown error"
         }`,
       );
     }
   };
 
-  /*
-   * REQUEST TABLE
-   */
+  const openFilteredRequests = (
+    status?: Status,
+  ) => {
+    setSearch("");
+    setTopSearch("");
+    setStatusFilter(status || "ALL");
+    setActivePage("requests");
+    setSelected(null);
+    clearFeedback();
+  };
+
+  const periodStart = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now);
+
+    if (reportPeriod === "DAY") {
+      start.setHours(0, 0, 0, 0);
+    }
+
+    if (reportPeriod === "WEEK") {
+      const day = start.getDay();
+      const difference =
+        day === 0 ? -6 : 1 - day;
+
+      start.setDate(
+        start.getDate() + difference,
+      );
+      start.setHours(0, 0, 0, 0);
+    }
+
+    if (reportPeriod === "MONTH") {
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+    }
+
+    if (reportPeriod === "YEAR") {
+      start.setMonth(0, 1);
+      start.setHours(0, 0, 0, 0);
+    }
+
+    return start;
+  }, [reportPeriod]);
+
+  const reportRequests = useMemo(() => {
+    return requests.filter((request) => {
+      const created =
+        getDateValue(request.created_at);
+
+      if (!created) return false;
+
+      return created >= periodStart;
+    });
+  }, [requests, periodStart]);
+
+  const reportTotalAmount = reportRequests.reduce(
+    (total, request) =>
+      total + Number(request.total_amount || 0),
+    0,
+  );
+
+  const exportReport = () => {
+    const rows = [
+      [
+        "Request ID",
+        "Student ID",
+        "Requested Document/s",
+        "Requested Date",
+        "Requested Time",
+        "Status",
+        "Amount",
+      ],
+      ...reportRequests.map((request) => [
+        request.request_id,
+        request.student_id,
+        getDocumentNames(request),
+        request.requested_date || "",
+        request.requested_time || "",
+        statusLabel(request.status),
+        request.total_amount || 0,
+      ]),
+    ];
+
+    const csv = rows
+      .map((row) =>
+        row.map(csvValue).join(","),
+      )
+      .join("\n");
+
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const anchor =
+      document.createElement("a");
+
+    anchor.href = url;
+    anchor.download =
+      `campuserve-registrar-${reportPeriod.toLowerCase()}-report.csv`;
+
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+
+    URL.revokeObjectURL(url);
+
+    setNotice("Report exported successfully.");
+  };
+
+  const handleLogout = async () => {
+    clearFeedback();
+
+    try {
+      await signOut(auth);
+    } catch (logoutError) {
+      setError(
+        `Could not log out: ${
+          logoutError instanceof Error
+            ? logoutError.message
+            : "Unknown error"
+        }`,
+      );
+    }
+  };
+
+  const requestActions = (
+    request: RequestRecord,
+  ) => {
+    const status =
+      request.status || "PENDING";
+
+    return (
+      <div className="rd-actions">
+        {status === "PENDING" && (
+          <>
+            <button
+              className="rd-action-button"
+              disabled={busyId === request.id}
+              onClick={() => {
+                clearFeedback();
+                setApproveTarget(request);
+              }}
+            >
+              Approve
+            </button>
+
+            <button
+              className="rd-action-button danger"
+              disabled={busyId === request.id}
+              onClick={() => {
+                clearFeedback();
+                setDeclineTarget(request);
+                setDeclineReason("");
+              }}
+            >
+              Decline
+            </button>
+          </>
+        )}
+
+        {status === "APPROVED" && (
+          <button
+            className="rd-action-button"
+            disabled={busyId === request.id}
+            onClick={() =>
+              updateStatus(
+                request,
+                "PROCESSING",
+              )
+            }
+          >
+            Start Processing
+          </button>
+        )}
+
+        {status === "PROCESSING" && (
+          <button
+            className="rd-action-button"
+            disabled={busyId === request.id}
+            onClick={() =>
+              updateStatus(
+                request,
+                "READY_FOR_PICKUP",
+              )
+            }
+          >
+            Mark Ready
+          </button>
+        )}
+
+        {status === "READY_FOR_PICKUP" && (
+          <button
+            className="rd-action-button"
+            disabled={busyId === request.id}
+            onClick={() =>
+              updateStatus(
+                request,
+                "COMPLETED",
+              )
+            }
+          >
+            Mark Completed
+          </button>
+        )}
+
+        {!TERMINAL_STATUSES.includes(
+          status,
+        ) && (
+          <button
+            className="rd-action-button secondary"
+            disabled={busyId === request.id}
+            onClick={() => {
+              clearFeedback();
+              setRescheduleTarget(
+                request,
+              );
+              setRescheduleDate(
+                request.requested_date ||
+                  "",
+              );
+              setRescheduleTime(
+                request.requested_time ||
+                  "",
+              );
+            }}
+          >
+            Reschedule
+          </button>
+        )}
+
+        {!TERMINAL_STATUSES.includes(
+          status,
+        ) && (
+          <button
+            className="rd-action-button danger-outline"
+            disabled={busyId === request.id}
+            onClick={() => {
+              clearFeedback();
+              setCancelTarget(request);
+              setCancelReason("");
+            }}
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const heading = (
+    title: string,
+    description?: string,
+  ) => (
+    <div className="page-heading">
+      <div>
+        <h1>{title}</h1>
+        {description && (
+          <p>{description}</p>
+        )}
+      </div>
+    </div>
+  );
+
   const requestTable = (
     rows: RequestRecord[],
   ) => (
@@ -958,1581 +1305,1475 @@ function RegistrarDashboard({
             <th>Request ID</th>
             <th>Student ID</th>
             <th>Requested Document/s</th>
-            <th>Requested Date</th>
+            <th>Date Requested</th>
             <th>Status</th>
-            <th>Action</th>
           </tr>
         </thead>
 
         <tbody>
-          {rows.map((request) => {
-            const documents =
-              getRequestDocuments(
-                request,
-              );
-
-            return (
-              <tr
-                key={request.id}
-                className={
-                  selected?.id ===
-                  request.id
-                    ? "selected-row"
-                    : ""
-                }
-              >
-                <td>
+          {rows.map((request) => (
+            <tr
+              key={request.id}
+              className={
+                selected?.id === request.id
+                  ? "selected-row"
+                  : ""
+              }
+              onClick={() =>
+                setSelected(request)
+              }
+            >
+              <td>
+                <strong>
                   {request.request_id ||
                     request.id}
-                </td>
+                </strong>
+              </td>
 
-                <td>
-                  {request.student_id ||
-                    "—"}
-                </td>
+              <td>
+                {request.student_id ||
+                  "—"}
+              </td>
 
-                <td>
-                  {documents.length ? (
-                    <div className="document-list-cell">
-                      {documents.map(
-                        (detail) => (
-                          <span
-                            key={
-                              detail.id
-                            }
-                          >
-                            {documentName(
-                              detail,
-                            )}
-                          </span>
-                        ),
-                      )}
-                    </div>
-                  ) : (
-                    "No document details"
+              <td>
+                <div className="document-cell">
+                  {getDocumentNames(
+                    request,
                   )}
-                </td>
+                </div>
+              </td>
 
-                <td>
-                  {request.requested_date ||
-                    "—"}
-                </td>
+              <td>
+                {request.requested_date ||
+                  dateOnly(
+                    request.created_at,
+                  )}
+              </td>
 
-                <td>
-                  <span
-                    className={`rd-status ${String(
-                      request.status,
-                    ).toLowerCase()}`}
-                  >
-                    {request.status.replace(
-                      /_/g,
-                      " ",
-                    )}
-                  </span>
-                </td>
-
-                <td>
-                  <button
-                    className="rd-small-button"
-                    onClick={() =>
-                      setSelected(
-                        request,
-                      )
-                    }
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
+              <td>
+                <span
+                  className={`rd-status ${String(
+                    request.status ||
+                      "PENDING",
+                  ).toLowerCase()}`}
+                >
+                  {statusLabel(
+                    request.status,
+                  )}
+                </span>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
 
       {rows.length === 0 && (
-        <p className="rd-empty">
+        <div className="rd-empty">
           {loading
             ? "Loading requests..."
             : "No matching document requests found."}
-        </p>
+        </div>
       )}
     </div>
   );
 
-  /*
-   * REQUEST ACTION BUTTONS
-   */
-  const requestActions = (
-    request: RequestRecord,
-  ) => (
-    <div className="rd-actions">
-      {request.status ===
-        "PENDING" && (
-        <>
-          <button
-            disabled={
-              busyId === request.id
-            }
-            onClick={() =>
-              updateStatus(
-                request,
-                "APPROVED",
-              )
-            }
-          >
-            Approve
-          </button>
+  const renderOverview = () => (
+    <section className="registrar-page">
+      <div className="welcome-section">
+        <p className="eyebrow">
+          CAMPUSERVE
+        </p>
 
-          <button
-            className="danger"
-            disabled={
-              busyId === request.id
-            }
-            onClick={() => {
-              setDeclineTarget(
-                request,
-              );
-              setDeclineReason("");
-            }}
-          >
-            Decline
-          </button>
-        </>
-      )}
+        <h1>Registrar Dashboard</h1>
 
-      {request.status ===
-        "APPROVED" && (
+        <p className="welcome-text">
+          Welcome,{" "}
+          {account.name ||
+            "Registrar Staff"}
+        </p>
+      </div>
+
+      <div className="overview-header">
+        <div>
+          <h2>Overview</h2>
+          <p>
+            Manage student document
+            requests and claiming schedules.
+          </p>
+        </div>
+      </div>
+
+      <div className="stats-grid">
         <button
-          disabled={
-            busyId === request.id
-          }
+          className="stat-card stat-card-button"
           onClick={() =>
-            updateStatus(
-              request,
-              "PROCESSING",
+            openFilteredRequests(
+              "PENDING",
             )
           }
         >
-          Start Processing
-        </button>
-      )}
+          <div className="stat-card-top">
+            <span>Pending Requests</span>
+            <span className="stat-label">
+              REVIEW
+            </span>
+          </div>
 
-      {request.status ===
-        "PROCESSING" && (
+          <strong>{count("PENDING")}</strong>
+
+          <p>Awaiting review</p>
+        </button>
+
         <button
-          disabled={
-            busyId === request.id
-          }
+          className="stat-card stat-card-button"
           onClick={() =>
-            updateStatus(
-              request,
+            openFilteredRequests()
+          }
+        >
+          <div className="stat-card-top">
+            <span>Processing</span>
+            <span className="stat-label">
+              ACTIVE
+            </span>
+          </div>
+
+          <strong>{processingCount}</strong>
+
+          <p>
+            Approved and being prepared
+          </p>
+        </button>
+
+        <button
+          className="stat-card stat-card-button"
+          onClick={() =>
+            openFilteredRequests(
               "READY_FOR_PICKUP",
             )
           }
         >
-          Mark Ready
-        </button>
-      )}
+          <div className="stat-card-top">
+            <span>
+              Ready for Claiming
+            </span>
+            <span className="stat-label">
+              CLAIM
+            </span>
+          </div>
 
-      {request.status ===
-        "READY_FOR_PICKUP" && (
+          <strong>
+            {count("READY_FOR_PICKUP")}
+          </strong>
+
+          <p>Ready for release</p>
+        </button>
+
         <button
-          disabled={
-            busyId === request.id
-          }
+          className="stat-card stat-card-button"
           onClick={() =>
-            updateStatus(
-              request,
+            openFilteredRequests(
               "COMPLETED",
             )
           }
         >
-          Mark Completed
-        </button>
-      )}
-
-      {![
-        "COMPLETED",
-        "DECLINED",
-      ].includes(request.status) && (
-        <button
-          className="secondary-button"
-          onClick={() => {
-            setRescheduleTarget(
-              request,
-            );
-            setRescheduleDate(
-              request.requested_date ||
-                "",
-            );
-            setRescheduleTime(
-              request.requested_time ||
-                "",
-            );
-          }}
-        >
-          Reschedule
-        </button>
-      )}
-    </div>
-  );
-
-  /*
-   * REQUEST DETAILS PANEL
-   */
-  const requestDetailsPanel =
-    selected && (
-      <aside className="rd-details-panel">
-        <div className="rd-details-header">
-          <div>
-            <span className="rd-panel-kicker">
-              REQUEST DETAILS
+          <div className="stat-card-top">
+            <span>Completed Today</span>
+            <span className="stat-label">
+              TODAY
             </span>
-
-            <h3>
-              {selected.request_id}
-            </h3>
           </div>
 
+          <strong>{completedToday}</strong>
+
+          <p>Released requests</p>
+        </button>
+      </div>
+
+      <div className="services-section">
+        <div className="services-heading">
+          <h2>Registrar Services</h2>
+          <p>
+            Open a section to continue
+            managing transactions.
+          </p>
+        </div>
+
+        <div className="services-grid">
           <button
-            className="rd-small-button"
+            className="service-card"
             onClick={() =>
-              setSelected(null)
+              changePage("requests")
             }
           >
-            Close
-          </button>
-        </div>
-
-        <div className="rd-detail-grid">
-          <div>
-            <span>Student ID</span>
-            <strong>
-              {selected.student_id ||
-                "—"}
-            </strong>
-          </div>
-
-          <div>
-            <span>Request Method</span>
-            <strong>
-              {selected.request_method ||
-                "—"}
-            </strong>
-          </div>
-
-          <div>
-            <span>Purpose</span>
-            <strong>
-              {selected.purpose ||
-                "—"}
-            </strong>
-          </div>
-
-          <div>
-            <span>Requested Date</span>
-            <strong>
-              {selected.requested_date ||
-                "—"}
-            </strong>
-          </div>
-
-          <div>
-            <span>Requested Time</span>
-            <strong>
-              {selected.requested_time ||
-                "—"}
-            </strong>
-          </div>
-
-          <div>
-            <span>Copies</span>
-            <strong>
-              {selected.number_of_copies ??
-                "—"}
-            </strong>
-          </div>
-
-          <div>
-            <span>Created</span>
-            <strong>
-              {dateText(
-                selected.created_at,
-              )}
-            </strong>
-          </div>
-
-          <div>
-            <span>Total</span>
-            <strong>
-              {money(
-                selected.total_amount,
-              )}
-            </strong>
-          </div>
-        </div>
-
-        <div className="rd-document-breakdown">
-          <h4>
-            Requested Document/s
-          </h4>
-
-          {getRequestDocuments(
-            selected,
-          ).length ? (
-            getRequestDocuments(
-              selected,
-            ).map((detail) => (
-              <div
-                className="rd-document-line"
-                key={detail.id}
-              >
-                <div>
-                  <strong>
-                    {documentName(
-                      detail,
-                    )}
-                  </strong>
-
-                  <span>
-                    Quantity:{" "}
-                    {detail.quantity ??
-                      "—"}
-                  </span>
-                </div>
-
-                <strong>
-                  {money(
-                    detail.subtotal,
-                  )}
-                </strong>
-              </div>
-            ))
-          ) : (
-            <p className="rd-empty">
-              No document details found.
-            </p>
-          )}
-
-          <div className="rd-detail-total">
-            <span>Total</span>
-            <strong>
-              {money(
-                selected.total_amount,
-              )}
-            </strong>
-          </div>
-        </div>
-
-        <div className="rd-detail-status">
-          <span>
-            Current Status
-          </span>
-
-          <strong>
-            {selected.status.replace(
-              /_/g,
-              " ",
-            )}
-          </strong>
-        </div>
-
-        {selected.claim_code && (
-          <div className="rd-review-note">
-            <strong>
-              Claim Code:
-            </strong>{" "}
-            {selected.claim_code}
-          </div>
-        )}
-
-        {selected.decline_review_status && (
-          <div className="rd-review-note">
-            <strong>
-              Decline Review:
-            </strong>{" "}
-            {
-              selected.decline_review_status
-            }
-          </div>
-        )}
-
-        {selected.decline_reason && (
-          <div className="rd-review-note">
-            <strong>
-              Decline Reason:
-            </strong>{" "}
-            {selected.decline_reason}
-          </div>
-        )}
-
-        {requestActions(
-          selected,
-        )}
-      </aside>
-    );
-
-  /*
-   * REPORT PERIOD
-   */
-  const periodRequests = useMemo(() => {
-    const now = new Date();
-
-    return requests.filter(
-      (request) => {
-        const created =
-          toDateValue(request.created_at);
-
-        if (!created) {
-          return false;
-        }
-
-        if (
-          reportPeriod === "DAY"
-        ) {
-          return (
-            created.toLocaleDateString(
-              "en-CA",
-            ) ===
-            now.toLocaleDateString(
-              "en-CA",
-            )
-          );
-        }
-
-        if (
-          reportPeriod === "WEEK"
-        ) {
-          const start =
-            new Date(now);
-
-          start.setDate(
-            now.getDate() - 6,
-          );
-
-          return created >= start;
-        }
-
-        if (
-          reportPeriod === "MONTH"
-        ) {
-          return (
-            created.getMonth() ===
-              now.getMonth() &&
-            created.getFullYear() ===
-              now.getFullYear()
-          );
-        }
-
-        return (
-          created.getFullYear() ===
-          now.getFullYear()
-        );
-      },
-    );
-  }, [
-    requests,
-    reportPeriod,
-  ]);
-
-  /*
-   * EXPORT REPORT
-   */
-  const exportReport = () => {
-    const rows = [
-      [
-        "Request ID",
-        "Student ID",
-        "Requested Documents",
-        "Requested Date",
-        "Status",
-        "Amount",
-      ],
-    ];
-
-    periodRequests.forEach(
-      (request) => {
-        const documents =
-          getRequestDocuments(
-            request,
-          )
-            .map(documentName)
-            .join("; ");
-
-        rows.push([
-          request.request_id,
-          request.student_id,
-          documents,
-          request.requested_date ||
-            "",
-          request.status,
-          String(
-            request.total_amount ||
-              0,
-          ),
-        ]);
-      },
-    );
-
-    const csv = rows
-      .map((row) =>
-        row
-          .map(
-            (value) =>
-              `"${String(
-                value ?? "",
-              ).replace(
-                /"/g,
-                '""',
-              )}"`,
-          )
-          .join(","),
-      )
-      .join("\n");
-
-    const blob = new Blob(
-      [csv],
-      {
-        type:
-          "text/csv;charset=utf-8;",
-      },
-    );
-
-    const url =
-      URL.createObjectURL(blob);
-
-    const link =
-      document.createElement(
-        "a",
-      );
-
-    link.href = url;
-    link.download =
-      "campuserve-registrar-report.csv";
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(
-      link,
-    );
-
-    URL.revokeObjectURL(url);
-  };
-
-  /*
-   * PAGE CONTENT
-   */
-  const renderPage = () => {
-    /*
-     * OVERVIEW
-     */
-    if (
-      activePage ===
-      "overview"
-    ) {
-      const cards = [
-        {
-          label:
-            "Pending Requests",
-          value: count(
-            "PENDING",
-          ),
-          status:
-            "PENDING" as Status,
-          description:
-            "Awaiting review",
-        },
-        {
-          label:
-            "Processing",
-          value:
-            count("APPROVED") +
-            count(
-              "PROCESSING",
-            ),
-          status:
-            "PROCESSING" as Status,
-          description:
-            "Documents being prepared",
-        },
-        {
-          label:
-            "Ready for Claiming",
-          value: count(
-            "READY_FOR_PICKUP",
-          ),
-          status:
-            "READY_FOR_PICKUP" as Status,
-          description:
-            "Ready for student pickup",
-        },
-        {
-          label:
-            "Completed Today",
-          value:
-            completedToday,
-          status:
-            "COMPLETED" as Status,
-          description:
-            "Documents released today",
-        },
-      ];
-
-      return (
-        <section className="registrar-page">
-          <div className="welcome-section">
-            <h1>
-              Registrar Dashboard
-            </h1>
-
-            <p className="welcome-text">
-              Welcome,{" "}
-              {account.name ||
-                "Registrar Staff"}
-            </p>
-          </div>
-
-          <div className="overview-header">
-            <h2>Overview</h2>
-          </div>
-
-          <div className="stats-grid">
-            {cards.map(
-              (card) => (
-                <button
-                  key={
-                    card.label
-                  }
-                  className="stat-card stat-card-button"
-                  onClick={() => {
-                    setStatusFilter(
-                      card.status,
-                    );
-                    setSearch("");
-                    setTopSearch("");
-                    setActivePage(
-                      "requests",
-                    );
-                  }}
-                >
-                  <div className="stat-card-top">
-                    <span>
-                      {
-                        card.label
-                      }
-                    </span>
-
-                    <span className="stat-label">
-                      LIVE
-                    </span>
-                  </div>
-
-                  <strong>
-                    {card.value}
-                  </strong>
-
-                  <p>
-                    {
-                      card.description
-                    }
-                  </p>
-                </button>
-              ),
-            )}
-          </div>
-
-          <div className="services-heading">
-            <h2>
-              Registrar Services
-            </h2>
-          </div>
-
-          <div className="services-grid">
-            {Object.entries(
-              PAGE_TITLES,
-            )
-              .filter(
-                ([key]) =>
-                  key !==
-                  "overview",
-              )
-              .map(
-                ([key, title]) => (
-                  <button
-                    key={key}
-                    className="service-card"
-                    onClick={() =>
-                      changePage(
-                        key,
-                      )
-                    }
-                  >
-                    <span className="service-content">
-                      <strong>
-                        {title}
-                      </strong>
-                    </span>
-
-                    <span className="service-arrow">
-                      →
-                    </span>
-                  </button>
-                ),
-              )}
-          </div>
-        </section>
-      );
-    }
-
-    /*
-     * DOCUMENT REQUESTS
-     */
-    if (
-      activePage ===
-      "requests"
-    ) {
-      return (
-        <section className="registrar-page">
-          <div className="page-heading-row">
-            <button
-              className="back-button"
-              onClick={() =>
-                changePage(
-                  "overview",
-                )
-              }
-            >
-              ← Back
-            </button>
-
-            <h2>
-              Document Requests
-            </h2>
-          </div>
-
-          <div className="rd-toolbar">
-            <input
-              value={search}
-              onChange={(event) =>
-                setSearch(
-                  event.target
-                    .value,
-                )
-              }
-              placeholder="Search Request ID, Student ID, or Document name"
-            />
-
-            <select
-              value={
-                statusFilter
-              }
-              onChange={(event) =>
-                setStatusFilter(
-                  event.target
-                    .value,
-                )
-              }
-            >
-              <option value="ALL">
-                All statuses
-              </option>
-
-              {STATUSES.map(
-                (status) => (
-                  <option
-                    key={status}
-                    value={
-                      status
-                    }
-                  >
-                    {status.replace(
-                      /_/g,
-                      " ",
-                    )}
-                  </option>
-                ),
-              )}
-            </select>
-          </div>
-
-          <div className="rd-request-workspace">
-            {requestTable(
-              filteredRequests,
-            )}
-
-            {requestDetailsPanel}
-          </div>
-        </section>
-      );
-    }
-
-    /*
-     * CLAIMING
-     */
-    if (
-      activePage ===
-      "claiming"
-    ) {
-      return (
-        <section className="registrar-page">
-          <div className="page-heading-row">
-            <button
-              className="back-button"
-              onClick={() =>
-                changePage(
-                  "overview",
-                )
-              }
-            >
-              ← Back
-            </button>
-
-            <h2>
-              Claiming & Release
-            </h2>
-          </div>
-
-          <div className="rd-panel">
-            <h3>
-              Verify Claim Code
-            </h3>
-
-            <div className="rd-toolbar">
-              <input
-                value={claimCode}
-                onChange={(event) => {
-                  setClaimCode(
-                    event.target.value
-                      .toUpperCase(),
-                  );
-                  setClaimResult(
-                    null,
-                  );
-                }}
-                placeholder="Enter claim code"
-              />
-
-              <button
-                className="primary-button"
-                onClick={() => {
-                  const found =
-                    requests.find(
-                      (request) =>
-                        request.claim_code?.toUpperCase() ===
-                        claimCode
-                          .trim()
-                          .toUpperCase(),
-                    );
-
-                  setClaimResult(
-                    found ||
-                      null,
-                  );
-
-                  setError(
-                    found
-                      ? ""
-                      : "No request found for that claim code.",
-                  );
-                }}
-              >
-                Verify Code
-              </button>
+            <div>
+              <strong>
+                Document Requests
+              </strong>
+              <span>
+                Review and process student
+                requests.
+              </span>
             </div>
 
-            {claimResult && (
-              <div className="rd-detail">
-                <h3>
-                  {
-                    claimResult.request_id
+            <span className="service-arrow">
+              →
+            </span>
+          </button>
+
+          <button
+            className="service-card"
+            onClick={() =>
+              changePage("claiming")
+            }
+          >
+            <div>
+              <strong>
+                Claiming & Release
+              </strong>
+              <span>
+                Verify claim codes and
+                release documents.
+              </span>
+            </div>
+
+            <span className="service-arrow">
+              →
+            </span>
+          </button>
+
+          <button
+            className="service-card"
+            onClick={() =>
+              changePage("schedule")
+            }
+          >
+            <div>
+              <strong>
+                Claiming Schedule
+              </strong>
+              <span>
+                Manage available claiming
+                slots.
+              </span>
+            </div>
+
+            <span className="service-arrow">
+              →
+            </span>
+          </button>
+
+          <button
+            className="service-card"
+            onClick={() =>
+              changePage("reports")
+            }
+          >
+            <div>
+              <strong>
+                Reports & Daily Summary
+              </strong>
+              <span>
+                Review registrar activity
+                and export records.
+              </span>
+            </div>
+
+            <span className="service-arrow">
+              →
+            </span>
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderRequests = () => (
+    <section className="registrar-page">
+      <div className="page-back-row">
+        <button
+          className="back-button"
+          onClick={() =>
+            changePage("overview")
+          }
+        >
+          ← Back to Overview
+        </button>
+      </div>
+
+      {heading(
+        "Document Requests",
+        "Review and process student document requests.",
+      )}
+
+      <div className="rd-toolbar">
+        <input
+          value={search}
+          onChange={(event) =>
+            setSearch(event.target.value)
+          }
+          placeholder="Search request ID, student ID, or document"
+        />
+
+        <select
+          value={statusFilter}
+          onChange={(event) =>
+            setStatusFilter(
+              event.target.value as
+                | Status
+                | "ALL",
+            )
+          }
+        >
+          <option value="ALL">
+            All statuses
+          </option>
+
+          {STATUSES.map((status) => (
+            <option
+              key={status}
+              value={status}
+            >
+              {statusLabel(status)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="rd-master-detail">
+        <div className="rd-request-list">
+          {requestTable(
+            filteredRequests,
+          )}
+        </div>
+
+        <div className="rd-detail-panel">
+          {selected ? (
+            <>
+              <div className="rd-detail-header">
+                <div>
+                  <span className="rd-detail-label">
+                    REQUEST
+                  </span>
+
+                  <h2>
+                    {selected.request_id ||
+                      selected.id}
+                  </h2>
+                </div>
+
+                <button
+                  className="rd-detail-close"
+                  onClick={() =>
+                    setSelected(null)
                   }
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="rd-detail-status">
+                <span
+                  className={`rd-status ${String(
+                    selected.status ||
+                      "PENDING",
+                  ).toLowerCase()}`}
+                >
+                  {statusLabel(
+                    selected.status,
+                  )}
+                </span>
+              </div>
+
+              <div className="rd-detail-section">
+                <h3>
+                  Request Information
                 </h3>
 
-                <p>
-                  Student ID:{" "}
-                  {
-                    claimResult.student_id
-                  }
-                </p>
+                <div className="rd-detail-grid">
+                  <div>
+                    <span>
+                      Student ID
+                    </span>
+                    <strong>
+                      {selected.student_id ||
+                        "—"}
+                    </strong>
+                  </div>
 
-                <p>
-                  Status:{" "}
-                  {claimResult.status.replace(
-                    /_/g,
-                    " ",
-                  )}
-                </p>
+                  <div>
+                    <span>
+                      Request Method
+                    </span>
+                    <strong>
+                      {selected.request_method ||
+                        "—"}
+                    </strong>
+                  </div>
 
-                <p>
-                  Total:{" "}
-                  {money(
-                    claimResult.total_amount,
-                  )}
-                </p>
+                  <div>
+                    <span>
+                      Requested Date
+                    </span>
+                    <strong>
+                      {selected.requested_date ||
+                        dateOnly(
+                          selected.created_at,
+                        )}
+                    </strong>
+                  </div>
 
-                {claimResult.status ===
-                "READY_FOR_PICKUP" ? (
-                  <button
-                    className="primary-button"
-                    disabled={
-                      busyId ===
-                      claimResult.id
-                    }
-                    onClick={() =>
-                      updateStatus(
-                        claimResult,
-                        "COMPLETED",
-                      )
-                    }
-                  >
-                    Confirm Release
-                  </button>
+                  <div>
+                    <span>
+                      Requested Time
+                    </span>
+                    <strong>
+                      {selected.requested_time ||
+                        "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Number of Copies
+                    </span>
+                    <strong>
+                      {selected.number_of_copies ??
+                        "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Total Amount
+                    </span>
+                    <strong>
+                      {money(
+                        selected.total_amount,
+                      )}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rd-detail-section">
+                <h3>
+                  Requested Document/s
+                </h3>
+
+                {getRequestDocuments(
+                  selected,
+                ).length > 0 ? (
+                  <div className="document-detail-list">
+                    {getRequestDocuments(
+                      selected,
+                    ).map((detail) => (
+                      <div
+                        className="document-detail-item"
+                        key={detail.id}
+                      >
+                        <div>
+                          <strong>
+                            {documentName(
+                              detail,
+                            )}
+                          </strong>
+
+                          <span>
+                            Quantity:{" "}
+                            {detail.quantity ??
+                              1}
+                          </span>
+                        </div>
+
+                        <div>
+                          {detail.subtotal !=
+                          null
+                            ? money(
+                                detail.subtotal,
+                              )
+                            : "—"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <p>
-                    This request is
-                    not currently
-                    ready for pickup.
+                  <p className="rd-muted">
+                    No separate document
+                    details were found for
+                    this request.
                   </p>
                 )}
               </div>
+
+              {selected.purpose && (
+                <div className="rd-detail-section">
+                  <h3>Purpose</h3>
+                  <p className="rd-detail-purpose">
+                    {selected.purpose}
+                  </p>
+                </div>
+              )}
+
+              {selected.decline_reason && (
+                <div className="rd-detail-section">
+                  <h3>Decline Reason</h3>
+                  <p className="cancellation-detail">
+                    {selected.decline_reason}
+                  </p>
+                </div>
+              )}
+
+              {selected.cancellation_reason && (
+                <div className="rd-detail-section">
+                  <h3>
+                    Cancellation Reason
+                  </h3>
+                  <p className="cancellation-detail">
+                    {
+                      selected.cancellation_reason
+                    }
+                  </p>
+                </div>
+              )}
+
+              {selected.claim_code && (
+                <div className="rd-detail-section">
+                  <h3>Claim Code</h3>
+
+                  <div className="claim-code-display">
+                    {selected.claim_code}
+                  </div>
+                </div>
+              )}
+
+              {selected.rescheduled_at && (
+                <div className="rd-detail-section">
+                  <h3>
+                    Rescheduling Information
+                  </h3>
+
+                  <div className="rd-detail-grid">
+                    <div>
+                      <span>
+                        Previous Date
+                      </span>
+
+                      <strong>
+                        {selected.previous_requested_date ||
+                          "—"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Previous Time
+                      </span>
+
+                      <strong>
+                        {selected.previous_requested_time ||
+                          "—"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Reschedule Count
+                      </span>
+
+                      <strong>
+                        {selected.reschedule_count ||
+                          0}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Rescheduled At
+                      </span>
+
+                      <strong>
+                        {dateText(
+                          selected.rescheduled_at,
+                        )}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="rd-detail-section">
+                <h3>Actions</h3>
+
+                {requestActions(selected)}
+              </div>
+            </>
+          ) : (
+            <div className="rd-detail-empty">
+              <h3>
+                Select a request
+              </h3>
+
+              <p>
+                Select a row from the table
+                to view the complete request
+                details and available actions.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderClaiming = () => (
+    <section className="registrar-page">
+      {heading(
+        "Claiming & Release",
+        "Verify the student's claim code before releasing the requested documents.",
+      )}
+
+      <div className="claiming-layout">
+        <div className="rd-panel">
+          <h3>
+            Verify Claim Code
+          </h3>
+
+          <p className="rd-muted">
+            Enter the claim code provided to
+            the student.
+          </p>
+
+          <div className="claim-input-row">
+            <input
+              value={claimCode}
+              onChange={(event) =>
+                setClaimCode(
+                  event.target.value.toUpperCase(),
+                )
+              }
+              placeholder="Enter claim code"
+              maxLength={12}
+            />
+
+            <button
+              className="primary-button"
+              onClick={verifyClaim}
+            >
+              Verify
+            </button>
+          </div>
+        </div>
+
+        <div className="rd-panel">
+          <h3>
+            Release Information
+          </h3>
+
+          {!claimResult ? (
+            <div className="rd-empty">
+              No claim is currently
+              verified.
+            </div>
+          ) : (
+            <div className="claim-result">
+              <div className="claim-result-heading">
+                <span>
+                  Request ID
+                </span>
+
+                <strong>
+                  {claimResult.request_id}
+                </strong>
+              </div>
+
+              <div className="rd-detail-grid">
+                <div>
+                  <span>
+                    Student ID
+                  </span>
+
+                  <strong>
+                    {claimResult.student_id}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>
+                    Status
+                  </span>
+
+                  <strong>
+                    {statusLabel(
+                      claimResult.status,
+                    )}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>
+                    Requested Date
+                  </span>
+
+                  <strong>
+                    {claimResult.requested_date ||
+                      "—"}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>
+                    Requested Time
+                  </span>
+
+                  <strong>
+                    {claimResult.requested_time ||
+                      "—"}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="rd-detail-section">
+                <h4>
+                  Requested Document/s
+                </h4>
+
+                <p>
+                  {getDocumentNames(
+                    claimResult,
+                  )}
+                </p>
+              </div>
+
+              <button
+                className="primary-button wide-button"
+                disabled={
+                  claimResult.status !==
+                  "READY_FOR_PICKUP"
+                }
+                onClick={releaseClaim}
+              >
+                Release Documents
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderSchedule = () => (
+    <section className="registrar-page">
+      {heading(
+        "Claiming Schedule",
+        "Create and manage available claiming dates and time slots.",
+      )}
+
+      <div className="schedule-layout">
+        <div className="rd-panel">
+          <div className="schedule-form-heading">
+            <div>
+              <h3>
+                {editingScheduleId
+                  ? "Edit Schedule"
+                  : "Create Schedule"}
+              </h3>
+
+              <p>
+                Set the date, time slot, and
+                maximum number of students.
+              </p>
+            </div>
+
+            {editingScheduleId && (
+              <button
+                className="back-button"
+                onClick={
+                  clearScheduleForm
+                }
+              >
+                Clear
+              </button>
             )}
           </div>
 
-          <h3>
-            Ready for Pickup
-          </h3>
+          <div className="schedule-fields">
+            <label>
+              <span>
+                Claiming Date
+              </span>
 
-          {requestTable(
-            requests.filter(
-              (request) =>
-                request.status ===
-                "READY_FOR_PICKUP",
-            ),
-          )}
-        </section>
-      );
-    }
-
-    /*
-     * CLAIMING SCHEDULE
-     */
-    if (
-      activePage ===
-      "schedule"
-    ) {
-      return (
-        <section className="registrar-page">
-          <div className="page-heading-row">
-            <button
-              className="back-button"
-              onClick={() =>
-                changePage(
-                  "overview",
-                )
-              }
-            >
-              ← Back
-            </button>
-
-            <h2>
-              Claiming Schedule
-            </h2>
-          </div>
-
-          <div className="rd-panel">
-            <h3>
-              {editingScheduleId
-                ? "Edit Claiming Schedule"
-                : "Create Claiming Schedule"}
-            </h3>
-
-            <div className="rd-toolbar">
               <input
                 type="date"
-                value={
-                  scheduleDate
-                }
-                min={today()}
+                value={scheduleDate}
                 onChange={(event) =>
                   setScheduleDate(
-                    event.target
-                      .value,
+                    event.target.value,
                   )
                 }
               />
+            </label>
+
+            <label>
+              <span>
+                Time Slot
+              </span>
 
               <input
                 type="text"
-                value={
-                  scheduleTime
-                }
+                value={scheduleTime}
                 onChange={(event) =>
                   setScheduleTime(
-                    event.target
-                      .value,
+                    event.target.value,
                   )
                 }
-                placeholder="e.g. 9:00 AM - 10:00 AM"
+                placeholder="e.g. 8:00 AM – 10:00 AM"
               />
+            </label>
+
+            <label>
+              <span>
+                Slot Capacity
+              </span>
 
               <input
                 type="number"
                 min="1"
-                value={
-                  scheduleCapacity
-                }
+                value={scheduleCapacity}
                 onChange={(event) =>
                   setScheduleCapacity(
-                    event.target
-                      .value,
+                    event.target.value,
                   )
                 }
-                placeholder="Capacity"
               />
-
-              <button
-                className="primary-button"
-                onClick={
-                  saveSchedule
-                }
-              >
-                {editingScheduleId
-                  ? "Save Changes"
-                  : "Create Schedule"}
-              </button>
-
-              {editingScheduleId && (
-                <button
-                  className="secondary-button"
-                  onClick={() => {
-                    setEditingScheduleId(
-                      "",
-                    );
-                    setScheduleDate(
-                      "",
-                    );
-                    setScheduleTime(
-                      "",
-                    );
-                    setScheduleCapacity(
-                      "10",
-                    );
-                  }}
-                >
-                  Cancel Edit
-                </button>
-              )}
-            </div>
+            </label>
           </div>
 
-          <div className="rd-table-wrap">
-            <table className="rd-table">
-              <thead>
-                <tr>
-                  <th>
-                    Claim Date
-                  </th>
-                  <th>
-                    Time Slot
-                  </th>
-                  <th>
-                    Capacity
-                  </th>
-                  <th>
-                    Available
-                  </th>
-                  <th>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
+          <button
+            className="primary-button schedule-save-button"
+            onClick={saveSchedule}
+          >
+            {editingScheduleId
+              ? "Save Changes"
+              : "Create Schedule"}
+          </button>
+        </div>
 
-              <tbody>
-                {schedules.map(
-                  (schedule) => (
-                    <tr
-                      key={
-                        schedule.id
-                      }
-                    >
-                      <td>
-                        {
-                          schedule.claimDate
-                        }
-                      </td>
-
-                      <td>
-                        {
-                          schedule.timeSlot
-                        }
-                      </td>
-
-                      <td>
-                        {
-                          schedule.slotCapacity ??
-                          "—"
-                        }
-                      </td>
-
-                      <td>
-                        {
-                          schedule.availableSlot ??
-                          schedule.availableSlots ??
-                          "—"
-                        }
-                      </td>
-
-                      <td>
-                        <div className="rd-actions">
-                          <button
-                            onClick={() => {
-                              setEditingScheduleId(
-                                schedule.id,
-                              );
-                              setScheduleDate(
-                                schedule.claimDate ||
-                                  "",
-                              );
-                              setScheduleTime(
-                                schedule.timeSlot ||
-                                  "",
-                              );
-                              setScheduleCapacity(
-                                String(
-                                  schedule.slotCapacity ??
-                                    10,
-                                ),
-                              );
-                            }}
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            className="danger"
-                            onClick={() =>
-                              removeSchedule(
-                                schedule,
-                              )
-                            }
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-
-            {!schedules.length && (
-              <p className="rd-empty">
-                No claiming schedules
-                found.
-              </p>
-            )}
-          </div>
-        </section>
-      );
-    }
-
-    /*
-     * RESCHEDULING
-     */
-    if (
-      activePage ===
-      "reschedule"
-    ) {
-      return (
-        <section className="registrar-page">
-          <div className="page-heading-row">
-            <button
-              className="back-button"
-              onClick={() =>
-                changePage(
-                  "overview",
-                )
-              }
-            >
-              ← Back
-            </button>
-
-            <h2>
-              Rescheduling
-            </h2>
-          </div>
-
-          {requestTable(
-            requests.filter(
-              (request) =>
-                request.status !==
-                  "COMPLETED" &&
-                request.status !==
-                  "DECLINED",
-            ),
-          )}
-        </section>
-      );
-    }
-
-    /*
-     * REPORTS
-     */
-    if (
-      activePage ===
-      "reports"
-    ) {
-      const periodStatuses =
-        STATUSES.map(
-          (status) => ({
-            status,
-            count:
-              periodRequests.filter(
-                (request) =>
-                  request.status ===
-                  status,
-              ).length,
-          }),
-        );
-
-      return (
-        <section className="registrar-page">
-          <div className="page-heading-row">
-            <button
-              className="back-button"
-              onClick={() =>
-                changePage(
-                  "overview",
-                )
-              }
-            >
-              ← Back
-            </button>
-
-            <h2>
-              Reports & Daily Summary
-            </h2>
-          </div>
-
-          <div className="report-periods">
-            {(
-              [
-                "DAY",
-                "WEEK",
-                "MONTH",
-                "YEAR",
-              ] as const
-            ).map(
-              (period) => (
-                <button
-                  key={period}
-                  className={
-                    reportPeriod ===
-                    period
-                      ? "active"
-                      : ""
-                  }
-                  onClick={() =>
-                    setReportPeriod(
-                      period,
-                    )
-                  }
-                >
-                  {period ===
-                  "DAY"
-                    ? "Day"
-                    : period ===
-                      "WEEK"
-                    ? "Week"
-                    : period ===
-                      "MONTH"
-                    ? "Month"
-                    : "Year"}
-                </button>
-              ),
-            )}
-          </div>
-
-          <div className="report-summary-grid">
+        <div className="rd-panel">
+          <div className="section-title-row">
             <div>
-              <span>
-                Requests
-              </span>
-              <strong>
-                {
-                  periodRequests.length
-                }
-              </strong>
-            </div>
-
-            <div>
-              <span>
-                Pending
-              </span>
-              <strong>
-                {
-                  periodRequests.filter(
-                    (request) =>
-                      request.status ===
-                      "PENDING",
-                  ).length
-                }
-              </strong>
-            </div>
-
-            <div>
-              <span>
-                Ready
-              </span>
-              <strong>
-                {
-                  periodRequests.filter(
-                    (request) =>
-                      request.status ===
-                      "READY_FOR_PICKUP",
-                  ).length
-                }
-              </strong>
-            </div>
-
-            <div>
-              <span>
-                Completed
-              </span>
-              <strong>
-                {
-                  periodRequests.filter(
-                    (request) =>
-                      request.status ===
-                      "COMPLETED",
-                  ).length
-                }
-              </strong>
-            </div>
-
-            <div>
-              <span>
-                Total Amount
-              </span>
-              <strong>
-                {money(
-                  periodRequests.reduce(
-                    (
-                      total,
-                      request,
-                    ) =>
-                      total +
-                      Number(
-                        request.total_amount ||
-                          0,
-                      ),
-                    0,
-                  ),
-                )}
-              </strong>
-            </div>
-          </div>
-
-          <div className="report-layout">
-            <div className="rd-panel">
               <h3>
-                Status Summary
+                Available Schedules
               </h3>
 
-              {periodStatuses.map(
-                ({
-                  status,
-                  count: statusCount,
-                }) => {
-                  const percentage =
-                    periodRequests.length
-                      ? Math.round(
-                          (statusCount /
-                            periodRequests.length) *
-                            100,
-                        )
-                      : 0;
+              <p>
+                {schedules.length} schedule
+                {schedules.length === 1
+                  ? ""
+                  : "s"} recorded
+              </p>
+            </div>
+          </div>
+
+          {schedules.length === 0 ? (
+            <div className="rd-empty">
+              No claiming schedules have
+              been created yet.
+            </div>
+          ) : (
+            <div className="schedule-list">
+              {schedules.map(
+                (schedule) => {
+                  const capacity =
+                    schedule.slotCapacity ||
+                    0;
+
+                  const available =
+                    schedule.availableSlot ??
+                    schedule.availableSlots ??
+                    capacity;
 
                   return (
                     <div
-                      className="report-bar-row"
-                      key={status}
+                      className="schedule-item"
+                      key={schedule.id}
                     >
-                      <span>
-                        {status.replace(
-                          /_/g,
-                          " ",
-                        )}
-                      </span>
+                      <div className="schedule-date">
+                        <strong>
+                          {schedule.claimDate ||
+                            "No date"}
+                        </strong>
 
-                      <div className="report-bar">
-                        <i
-                          style={{
-                            width: `${percentage}%`,
-                          }}
-                        />
+                        <span>
+                          {schedule.timeSlot ||
+                            "No time slot"}
+                        </span>
                       </div>
 
-                      <strong>
-                        {
-                          statusCount
-                        }
-                      </strong>
+                      <div className="schedule-capacity">
+                        <strong>
+                          {available}
+                        </strong>
+
+                        <span>
+                          available of{" "}
+                          {capacity}
+                        </span>
+                      </div>
+
+                      <div className="schedule-actions">
+                        <button
+                          className="rd-small-button"
+                          onClick={() =>
+                            startEditingSchedule(
+                              schedule,
+                            )
+                          }
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          className="rd-small-button danger"
+                          onClick={() =>
+                            removeSchedule(
+                              schedule,
+                            )
+                          }
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   );
                 },
               )}
             </div>
-
-            <div className="rd-panel">
-              <h3>
-                Daily Summary
-              </h3>
-
-              <p>
-                Completed today:{" "}
-                <strong>
-                  {
-                    completedToday
-                  }
-                </strong>
-              </p>
-
-              <p>
-                Requests in selected
-                period:{" "}
-                <strong>
-                  {
-                    periodRequests.length
-                  }
-                </strong>
-              </p>
-
-              <p>
-                Total recorded
-                requests:{" "}
-                <strong>
-                  {
-                    requests.length
-                  }
-                </strong>
-              </p>
-
-              <button
-                className="primary-button"
-                onClick={
-                  exportReport
-                }
-              >
-                Export CSV
-              </button>
-            </div>
-          </div>
-        </section>
-      );
-    }
-
-    /*
-     * HISTORY
-     */
-    if (
-      activePage ===
-      "history"
-    ) {
-      return (
-        <section className="registrar-page">
-          <div className="page-heading-row">
-            <button
-              className="back-button"
-              onClick={() =>
-                changePage(
-                  "overview",
-                )
-              }
-            >
-              ← Back
-            </button>
-
-            <h2>
-              Transaction History
-            </h2>
-          </div>
-
-          {requestTable(
-            requests.filter(
-              (request) =>
-                [
-                  "COMPLETED",
-                  "DECLINED",
-                  "RESCHEDULED",
-                ].includes(
-                  request.status,
-                ),
-            ),
           )}
-        </section>
-      );
-    }
+        </div>
+      </div>
+    </section>
+  );
 
-    /*
-     * MESSAGES
-     *
-     * This is intentionally left as an
-     * integration point because your groupmate
-     * is handling Messages.
-     */
-    return (
-      <section className="registrar-page">
-        <div className="page-heading-row">
-          <button
-            className="back-button"
-            onClick={() =>
-              changePage(
-                "overview",
+  const renderReschedule = () => (
+    <section className="registrar-page">
+      {heading(
+        "Rescheduling",
+        "Update the requested claiming date and time for active requests.",
+      )}
+
+      <div className="rd-panel">
+        <div className="rd-toolbar">
+          <input
+            value={search}
+            onChange={(event) =>
+              setSearch(event.target.value)
+            }
+            placeholder="Search request ID, student ID, or document"
+          />
+
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(
+                event.target.value as
+                  | Status
+                  | "ALL",
               )
             }
           >
-            ← Back
-          </button>
+            <option value="ALL">
+              All statuses
+            </option>
 
-          <h2>
-            Messages
-          </h2>
+            {STATUSES.map((status) => (
+              <option
+                key={status}
+                value={status}
+              >
+                {statusLabel(status)}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="empty-state">
-          <h3>
-            Messaging Integration
-          </h3>
+        <div className="reschedule-list">
+          {filteredRequests
+            .filter(
+              (request) =>
+                !TERMINAL_STATUSES.includes(
+                  request.status ||
+                    "PENDING",
+                ),
+            )
+            .map((request) => (
+              <div
+                className="reschedule-item"
+                key={request.id}
+              >
+                <div>
+                  <strong>
+                    {request.request_id}
+                  </strong>
 
-          <p>
-            The messaging feature is
-            being handled by another
-            CampuServe member and will
-            be connected here during
-            integration.
-          </p>
+                  <span>
+                    Student ID:{" "}
+                    {request.student_id}
+                  </span>
+
+                  <span>
+                    Current schedule:{" "}
+                    {request.requested_date ||
+                      "—"}{" "}
+                    {request.requested_time ||
+                      ""}
+                  </span>
+
+                  {request.reschedule_count &&
+                    request.reschedule_count >
+                      0 && (
+                      <span>
+                        Rescheduled{" "}
+                        {request.reschedule_count}{" "}
+                        time
+                        {request.reschedule_count ===
+                        1
+                          ? ""
+                          : "s"}
+                      </span>
+                    )}
+                </div>
+
+                <button
+                  className="rd-small-button"
+                  onClick={() => {
+                    setRescheduleTarget(
+                      request,
+                    );
+                    setRescheduleDate(
+                      request.requested_date ||
+                        "",
+                    );
+                    setRescheduleTime(
+                      request.requested_time ||
+                        "",
+                    );
+                    clearFeedback();
+                  }}
+                >
+                  Reschedule
+                </button>
+              </div>
+            ))}
+
+          {filteredRequests.filter(
+            (request) =>
+              !TERMINAL_STATUSES.includes(
+                request.status ||
+                  "PENDING",
+              ),
+          ).length === 0 && (
+            <div className="rd-empty">
+              No active requests available
+              for rescheduling.
+            </div>
+          )}
         </div>
+      </div>
+    </section>
+  );
+
+  const renderHistory = () => {
+    const historyRows =
+      filteredRequests.filter(
+        (request) =>
+          TERMINAL_STATUSES.includes(
+            request.status ||
+              "PENDING",
+          ) ||
+          Boolean(request.rescheduled_at),
+      );
+
+    return (
+      <section className="registrar-page">
+        {heading(
+          "Transaction History",
+          "Review completed, declined, cancelled, and rescheduled requests.",
+        )}
+
+        <div className="rd-toolbar">
+          <input
+            value={search}
+            onChange={(event) =>
+              setSearch(event.target.value)
+            }
+            placeholder="Search transaction history"
+          />
+
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(
+                event.target.value as
+                  | Status
+                  | "ALL",
+              )
+            }
+          >
+            <option value="ALL">
+              All statuses
+            </option>
+
+            {STATUSES.map((status) => (
+              <option
+                key={status}
+                value={status}
+              >
+                {statusLabel(status)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {requestTable(historyRows)}
       </section>
     );
   };
 
-  return (
-    <div className="registrar-layout">
-      {menuOpen && (
-        <div
-          className="menu-overlay"
-          onClick={() =>
-            setMenuOpen(false)
-          }
-        />
+  const renderReports = () => (
+    <section className="registrar-page">
+      {heading(
+        "Reports & Daily Summary",
+        "Review registrar transaction activity by reporting period.",
       )}
 
+      <div className="report-toolbar">
+        <div className="report-periods">
+          {(
+            [
+              "DAY",
+              "WEEK",
+              "MONTH",
+              "YEAR",
+            ] as const
+          ).map((period) => (
+            <button
+              key={period}
+              className={
+                reportPeriod === period
+                  ? "report-period active"
+                  : "report-period"
+              }
+              onClick={() =>
+                setReportPeriod(period)
+              }
+            >
+              {period === "DAY"
+                ? "Day"
+                : period === "WEEK"
+                  ? "Week"
+                  : period === "MONTH"
+                    ? "Month"
+                    : "Year"}
+            </button>
+          ))}
+        </div>
+
+        <button
+          className="primary-button"
+          onClick={exportReport}
+        >
+          Export CSV
+        </button>
+      </div>
+
+      <div className="report-summary">
+        <div className="report-summary-header">
+          <div>
+            <span>
+              CAMPUSERVE
+            </span>
+
+            <h2>
+              Registrar Transaction Report
+            </h2>
+
+            <p>
+              Period:{" "}
+              {reportPeriod.toLowerCase()}
+            </p>
+          </div>
+
+          <div className="report-date">
+            Generated{" "}
+            {new Date().toLocaleDateString(
+              "en-PH",
+              {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              },
+            )}
+          </div>
+        </div>
+
+        <div className="report-summary-grid">
+          <div>
+            <span>
+              Total Requests
+            </span>
+            <strong>
+              {reportRequests.length}
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Pending
+            </span>
+            <strong>
+              {
+                reportRequests.filter(
+                  (request) =>
+                    request.status ===
+                    "PENDING",
+                ).length
+              }
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Processing
+            </span>
+            <strong>
+              {
+                reportRequests.filter(
+                  (request) =>
+                    request.status ===
+                      "APPROVED" ||
+                    request.status ===
+                      "PROCESSING",
+                ).length
+              }
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Completed
+            </span>
+            <strong>
+              {
+                reportRequests.filter(
+                  (request) =>
+                    request.status ===
+                    "COMPLETED",
+                ).length
+              }
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Ready for Claiming
+            </span>
+            <strong>
+              {
+                reportRequests.filter(
+                  (request) =>
+                    request.status ===
+                    "READY_FOR_PICKUP",
+                ).length
+              }
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Total Amount
+            </span>
+            <strong>
+              {money(reportTotalAmount)}
+            </strong>
+          </div>
+        </div>
+
+        <div className="report-table-wrap">
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {STATUSES.map((status) => (
+                <tr key={status}>
+                  <td>
+                    {statusLabel(status)}
+                  </td>
+
+                  <td>
+                    {
+                      reportRequests.filter(
+                        (request) =>
+                          request.status ===
+                          status,
+                      ).length
+                    }
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderMessages = () => (
+    <section className="registrar-page">
+      {heading(
+        "Messages",
+        "Messaging is managed through the shared CampuServe messaging feature.",
+      )}
+
+      <div className="messages-integration">
+        <div>
+          <h3>
+            Shared Messaging
+          </h3>
+
+          <p>
+            The Registrar dashboard is ready
+            to connect to the shared Messages
+            module maintained by the assigned
+            team member.
+          </p>
+
+          <p>
+            No separate Registrar messaging
+            database or duplicate messaging
+            workflow is created here.
+          </p>
+        </div>
+
+        <button
+          className="primary-button"
+          onClick={() =>
+            setNotice(
+              "Open the shared Messages module from the CampuServe navigation when it is connected.",
+            )
+          }
+        >
+          Messages
+        </button>
+      </div>
+    </section>
+  );
+
+  const renderSettings = () => (
+    <section className="registrar-page">
+      {heading(
+        "Settings",
+        "View the Registrar account and dashboard information.",
+      )}
+
+      <div className="settings-panel">
+        <div className="settings-account">
+          <div className="settings-avatar">
+            {(registrarName.charAt(0) ||
+              "R").toUpperCase()}
+          </div>
+
+          <div>
+            <h3>
+              {registrarName}
+            </h3>
+
+            <p>
+              {account.email ||
+                "No email available"}
+            </p>
+          </div>
+        </div>
+
+        <div className="settings-row">
+          <span>
+            Role
+          </span>
+
+          <strong>
+            Registrar Staff
+          </strong>
+        </div>
+
+        <div className="settings-row">
+          <span>
+            Account Status
+          </span>
+
+          <strong className="settings-status">
+            Active
+          </strong>
+        </div>
+
+        <div className="settings-row">
+          <span>
+            Dashboard
+          </span>
+
+          <strong>
+            Registrar
+          </strong>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderPage = () => {
+    switch (activePage) {
+      case "overview":
+        return renderOverview();
+
+      case "requests":
+        return renderRequests();
+
+      case "claiming":
+        return renderClaiming();
+
+      case "schedule":
+        return renderSchedule();
+
+      case "reschedule":
+        return renderReschedule();
+
+      case "history":
+        return renderHistory();
+
+      case "reports":
+        return renderReports();
+
+      case "messages":
+        return renderMessages();
+
+      case "settings":
+        return renderSettings();
+
+      default:
+        return renderOverview();
+    }
+  };
+
+  return (
+    <div className="registrar-layout">
       <aside
-        className={`registrar-menu ${
-          menuOpen ? "open" : ""
-        }`}
+        className={
+          menuOpen
+            ? "registrar-menu open"
+            : "registrar-menu"
+        }
       >
         <div className="menu-header">
           <div className="menu-brand">
@@ -2542,7 +2783,161 @@ function RegistrarDashboard({
 
             <div>
               <strong>
-                CampuServe
+                CAMPUSERVE
+              </strong>
+
+              <span>
+                Registrar
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <nav className="registrar-nav">
+          <button
+            className={
+              activePage === "overview"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("overview")
+            }
+          >
+            <span>Overview</span>
+          </button>
+
+          <button
+            className={
+              activePage === "requests"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("requests")
+            }
+          >
+            <span>
+              Document Requests
+            </span>
+          </button>
+
+          <button
+            className={
+              activePage === "claiming"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("claiming")
+            }
+          >
+            <span>
+              Claiming & Release
+            </span>
+          </button>
+
+          <button
+            className={
+              activePage === "schedule"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("schedule")
+            }
+          >
+            <span>
+              Claiming Schedule
+            </span>
+          </button>
+
+          <button
+            className={
+              activePage === "reschedule"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("reschedule")
+            }
+          >
+            <span>
+              Rescheduling
+            </span>
+          </button>
+
+          <button
+            className={
+              activePage === "history"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("history")
+            }
+          >
+            <span>
+              Transaction History
+            </span>
+          </button>
+
+          <button
+            className={
+              activePage === "reports"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("reports")
+            }
+          >
+            <span>
+              Reports & Daily Summary
+            </span>
+          </button>
+
+          <button
+            className={
+              activePage === "messages"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("messages")
+            }
+          >
+            <span>
+              Messages
+            </span>
+          </button>
+
+          <button
+            className={
+              activePage === "settings"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("settings")
+            }
+          >
+            <span>
+              Settings
+            </span>
+          </button>
+        </nav>
+
+        <div className="menu-bottom">
+          <div className="staff-profile">
+            <div className="staff-avatar">
+              {(registrarName.charAt(0) ||
+                "R").toUpperCase()}
+            </div>
+
+            <div className="staff-info">
+              <strong>
+                {registrarName}
               </strong>
 
               <span>
@@ -2552,78 +2947,8 @@ function RegistrarDashboard({
           </div>
 
           <button
-            className="close-menu"
-            onClick={() =>
-              setMenuOpen(false)
-            }
-          >
-            ×
-          </button>
-        </div>
-
-        <nav className="registrar-nav">
-          {Object.entries(
-            PAGE_TITLES,
-          ).map(
-            ([key, title]) => (
-              <button
-                key={key}
-                className={`nav-item ${
-                  activePage === key
-                    ? "active"
-                    : ""
-                }`}
-                onClick={() =>
-                  changePage(
-                    key,
-                  )
-                }
-              >
-                {title}
-              </button>
-            ),
-          )}
-        </nav>
-
-        <div className="menu-bottom">
-          <div className="staff-profile">
-            <div className="staff-avatar">
-              {(
-                account.name ||
-                "R"
-              )
-                .charAt(0)
-                .toUpperCase()}
-            </div>
-
-            <div>
-              <strong>
-                {account.name ||
-                  "Registrar Staff"}
-              </strong>
-
-              <span>
-                {account.email ||
-                  "Registrar Account"}
-              </span>
-            </div>
-          </div>
-
-          <button
             className="logout-button"
-            onClick={async () => {
-              try {
-                await signOut(
-                  auth,
-                );
-              } catch (err) {
-                setError(
-                  err instanceof Error
-                    ? err.message
-                    : "Unable to log out.",
-                );
-              }
-            }}
+            onClick={handleLogout}
           >
             Log Out
           </button>
@@ -2636,45 +2961,28 @@ function RegistrarDashboard({
             <button
               className="menu-button"
               onClick={() =>
-                setMenuOpen(true)
+                setMenuOpen(
+                  (current) => !current,
+                )
               }
-              aria-label="Open menu"
+              aria-label="Toggle menu"
             >
-              <span />
-              <span />
-              <span />
+              ☰
             </button>
 
-            <div>
-              <span className="topbar-label">
-                REGISTRAR PORTAL
-              </span>
-
-              <h3>
-                {
-                  PAGE_TITLES[
-                    activePage
-                  ]
-                }
-              </h3>
-            </div>
+            <h3>
+              {PAGE_TITLES[activePage] ||
+                "Registrar Dashboard"}
+            </h3>
           </div>
 
           <div className="registrar-topbar-actions">
             <div className="registrar-top-search">
-              <span>
-                ⌕
-              </span>
-
               <input
-                type="search"
-                value={
-                  topSearch
-                }
+                value={topSearch}
                 onChange={(event) =>
                   openSearch(
-                    event.target
-                      .value,
+                    event.target.value,
                   )
                 }
                 placeholder="Search requests..."
@@ -2686,20 +2994,21 @@ function RegistrarDashboard({
                 className="registrar-icon-button"
                 onClick={() =>
                   setNotificationsOpen(
-                    (open) =>
-                      !open,
+                    (current) =>
+                      !current,
                   )
                 }
                 aria-label="Notifications"
+                title="Notifications"
               >
-                🔔
+                <span className="topbar-icon">
+                  <BellIcon />
+                </span>
 
                 {notifications.length >
                   0 && (
                   <span className="registrar-notification-count">
-                    {
-                      notifications.length
-                    }
+                    {notifications.length}
                   </span>
                 )}
               </button>
@@ -2717,6 +3026,7 @@ function RegistrarDashboard({
                           false,
                         )
                       }
+                      aria-label="Close notifications"
                     >
                       ×
                     </button>
@@ -2724,18 +3034,15 @@ function RegistrarDashboard({
 
                   {notifications.length ===
                   0 ? (
-                    <p className="registrar-notifications-empty">
-                      No new request
-                      updates.
-                    </p>
+                    <div className="registrar-notifications-empty">
+                      No new notifications.
+                    </div>
                   ) : (
                     notifications.map(
                       (request) => (
                         <button
-                          key={
-                            request.id
-                          }
                           className="registrar-notification-item"
+                          key={request.id}
                           onClick={() => {
                             setSelected(
                               request,
@@ -2754,36 +3061,16 @@ function RegistrarDashboard({
                             }
                           </strong>
 
-                          <small>
-                            Student:{" "}
-                            {
-                              request.student_id
-                            }
-                          </small>
-
-                          <small>
-                            {
-                              request.status.replace(
-                                /_/g,
-                                " ",
-                              )
-                            }
-                          </small>
+                          <span>
+                            {request.status ===
+                            "PENDING"
+                              ? "New document request awaiting review."
+                              : "Document is ready for claiming."}
+                          </span>
                         </button>
                       ),
                     )
                   )}
-
-                  <button
-                    className="registrar-view-requests"
-                    onClick={() =>
-                      changePage(
-                        "requests",
-                      )
-                    }
-                  >
-                    View all requests
-                  </button>
                 </div>
               )}
             </div>
@@ -2791,192 +3078,398 @@ function RegistrarDashboard({
             <button
               className="registrar-icon-button"
               onClick={() =>
-                changePage(
-                  "messages",
-                )
+                changePage("messages")
               }
               aria-label="Messages"
+              title="Messages"
             >
-              ✉
+              <span className="topbar-icon">
+                <MessageIcon />
+              </span>
             </button>
           </div>
         </header>
 
         {error && (
           <div className="rd-alert error">
-            {error}
+            <span>{error}</span>
+
+            <button
+              onClick={() =>
+                setError("")
+              }
+            >
+              ×
+            </button>
           </div>
         )}
 
         {notice && (
           <div className="rd-alert success">
-            {notice}
+            <span>{notice}</span>
+
+            <button
+              onClick={() =>
+                setNotice("")
+              }
+            >
+              ×
+            </button>
           </div>
         )}
 
         {renderPage()}
       </main>
 
-      /*
-       * DECLINE MODAL
-       */
-      {declineTarget && (
-        <div className="rd-modal-backdrop">
-          <section
-            className="rd-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <button
-              className="rd-modal-close"
-              onClick={() => {
-                setDeclineTarget(
-                  null,
-                );
-                setDeclineReason(
-                  "",
-                );
-              }}
-            >
-              ×
-            </button>
+      {approveTarget && (
+        <div className="rd-modal-layer">
+          <div className="rd-modal">
+            <div className="rd-modal-header">
+              <div>
+                <span>
+                  APPROVE REQUEST
+                </span>
 
-            <h2>
-              Submit Decline Review
-            </h2>
+                <h2>
+                  {approveTarget.request_id}
+                </h2>
+              </div>
 
-            <p>
-              Request:{" "}
-              <strong>
-                {
-                  declineTarget.request_id
+              <button
+                className="rd-modal-close"
+                onClick={() =>
+                  setApproveTarget(null)
                 }
-              </strong>
-            </p>
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="rd-approval-summary">
+              <div>
+                <span>Student ID</span>
+                <strong>
+                  {approveTarget.student_id ||
+                    "—"}
+                </strong>
+              </div>
+
+              <div>
+                <span>Requested Document/s</span>
+                <strong>
+                  {getDocumentNames(
+                    approveTarget,
+                  )}
+                </strong>
+              </div>
+
+              <div>
+                <span>Requested Schedule</span>
+                <strong>
+                  {approveTarget.requested_date ||
+                    "—"}{" "}
+                  {approveTarget.requested_time ||
+                    ""}
+                </strong>
+              </div>
+
+              <div>
+                <span>Total Amount</span>
+                <strong>
+                  {money(
+                    approveTarget.total_amount,
+                  )}
+                </strong>
+              </div>
+            </div>
 
             <p>
-              The request will be
-              forwarded to Admin for
-              evaluation.
+              Review the request information
+              before approving it. Once
+              approved, the request will move
+              to the processing stage and the
+              Registrar can start preparing the
+              requested document/s.
             </p>
+
+            <div className="rd-modal-actions">
+              <button
+                className="secondary-button"
+                onClick={() =>
+                  setApproveTarget(null)
+                }
+              >
+                Back
+              </button>
+
+              <button
+                className="primary-button"
+                disabled={
+                  busyId ===
+                  approveTarget.id
+                }
+                onClick={
+                  confirmApprove
+                }
+              >
+                Confirm Approval
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {declineTarget && (
+        <div className="rd-modal-layer">
+          <div className="rd-modal">
+            <div className="rd-modal-header">
+              <div>
+                <span>
+                  DECLINE REQUEST
+                </span>
+
+                <h2>
+                  {declineTarget.request_id}
+                </h2>
+              </div>
+
+              <button
+                className="rd-modal-close"
+                onClick={() =>
+                  setDeclineTarget(null)
+                }
+              >
+                ×
+              </button>
+            </div>
+
+            <p>
+              Review the request and enter
+              the reason for declining it.
+              The reason will be saved with
+              the transaction record.
+            </p>
+
+            <div className="rd-approval-summary">
+              <div>
+                <span>Student ID</span>
+                <strong>
+                  {declineTarget.student_id ||
+                    "—"}
+                </strong>
+              </div>
+
+              <div>
+                <span>Requested Document/s</span>
+                <strong>
+                  {getDocumentNames(
+                    declineTarget,
+                  )}
+                </strong>
+              </div>
+            </div>
 
             <textarea
-              value={
-                declineReason
-              }
+              value={declineReason}
               onChange={(event) =>
                 setDeclineReason(
                   event.target.value,
                 )
               }
-              placeholder="Enter the reason for recommending decline..."
+              placeholder="Enter decline reason..."
               rows={5}
             />
 
-            <button
-              className="primary-button"
-              disabled={
-                busyId ===
-                declineTarget.id
-              }
-              onClick={
-                submitDecline
-              }
-            >
-              Submit for Admin Review
-            </button>
-          </section>
+            <div className="rd-modal-actions">
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  setDeclineTarget(null);
+                  setDeclineReason("");
+                }}
+              >
+                Back
+              </button>
+
+              <button
+                className="primary-button danger-button"
+                disabled={
+                  busyId ===
+                  declineTarget.id
+                }
+                onClick={
+                  submitDecline
+                }
+              >
+                Confirm Decline
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      /*
-       * RESCHEDULE MODAL
-       */
-      {rescheduleTarget && (
-        <div className="rd-modal-backdrop">
-          <section
-            className="rd-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <button
-              className="rd-modal-close"
-              onClick={() =>
-                setRescheduleTarget(
-                  null,
-                )
-              }
-            >
-              ×
-            </button>
+      {cancelTarget && (
+        <div className="rd-modal-layer">
+          <div className="rd-modal">
+            <div className="rd-modal-header">
+              <div>
+                <span>
+                  CANCEL REQUEST
+                </span>
 
-            <h2>
-              Reschedule Request
-            </h2>
+                <h2>
+                  {cancelTarget.request_id}
+                </h2>
+              </div>
+
+              <button
+                className="rd-modal-close"
+                onClick={() =>
+                  setCancelTarget(null)
+                }
+              >
+                ×
+              </button>
+            </div>
 
             <p>
-              Request:{" "}
-              <strong>
-                {
-                  rescheduleTarget.request_id
-                }
-              </strong>
+              Enter the reason for
+              cancelling this request.
             </p>
 
-            <label>
-              New Date
-            </label>
-
-            <input
-              type="date"
-              value={
-                rescheduleDate
-              }
+            <textarea
+              value={cancelReason}
               onChange={(event) =>
-                setRescheduleDate(
-                  event.target
-                    .value,
+                setCancelReason(
+                  event.target.value,
                 )
               }
+              placeholder="Enter cancellation reason..."
+              rows={5}
             />
 
-            <label>
-              New Time
-            </label>
+            <div className="rd-modal-actions">
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  setCancelTarget(null);
+                  setCancelReason("");
+                }}
+              >
+                Back
+              </button>
 
-            <input
-              type="text"
-              value={
-                rescheduleTime
-              }
-              onChange={(event) =>
-                setRescheduleTime(
-                  event.target
-                    .value,
-                )
-              }
-              placeholder="e.g. 9:00 AM"
-            />
+              <button
+                className="primary-button danger-button"
+                disabled={
+                  busyId ===
+                  cancelTarget.id
+                }
+                onClick={
+                  submitCancel
+                }
+              >
+                Confirm Cancellation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <button
-              className="primary-button"
-              disabled={
-                busyId ===
-                rescheduleTarget.id
-              }
-              onClick={
-                submitReschedule
-              }
-            >
-              Save Reschedule
-            </button>
-          </section>
+      {rescheduleTarget && (
+        <div className="rd-modal-layer">
+          <div className="rd-modal">
+            <div className="rd-modal-header">
+              <div>
+                <span>
+                  RESCHEDULE REQUEST
+                </span>
+
+                <h2>
+                  {rescheduleTarget.request_id}
+                </h2>
+              </div>
+
+              <button
+                className="rd-modal-close"
+                onClick={() =>
+                  setRescheduleTarget(
+                    null,
+                  )
+                }
+              >
+                ×
+              </button>
+            </div>
+
+            <p>
+              Select the new claiming date
+              and time.
+            </p>
+
+            <div className="modal-form-grid">
+              <label>
+                <span>
+                  New Date
+                </span>
+
+                <input
+                  type="date"
+                  value={rescheduleDate}
+                  onChange={(event) =>
+                    setRescheduleDate(
+                      event.target.value,
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                <span>
+                  New Time
+                </span>
+
+                <input
+                  type="text"
+                  value={rescheduleTime}
+                  onChange={(event) =>
+                    setRescheduleTime(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="e.g. 10:00 AM – 12:00 PM"
+                />
+              </label>
+            </div>
+
+            <div className="rd-modal-actions">
+              <button
+                className="secondary-button"
+                onClick={() =>
+                  setRescheduleTarget(
+                    null,
+                  )
+                }
+              >
+                Back
+              </button>
+
+              <button
+                className="primary-button"
+                disabled={
+                  busyId ===
+                  rescheduleTarget.id
+                }
+                onClick={
+                  submitReschedule
+                }
+              >
+                Confirm Reschedule
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
-
-export default RegistrarDashboard;
