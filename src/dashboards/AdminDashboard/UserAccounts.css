@@ -439,11 +439,26 @@
   gap: 16px;
 }
 
+
 .edit-account-field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
+  margin-bottom: 15px;
+  width: 100%;
 }
+
+.edit-account-field select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: white;
+  color: #222;
+  font-size: 14px;
+}
+
+
 
 .edit-account-field label {
   font-size: 13px;

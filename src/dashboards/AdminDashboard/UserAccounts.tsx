@@ -34,11 +34,70 @@ type Account = {
   role?: string;
   status?: string;
   firebaseUid?: string;
+
+  college?: string;
+  department?: string;
+  program?: string;
+  yearLevel?: string;
+  section?: string;
+  campus?: string;
+  contactNumber?: string;
+  graduationYear?: string;
+  employeeId?: string;
+  position?: string;
 };
 
 // ========================================
 // COMPONENT
 // ========================================
+
+const collegePrograms: Record<string, string[]> = {
+  "COLLEGE OF ARTS, SCIENCES AND LETTERS": [
+    "Bachelor of Arts in English Language",
+    "Bachelor of Arts in Economics",
+    "Bachelor of Science in Biology",
+    "Bachelor of Science in Nutrition and Dietetics",
+    "Bachelor of Science in Social Work",
+  ],
+
+  "COLLEGE OF BUSINESS AND PUBLIC ADMINISTRATION": [
+    "Bachelor of Public Administration",
+    "Bachelor of Science in Business Administration - Major in Financial Management",
+    "Bachelor of Science in Business Administration - Major in Operations Management",
+  ],
+
+  "COLLEGE OF COMPUTING SCIENCES": [
+    "Bachelor of Science in Computer Science",
+    "Bachelor of Science in Information Technology",
+    "Bachelor of Science in Mathematics - Major in Pure Math",
+    "Bachelor of Science in Mathematics - Major in Statistics",
+    "Bachelor of Science in Mathematics - Major in CIT",
+  ],
+
+  "COLLEGE OF HOSPITALITY AND TOURISM MANAGEMENT": [
+    "Bachelor of Science Hospitality Management",
+  ],
+
+  "COLLEGE OF TEACHER EDUCATION": [
+    "Bachelor of Secondary Education",
+    "Bachelor of Technical- Vocational Teacher Education",
+    "Bachelor of Technology and Livelihood Education",
+  ],
+
+  "COLLEGE OF INDUSTRIAL TECHNOLOGY": [
+    "Bachelor Industrial Technology - Major in Automotive Technology",
+    "Bachelor Industrial Technology - Major in Ceramics Technology",
+    "Bachelor Industrial Technology - Major in Civil Technology",
+    "Bachelor Industrial Technology - Major in Drafting Technology",
+    "Bachelor Industrial Technology - Major in Electrical Technology",
+    "Bachelor Industrial Technology - Major in Electronics Technology",
+    "Bachelor Industrial Technology - Major in Food Service Management",
+    "Bachelor Industrial Technology - Major in Garments, Fashion and Design",
+    "Bachelor Industrial Technology - Major in Mechanical Technology",
+  ],
+};
+
+const collegeOptions = Object.keys(collegePrograms);
 
 function UserAccounts() {
   // ========================================
@@ -62,6 +121,18 @@ function UserAccounts() {
 
   const [createStatus, setCreateStatus] =
     useState("active");
+
+  const [createCollege, setCreateCollege] = 
+  useState("");
+const [createDepartment, setCreateDepartment] = useState("");
+const [createProgram, setCreateProgram] = useState("");
+const [createYearLevel, setCreateYearLevel] = useState("");
+const [createSection, setCreateSection] = useState("");
+const [createCampus, setCreateCampus] = useState("Lingayen Campus");
+const [createContactNumber, setCreateContactNumber] = useState("");
+const [createGraduationYear, setCreateGraduationYear] = useState("");
+const [createEmployeeId, setCreateEmployeeId] = useState("");
+const [createPosition, setCreatePosition] = useState("");
 
   const [createMessage, setCreateMessage] =
     useState("");
@@ -116,6 +187,17 @@ function UserAccounts() {
 
   const [editStatus, setEditStatus] =
     useState("active");
+
+  const [editCollege, setEditCollege] = useState("");
+const [editDepartment, setEditDepartment] = useState("");
+const [editProgram, setEditProgram] = useState("");
+const [editYearLevel, setEditYearLevel] = useState("");
+const [editSection, setEditSection] = useState("");
+const [editCampus, setEditCampus] = useState("");
+const [editContactNumber, setEditContactNumber] = useState("");
+const [editGraduationYear, setEditGraduationYear] = useState("");
+const [editEmployeeId, setEditEmployeeId] = useState("");
+const [editPosition, setEditPosition] = useState("");
 
   const [editMessage, setEditMessage] =
     useState("");
@@ -216,6 +298,20 @@ function UserAccounts() {
       return;
     }
 
+    
+    // Validate college
+    if (!createCollege.trim()) {
+      setCreateMessage("Please select a college.");
+      return;
+    }
+
+    // Validate program
+    if (!createProgram.trim()) {
+      setCreateMessage("Please select a program.");
+      return;
+    }
+
+
     let secondaryApp;
 
     try {
@@ -259,19 +355,24 @@ function UserAccounts() {
       );
 
       await setDoc(accountRef, {
-        name: normalizedName,
-        email: normalizedEmail,
-        role: createRole,
-        status: createStatus,
-        firebaseUid: firebaseUser.uid,
+  name: normalizedName,
+  email: normalizedEmail,
+  role: createRole,
+  status: createStatus,
 
-        ...(createRole === "student"
-          ? {
-              student_id:
-                normalizedStudentId,
-            }
-          : {}),
-      });
+  student_id: createStudentId.trim(),
+
+  college: createCollege.trim(),
+  department: createDepartment.trim(),
+  program: createProgram.trim(),
+  yearLevel: createYearLevel.trim(),
+  section: createSection.trim(),
+  campus: createCampus.trim(),
+  contactNumber: createContactNumber.trim(),
+  graduationYear: createGraduationYear.trim(),
+  employeeId: createEmployeeId.trim(),
+  position: createPosition.trim(),
+});
 
       /*
        * Sign out the temporary authentication
@@ -290,6 +391,17 @@ function UserAccounts() {
       setCreatePassword("");
       setCreateRole("student");
       setCreateStatus("active");
+
+      setCreateCollege("");
+setCreateDepartment("");
+setCreateProgram("");
+setCreateYearLevel("");
+setCreateSection("");
+setCreateCampus("Lingayen Campus");
+setCreateContactNumber("");
+setCreateGraduationYear("");
+setCreateEmployeeId("");
+setCreatePosition("");
 
       // Refresh account list
       await retrieveAccounts();
@@ -372,6 +484,17 @@ function UserAccounts() {
       account.status || "active"
     );
 
+setEditCollege(account.college || "");
+setEditDepartment(account.department || "");
+setEditProgram(account.program || "");
+setEditYearLevel(account.yearLevel || "");
+setEditSection(account.section || "");
+setEditCampus(account.campus || "");
+setEditContactNumber(account.contactNumber || "");
+setEditGraduationYear(account.graduationYear || "");
+setEditEmployeeId(account.employeeId || "");
+setEditPosition(account.position || "");
+
     setEditMessage("");
   };
 
@@ -387,6 +510,16 @@ function UserAccounts() {
     setEditEmail("");
     setEditRole("student");
     setEditStatus("active");
+    setEditCollege("");
+setEditDepartment("");
+setEditProgram("");
+setEditYearLevel("");
+setEditSection("");
+setEditCampus("");
+setEditContactNumber("");
+setEditGraduationYear("");
+setEditEmployeeId("");
+setEditPosition("");
     setEditMessage("");
   };
 
@@ -460,6 +593,16 @@ function UserAccounts() {
             email: normalizedEmail,
             role: editRole,
             status: editStatus,
+            college: editCollege.trim(),
+department: editDepartment.trim(),
+program: editProgram.trim(),
+yearLevel: editYearLevel.trim(),
+section: editSection.trim(),
+campus: editCampus.trim(),
+contactNumber: editContactNumber.trim(),
+graduationYear: editGraduationYear.trim(),
+employeeId: editEmployeeId.trim(),
+position: editPosition.trim(),
 
             ...(editRole === "student"
               ? {
@@ -493,6 +636,16 @@ function UserAccounts() {
             email: normalizedEmail,
             role: editRole,
             status: editStatus,
+            college: editCollege.trim(),
+department: editDepartment.trim(),
+program: editProgram.trim(),
+yearLevel: editYearLevel.trim(),
+section: editSection.trim(),
+campus: editCampus.trim(),
+contactNumber: editContactNumber.trim(),
+graduationYear: editGraduationYear.trim(),
+employeeId: editEmployeeId.trim(),
+position: editPosition.trim(),
 
             ...(editRole === "student"
               ? {
@@ -957,6 +1110,10 @@ function UserAccounts() {
                   Student
                 </option>
 
+<option value="alumni">
+  Alumni
+</option>
+
                 <option value="general_office">
                   General Office
                 </option>
@@ -1002,6 +1159,146 @@ function UserAccounts() {
             </div>
 
             {/* STATUS */}
+
+{/* COLLEGE */}
+
+<div className="create-account-field">
+  <label>College</label>
+  <select
+    value={createCollege}
+    onChange={(event) => {
+      const selectedCollege = event.target.value;
+      setCreateCollege(selectedCollege);
+      setCreateDepartment(selectedCollege);
+      setCreateProgram("");
+    }}
+  >
+    <option value="">Select college</option>
+    {collegeOptions.map((college) => (
+      <option key={college} value={college}>
+        {college}
+      </option>
+    ))}
+  </select>
+</div>
+
+
+{/* DEPARTMENT */}
+<div className="create-account-field">
+  <label>Department</label>
+  <select
+    value={createDepartment}
+    onChange={(event) => setCreateDepartment(event.target.value)}
+    disabled={!createCollege}
+  >
+    <option value="">Select department</option>
+    {createCollege && (
+      <option value={createCollege}>{createCollege}</option>
+    )}
+  </select>
+</div>
+
+{/* PROGRAM */}
+<div className="create-account-field">
+  <label>Program</label>
+  <select
+    value={createProgram}
+    onChange={(event) => setCreateProgram(event.target.value)}
+    disabled={!createCollege}
+  >
+    <option value="">Select program</option>
+    {(collegePrograms[createCollege] || []).map((program) => (
+      <option key={program} value={program}>
+        {program}
+      </option>
+    ))}
+  </select>
+</div>
+
+
+{/* YEAR LEVEL */}
+<div className="create-account-field">
+  <label>Year Level</label>
+  <select
+    value={createYearLevel}
+    onChange={(event) => setCreateYearLevel(event.target.value)}
+  >
+    <option value="">Select year level</option>
+    <option value="1st Year">1st Year</option>
+    <option value="2nd Year">2nd Year</option>
+    <option value="3rd Year">3rd Year</option>
+    <option value="4th Year">4th Year</option>
+    <option value="5th Year">5th Year</option>
+    <option value="Graduate">Graduate</option>
+    <option value="N/A">Not applicable</option>
+  </select>
+</div>
+
+{/* SECTION */}
+<div className="create-account-field">
+  <label>Section</label>
+  <input
+    type="text"
+    placeholder="Enter section"
+    value={createSection}
+    onChange={(event) => setCreateSection(event.target.value)}
+  />
+</div>
+
+{/* CAMPUS */}
+<div className="create-account-field">
+  <label>Campus</label>
+  <input
+    type="text"
+    placeholder="Enter campus"
+    value={createCampus}
+    onChange={(event) => setCreateCampus(event.target.value)}
+  />
+</div>
+
+{/* CONTACT NUMBER */}
+<div className="create-account-field">
+  <label>Contact Number</label>
+  <input
+    type="tel"
+    placeholder="Enter contact number"
+    value={createContactNumber}
+    onChange={(event) => setCreateContactNumber(event.target.value)}
+  />
+</div>
+
+{/* GRADUATION YEAR */}
+<div className="create-account-field">
+  <label>Graduation Year</label>
+  <input
+    type="number"
+    placeholder="Enter graduation year"
+    value={createGraduationYear}
+    onChange={(event) => setCreateGraduationYear(event.target.value)}
+  />
+</div>
+
+{/* EMPLOYEE ID */}
+<div className="create-account-field">
+  <label>Employee / Staff ID</label>
+  <input
+    type="text"
+    placeholder="Enter employee or staff ID"
+    value={createEmployeeId}
+    onChange={(event) => setCreateEmployeeId(event.target.value)}
+  />
+</div>
+
+{/* POSITION */}
+<div className="create-account-field">
+  <label>Position / Job Title</label>
+  <input
+    type="text"
+    placeholder="Enter position or job title"
+    value={createPosition}
+    onChange={(event) => setCreatePosition(event.target.value)}
+  />
+</div>
 
             <div className="create-account-field">
 
@@ -1152,6 +1449,11 @@ function UserAccounts() {
                   Student
                 </option>
 
+
+                <option value="alumni">
+  Alumni
+</option>
+
                 <option value="general_office">
                   General Office
                 </option>
@@ -1197,6 +1499,145 @@ function UserAccounts() {
             </div>
 
             {/* STATUS */}
+
+
+{/* COLLEGE */}
+<div className="edit-account-field">
+  <label>College</label>
+  <select
+    value={editCollege}
+    onChange={(event) => {
+      const selectedCollege = event.target.value;
+      setEditCollege(selectedCollege);
+      setEditDepartment(selectedCollege);
+      setEditProgram("");
+    }}
+  >
+    <option value="">Select college</option>
+    {collegeOptions.map((college) => (
+      <option key={college} value={college}>
+        {college}
+      </option>
+    ))}
+  </select>
+</div>
+
+{/* DEPARTMENT */}
+<div className="edit-account-field">
+  <label>Department</label>
+  <select
+    value={editDepartment}
+    onChange={(event) => setEditDepartment(event.target.value)}
+    disabled={!editCollege}
+  >
+    <option value="">Select department</option>
+    {editCollege && (
+      <option value={editCollege}>{editCollege}</option>
+    )}
+  </select>
+</div>
+
+{/* PROGRAM */}
+<div className="edit-account-field">
+  <label>Program</label>
+  <select
+    value={editProgram}
+    onChange={(event) => setEditProgram(event.target.value)}
+    disabled={!editCollege}
+  >
+    <option value="">Select program</option>
+    {(collegePrograms[editCollege] || []).map((program) => (
+      <option key={program} value={program}>
+        {program}
+      </option>
+    ))}
+  </select>
+</div>
+
+
+{/* YEAR LEVEL */}
+<div className="edit-account-field">
+  <label>Year Level</label>
+  <select
+    value={editYearLevel}
+    onChange={(event) => setEditYearLevel(event.target.value)}
+  >
+    <option value="">Select year level</option>
+    <option value="1st Year">1st Year</option>
+    <option value="2nd Year">2nd Year</option>
+    <option value="3rd Year">3rd Year</option>
+    <option value="4th Year">4th Year</option>
+    <option value="5th Year">5th Year</option>
+    <option value="Graduate">Graduate</option>
+    <option value="N/A">Not applicable</option>
+  </select>
+</div>
+
+{/* SECTION */}
+<div className="edit-account-field">
+  <label>Section</label>
+  <input
+    type="text"
+    placeholder="Enter section"
+    value={editSection}
+    onChange={(event) => setEditSection(event.target.value)}
+  />
+</div>
+
+{/* CAMPUS */}
+<div className="edit-account-field">
+  <label>Campus</label>
+  <input
+    type="text"
+    placeholder="Enter campus"
+    value={editCampus}
+    onChange={(event) => setEditCampus(event.target.value)}
+  />
+</div>
+
+{/* CONTACT NUMBER */}
+<div className="edit-account-field">
+  <label>Contact Number</label>
+  <input
+    type="tel"
+    placeholder="Enter contact number"
+    value={editContactNumber}
+    onChange={(event) => setEditContactNumber(event.target.value)}
+  />
+</div>
+
+{/* GRADUATION YEAR */}
+<div className="edit-account-field">
+  <label>Graduation Year</label>
+  <input
+    type="number"
+    placeholder="Enter graduation year"
+    value={editGraduationYear}
+    onChange={(event) => setEditGraduationYear(event.target.value)}
+  />
+</div>
+
+{/* EMPLOYEE ID */}
+<div className="edit-account-field">
+  <label>Employee / Staff ID</label>
+  <input
+    type="text"
+    placeholder="Enter employee or staff ID"
+    value={editEmployeeId}
+    onChange={(event) => setEditEmployeeId(event.target.value)}
+  />
+</div>
+
+{/* POSITION */}
+<div className="edit-account-field">
+  <label>Position / Job Title</label>
+  <input
+    type="text"
+    placeholder="Enter position or job title"
+    value={editPosition}
+    onChange={(event) => setEditPosition(event.target.value)}
+  />
+</div>
 
             <div className="edit-account-field">
 

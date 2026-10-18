@@ -49,6 +49,17 @@ type Account = {
   status?: string;
   firebaseUid?: string;
   student_id?: string;
+
+  college?: string;
+  department?: string;
+  program?: string;
+  yearLevel?: string;
+  section?: string;
+  campus?: string;
+  contactNumber?: string;
+  graduationYear?: string;
+  employeeId?: string;
+  position?: string;
 };
 
 function App() {
