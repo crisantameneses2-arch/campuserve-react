@@ -39,6 +39,7 @@ import {
 
 import AdminDashboard from "./dashboards/AdminDashboard/AdminDashboard";
 import StudentDashboard from "./dashboards/StudentDashboard/StudentDashboard";
+import RegistrarDashboard from "./dashboards/RegistrarDashboard/RegistrarDashboard";
 import GeneralOfficeDashboard from "./dashboards/GeneralOfficeDashboard/GeneralOfficeDashboard";
 
 type Account = {
@@ -48,6 +49,17 @@ type Account = {
   status?: string;
   firebaseUid?: string;
   student_id?: string;
+
+  college?: string;
+  department?: string;
+  program?: string;
+  yearLevel?: string;
+  section?: string;
+  campus?: string;
+  contactNumber?: string;
+  graduationYear?: string;
+  employeeId?: string;
+  position?: string;
 };
 
 function App() {
@@ -1459,30 +1471,11 @@ function App() {
                 />
               )}
 
-              {account.role ===
-                "registrar" && (
-                <div>
-                  <h2>
-                    Registrar Staff
-                    Dashboard
-                  </h2>
+            {account.role === "registrar" && (
+        <RegistrarDashboard account={account} />
+      )}
 
-                  <button>
-                    Manage Document
-                    Requests
-                  </button>
-
-                  <button>
-                    View Claiming
-                    Schedule
-                  </button>
-
-                  <button>
-                    Daily Preparation
-                    Summary
-                  </button>
-                </div>
-              )}
+   
             </>
           }
         />

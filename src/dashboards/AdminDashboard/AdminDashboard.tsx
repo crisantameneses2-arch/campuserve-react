@@ -7,7 +7,8 @@ import {
   getDocs,
 } from "firebase/firestore";
 
-import { db } from "../../../firebase";
+import { signOut } from "firebase/auth";
+import { auth, db } from "../../../firebase";
 
 import UserAccounts from "./UserAccounts";
 import RolesPermissions from "./RolesPermissions";
@@ -74,6 +75,15 @@ function AdminDashboard({
 });
 
 const [statsLoading, setStatsLoading] = useState(false);
+
+const handleLogout = async () => {
+  try {
+    await signOut(auth);
+    window.location.reload();
+  } catch (error) {
+    console.error("Error logging out:", error);
+  }
+};
 
 const loadDashboardStats = async () => {
   setStatsLoading(true);
@@ -548,6 +558,7 @@ useEffect(() => {
                   </div>
 
 
+
                   <div>
 
                     <small>
@@ -577,6 +588,15 @@ useEffect(() => {
 
               </div>
             )}
+
+            <div className="profile-actions">
+  <button
+    className="logout-button"
+    onClick={handleLogout}
+  >
+    Log Out
+  </button>
+</div>
 
           </div>
 
