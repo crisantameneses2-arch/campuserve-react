@@ -66,7 +66,7 @@ body {
 
 /* Navigation */
 
-.sidebar-nav {
+.sidebar-navigation {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -176,26 +176,21 @@ body {
    ADMIN PROFILE
    ========================================= */
 
-.admin-profile {
+.admin-profile-container {
   position: relative;
-
   display: flex;
   align-items: center;
-
   gap: 10px;
-
   color: #374151;
-
   font-size: 14px;
   font-weight: 500;
-
   white-space: nowrap;
 }
 
 
 /* Profile button */
 
-.profile-button {
+.admin-profile-button {
   display: flex;
   align-items: center;
 
@@ -217,15 +212,15 @@ body {
   transition: background 0.15s ease;
 }
 
-.profile-button:hover {
+.admin-profile-button:hover {
   background: #f3f4f6;
 }
 
-.profile-button:focus {
+.admin-profile-button:focus {
   outline: none;
 }
 
-.profile-button:focus-visible {
+.admin-profile-button:focus-visible {
   outline: 2px solid #6366f1;
   outline-offset: 2px;
 }
@@ -233,7 +228,7 @@ body {
 
 /* Profile icon */
 
-.profile-icon {
+.profile-avatar {
   width: 36px;
   height: 36px;
 
@@ -382,24 +377,22 @@ body {
 }
 
 .logout-button {
+  display: block;
   width: 100%;
-  padding: 9px 12px;
-  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  border: 1px solid #dc2626;
   border-radius: 8px;
-  background: #ffffff;
-  color: #dc2626;
+  background: #dc2626;
+  color: #ffffff;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
+  transition: background 0.2s ease;
 }
 
 .logout-button:hover {
-  background: #fef2f2;
-  border-color: #fecaca;
+  background: #b91c1c;
 }
 
 .logout-button:active {

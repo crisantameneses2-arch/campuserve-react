@@ -1,3 +1,4 @@
+
 import "./AdminDashboard.css";
 
 import { useEffect, useState } from "react";
@@ -67,126 +68,140 @@ function AdminDashboard({
   const [currentPage, setCurrentPage] =
     useState("dashboard");
 
-    const [dashboardStats, setDashboardStats] = useState({
-  totalStudents: 0,
-  pendingRequests: 0,
-  activeReservations: 0,
-  systemAlerts: 0,
-});
+  const [dashboardStats, setDashboardStats] = useState({
+    totalStudents: 0,
+    pendingRequests: 0,
+    activeReservations: 0,
+    systemAlerts: 0,
+  });
 
-const [statsLoading, setStatsLoading] = useState(false);
+  const [statsLoading, setStatsLoading] =
+    useState(false);
 
-const handleLogout = async () => {
-  try {
-    await signOut(auth);
-    window.location.reload();
-  } catch (error) {
-    console.error("Error logging out:", error);
-  }
-};
+  /* =====================================================
+     LOG OUT
+  ===================================================== */
 
-const loadDashboardStats = async () => {
-  setStatsLoading(true);
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      window.location.reload();
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
 
-  try {
-    // ==============================
-    // TOTAL STUDENTS
-    // ==============================
-    const accountsSnapshot = await getDocs(
-      collection(db, "accounts")
-    );
+  /* =====================================================
+     LOAD DASHBOARD STATISTICS
+  ===================================================== */
 
-    const totalStudents = accountsSnapshot.docs.filter(
-      (document) => {
-        const data = document.data();
+  const loadDashboardStats = async () => {
+    setStatsLoading(true);
 
-        return (
-          data.role === "student" &&
-          data.status !== "deleted"
-        );
-      }
-    ).length;
+    try {
+      // ==============================
+      // TOTAL STUDENTS
+      // ==============================
 
-    // ==============================
-    // PENDING DOCUMENT REQUESTS
-    // ==============================
-    const requestsSnapshot = await getDocs(
-      collection(db, "documentRequests")
-    );
+      const accountsSnapshot = await getDocs(
+        collection(db, "accounts")
+      );
 
-    const pendingRequests =
-      requestsSnapshot.docs.filter((document) => {
-        const data = document.data();
+      const totalStudents =
+        accountsSnapshot.docs.filter((document) => {
+          const data = document.data();
 
-        const status = String(
-          data.status ?? data.Status ?? ""
-        ).toLowerCase();
+          return (
+            data.role === "student" &&
+            data.status !== "deleted"
+          );
+        }).length;
 
-        return status === "pending";
-      }).length;
+      // ==============================
+      // PENDING DOCUMENT REQUESTS
+      // ==============================
 
-    // ==============================
-    // ACTIVE ITEM RESERVATIONS
-    // ==============================
-    const reservationsSnapshot = await getDocs(
-      collection(db, "itemReservations")
-    );
+      const requestsSnapshot = await getDocs(
+        collection(db, "documentRequests")
+      );
 
-    const activeReservations =
-      reservationsSnapshot.docs.filter((document) => {
-        const data = document.data();
+      const pendingRequests =
+        requestsSnapshot.docs.filter((document) => {
+          const data = document.data();
 
-        const status = String(
-          data.status ?? data.Status ?? ""
-        ).toLowerCase();
+          const status = String(
+            data.status ?? data.Status ?? ""
+          ).toLowerCase();
 
-        return (
-          status === "active" ||
-          status === "approved"
-        );
-      }).length;
+          return status === "pending";
+        }).length;
 
-    // ==============================
-    // SYSTEM ALERTS
-    // ==============================
-    const notificationsSnapshot = await getDocs(
-      collection(db, "notifications")
-    );
+      // ==============================
+      // ACTIVE ITEM RESERVATIONS
+      // ==============================
 
-    const systemAlerts =
-      notificationsSnapshot.docs.filter((document) => {
-        const data = document.data();
+      const reservationsSnapshot = await getDocs(
+        collection(db, "itemReservations")
+      );
 
-        return (
-          data.Is_Read === false ||
-          data.isRead === false
-        );
-      }).length;
+      const activeReservations =
+        reservationsSnapshot.docs.filter((document) => {
+          const data = document.data();
 
-    // ==============================
-    // UPDATE DASHBOARD
-    // ==============================
-    setDashboardStats({
-      totalStudents,
-      pendingRequests,
-      activeReservations,
-      systemAlerts,
-    });
-  } catch (error) {
-    console.error(
-      "Error loading dashboard statistics:",
-      error
-    );
-  } finally {
-    setStatsLoading(false);
-  }
-};
+          const status = String(
+            data.status ?? data.Status ?? ""
+          ).toLowerCase();
 
-useEffect(() => {
-  if (currentPage === "dashboard") {
-    loadDashboardStats();
-  }
-}, [currentPage]);
+          return (
+            status === "active" ||
+            status === "approved"
+          );
+        }).length;
+
+      // ==============================
+      // SYSTEM ALERTS
+      // ==============================
+
+      const notificationsSnapshot = await getDocs(
+        collection(db, "notifications")
+      );
+
+      const systemAlerts =
+        notificationsSnapshot.docs.filter((document) => {
+          const data = document.data();
+
+          return (
+            data.Is_Read === false ||
+            data.isRead === false
+          );
+        }).length;
+
+      // ==============================
+      // UPDATE DASHBOARD
+      // ==============================
+
+      setDashboardStats({
+        totalStudents,
+        pendingRequests,
+        activeReservations,
+        systemAlerts,
+      });
+
+    } catch (error) {
+      console.error(
+        "Error loading dashboard statistics:",
+        error
+      );
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentPage === "dashboard") {
+      loadDashboardStats();
+    }
+  }, [currentPage]);
 
   /* =====================================================
      FIRESTORE COLLECTIONS
@@ -209,7 +224,6 @@ useEffect(() => {
     "activityLogs",
     "reports",
   ];
-
 
   /* =====================================================
      RETRIEVE FIRESTORE DATA
@@ -245,6 +259,7 @@ useEffect(() => {
 
         Other collections are displayed normally.
       */
+
       const filteredRecords =
         selectedCollection === "accounts"
           ? data.filter((record) =>
@@ -270,7 +285,6 @@ useEffect(() => {
       setLoading(false);
     }
   };
-
 
   /* =====================================================
      DISPLAY FIRESTORE VALUES
@@ -299,13 +313,12 @@ useEffect(() => {
     return String(value);
   };
 
-
   /* =====================================================
      PAGE
   ===================================================== */
 
   return (
-    <div className="admin-dashboard">
+    <div className="admin-layout">
 
       {/* =================================================
           SIDEBAR
@@ -317,7 +330,6 @@ useEffect(() => {
           <h2>CampuServe</h2>
           <span>Administrator</span>
         </div>
-
 
         <nav className="sidebar-navigation">
 
@@ -337,7 +349,6 @@ useEffect(() => {
             Dashboard
           </button>
 
-
           {/* ================= USER ACCOUNTS ================= */}
 
           <button
@@ -353,7 +364,6 @@ useEffect(() => {
             <span>👤</span>
             User accounts
           </button>
-
 
           {/* ================= ROLES & PERMISSIONS ================= */}
 
@@ -371,7 +381,6 @@ useEffect(() => {
             Roles & permissions
           </button>
 
-
           {/* ================= DOCUMENT REQUESTS ================= */}
 
           <button
@@ -387,7 +396,6 @@ useEffect(() => {
             <span>📄</span>
             Document requests
           </button>
-
 
           {/* ================= ITEM RESERVATIONS ================= */}
 
@@ -405,7 +413,6 @@ useEffect(() => {
             Item reservations
           </button>
 
-
           {/* ================= REPORTS & ANALYTICS ================= */}
 
           <button
@@ -422,7 +429,6 @@ useEffect(() => {
             Reports & analytics
           </button>
 
-
           {/* ================= ACTIVITY LOGS ================= */}
 
           <button
@@ -438,7 +444,6 @@ useEffect(() => {
             <span>📝</span>
             Activity logs
           </button>
-
 
           {/* ================= SYSTEM SETTINGS ================= */}
 
@@ -460,13 +465,11 @@ useEffect(() => {
 
       </aside>
 
-
       {/* =================================================
           MAIN AREA
       ================================================= */}
 
       <main className="admin-main">
-
 
         {/* =================================================
             HEADER
@@ -475,7 +478,6 @@ useEffect(() => {
         <header className="admin-header">
 
           <div>
-
             <h1>
               Administrator Dashboard
             </h1>
@@ -484,23 +486,19 @@ useEffect(() => {
               Manage CampuServe system data
               and users.
             </p>
-
           </div>
-
 
           {/* ================= PROFILE ================= */}
 
           <div className="admin-profile-container">
 
             <button
+              type="button"
               className="admin-profile-button"
               onClick={() =>
-                setShowProfile(
-                  !showProfile
-                )
+                setShowProfile(!showProfile)
               }
             >
-
               <span className="profile-avatar">
                 👤
               </span>
@@ -512,14 +510,14 @@ useEffect(() => {
               <span>
                 ▾
               </span>
-
             </button>
 
-
-            {/* PROFILE DROPDOWN */}
+            {/* ================= PROFILE DROPDOWN ================= */}
 
             {showProfile && (
               <div className="profile-panel">
+
+                {/* PROFILE HEADER */}
 
                 <div className="profile-panel-header">
 
@@ -528,80 +526,58 @@ useEffect(() => {
                   </div>
 
                   <div>
-
                     <strong>
-                      {account.name ||
-                        "Administrator"}
+                      {account.name || "Administrator"}
                     </strong>
 
                     <span>
                       Administrator
                     </span>
-
                   </div>
 
                 </div>
 
+                {/* PROFILE DETAILS */}
 
                 <div className="profile-details">
 
                   <div>
-
-                    <small>
-                      Email
-                    </small>
-
-                    <p>
-                      {account.email}
-                    </p>
-
+                    <small>Email</small>
+                    <p>{account.email || "—"}</p>
                   </div>
-
-
 
                   <div>
-
-                    <small>
-                      Role
-                    </small>
-
-                    <p>
-                      {account.role}
-                    </p>
-
+                    <small>Role</small>
+                    <p>{account.role || "—"}</p>
                   </div>
-
 
                   <div>
-
-                    <small>
-                      Status
-                    </small>
-
-                    <p>
-                      {account.status}
-                    </p>
-
+                    <small>Status</small>
+                    <p>{account.status || "—"}</p>
                   </div>
+
+                </div>
+
+                {/* LOG OUT BUTTON */}
+
+                <div className="profile-actions">
+
+                  <button
+                    type="button"
+                    className="logout-button"
+                    onClick={handleLogout}
+                  >
+                    Log Out
+                  </button>
 
                 </div>
 
               </div>
             )}
 
-            <div className="profile-actions">
-  <button
-    className="logout-button"
-    onClick={handleLogout}
-  >
-    Log Out
-  </button>
-</div>
-
           </div>
 
         </header>
-
 
         {/* =================================================
             CONTENT
@@ -609,78 +585,53 @@ useEffect(() => {
 
         <div className="admin-content">
 
-
-          {/* =================================================
-              USER ACCOUNTS
-          ================================================= */}
+          {/* USER ACCOUNTS */}
 
           {currentPage === "userAccounts" ? (
 
             <UserAccounts />
 
-
-          /* =================================================
-             ROLES & PERMISSIONS
-          ================================================= */
+          /* ROLES & PERMISSIONS */
 
           ) : currentPage === "rolesPermissions" ? (
 
             <RolesPermissions />
 
-
-          /* =================================================
-             DOCUMENT REQUESTS
-          ================================================= */
+          /* DOCUMENT REQUESTS */
 
           ) : currentPage === "documentRequests" ? (
 
             <DocumentRequests />
 
-
-          /* =================================================
-             ITEM RESERVATIONS
-          ================================================= */
+          /* ITEM RESERVATIONS */
 
           ) : currentPage === "itemReservations" ? (
 
             <ItemReservations />
 
-
-          /* =================================================
-             REPORTS & ANALYTICS
-          ================================================= */
+          /* REPORTS & ANALYTICS */
 
           ) : currentPage === "reportsAnalytics" ? (
 
             <ReportsAnalytics />
 
-
-          /* =================================================
-             ACTIVITY LOGS
-          ================================================= */
+          /* ACTIVITY LOGS */
 
           ) : currentPage === "activityLogs" ? (
 
             <ActivityLogs />
 
-
-          /* =================================================
-             SYSTEM SETTINGS
-          ================================================= */
+          /* SYSTEM SETTINGS */
 
           ) : currentPage === "systemSettings" ? (
 
             <SystemSettings />
 
-
-          /* =================================================
-             DASHBOARD
-          ================================================= */
+          /* DASHBOARD */
 
           ) : (
 
             <>
-
 
               {/* ================= DESCRIPTION ================= */}
 
@@ -688,55 +639,53 @@ useEffect(() => {
                 View and monitor CampuServe system data.
               </p>
 
-
               {/* =================================================
                   SUMMARY CARDS
               ================================================= */}
 
               <section className="dashboard-summary">
 
-  <div className="dashboard-summary-card">
-    <span>Total Students</span>
+                <div className="dashboard-summary-card">
+                  <span>Total Students</span>
 
-    <strong>
-      {statsLoading
-        ? "..."
-        : dashboardStats.totalStudents}
-    </strong>
-  </div>
+                  <strong>
+                    {statsLoading
+                      ? "..."
+                      : dashboardStats.totalStudents}
+                  </strong>
+                </div>
 
-  <div className="dashboard-summary-card">
-    <span>Pending Requests</span>
+                <div className="dashboard-summary-card">
+                  <span>Pending Requests</span>
 
-    <strong>
-      {statsLoading
-        ? "..."
-        : dashboardStats.pendingRequests}
-    </strong>
-  </div>
+                  <strong>
+                    {statsLoading
+                      ? "..."
+                      : dashboardStats.pendingRequests}
+                  </strong>
+                </div>
 
-  <div className="dashboard-summary-card">
-    <span>Active Reservations</span>
+                <div className="dashboard-summary-card">
+                  <span>Active Reservations</span>
 
-    <strong>
-      {statsLoading
-        ? "..."
-        : dashboardStats.activeReservations}
-    </strong>
-  </div>
+                  <strong>
+                    {statsLoading
+                      ? "..."
+                      : dashboardStats.activeReservations}
+                  </strong>
+                </div>
 
-  <div className="dashboard-summary-card">
-    <span>System Alerts</span>
+                <div className="dashboard-summary-card">
+                  <span>System Alerts</span>
 
-    <strong>
-      {statsLoading
-        ? "..."
-        : dashboardStats.systemAlerts}
-    </strong>
-  </div>
+                  <strong>
+                    {statsLoading
+                      ? "..."
+                      : dashboardStats.systemAlerts}
+                  </strong>
+                </div>
 
-</section>
-
+              </section>
 
               {/* =================================================
                   RETRIEVE SYSTEM DATA
@@ -744,11 +693,9 @@ useEffect(() => {
 
               <section className="retrieve-data-section">
 
-
                 <div className="retrieve-data-header">
 
                   <div>
-
                     <h3>
                       Retrieve System Data
                     </h3>
@@ -756,21 +703,17 @@ useEffect(() => {
                     <p>
                       Search and view records from the CampuServe system.
                     </p>
-
                   </div>
 
                 </div>
-
 
                 {/* ================= SEARCH BAR ================= */}
 
                 <div className="retrieve-search-bar">
 
-
                   <span className="retrieve-search-icon">
                     🔍
                   </span>
-
 
                   <select
                     value={selectedCollection}
@@ -785,11 +728,9 @@ useEffect(() => {
 
                     }}
                   >
-
                     <option value="">
                       Select collection...
                     </option>
-
 
                     {collections.map(
                       (collectionName) => (
@@ -806,7 +747,6 @@ useEffect(() => {
 
                   </select>
 
-
                   <button
                     onClick={() =>
                       handleRetrieve()
@@ -816,26 +756,20 @@ useEffect(() => {
                       !selectedCollection
                     }
                   >
-
                     {loading
                       ? "Loading..."
                       : "Retrieve Data"}
-
                   </button>
 
-
                 </div>
-
 
                 {/* =================================================
                     ACCOUNT FILTERS
                 ================================================= */}
 
-                {selectedCollection ===
-                  "accounts" && (
+                {selectedCollection === "accounts" && (
 
                   <div className="account-filter-buttons">
-
 
                     {/* ACTIVE ACCOUNTS */}
 
@@ -847,17 +781,13 @@ useEffect(() => {
                       }
                       onClick={() => {
 
-                        setShowDeletedAccounts(
-                          false
-                        );
-
+                        setShowDeletedAccounts(false);
                         handleRetrieve(false);
 
                       }}
                     >
                       Active Accounts
                     </button>
-
 
                     {/* DELETED ACCOUNTS */}
 
@@ -869,10 +799,7 @@ useEffect(() => {
                       }
                       onClick={() => {
 
-                        setShowDeletedAccounts(
-                          true
-                        );
-
+                        setShowDeletedAccounts(true);
                         handleRetrieve(true);
 
                       }}
@@ -880,13 +807,11 @@ useEffect(() => {
                       Deleted Accounts
                     </button>
 
-
                   </div>
 
                 )}
 
               </section>
-
 
               {/* =================================================
                   ERROR MESSAGE
@@ -906,7 +831,6 @@ useEffect(() => {
 
               )}
 
-
               {/* =================================================
                   RETRIEVED RECORDS
               ================================================= */}
@@ -915,14 +839,11 @@ useEffect(() => {
 
                 <section className="retrieved-records-section">
 
-
-                  {/* ================= RECORD HEADER ================= */}
+                  {/* RECORD HEADER */}
 
                   <div className="retrieved-records-header">
 
-
                     <div>
-
                       <h3>
                         Retrieved Records
                       </h3>
@@ -933,61 +854,34 @@ useEffect(() => {
                         <strong>
                           {selectedCollection}
                         </strong>
-
                       </p>
-
                     </div>
 
-
                     <span className="records-count">
-
                       {records.length} records
-
                     </span>
-
 
                   </div>
 
-
-                  {/* ================= TABLE ================= */}
+                  {/* TABLE */}
 
                   <div className="retrieved-table-container">
 
                     <table className="retrieved-data-table">
 
-
                       {/* TABLE HEADER */}
 
                       <thead>
-
                         <tr>
 
-
-                          {selectedCollection ===
-                          "accounts" ? (
+                          {selectedCollection === "accounts" ? (
 
                             <>
-
-                              <th>
-                                Name
-                              </th>
-
-                              <th>
-                                Email
-                              </th>
-
-                              <th>
-                                Role
-                              </th>
-
-                              <th>
-                                Status
-                              </th>
-
-                              <th>
-                                Student ID
-                              </th>
-
+                              <th>Name</th>
+                              <th>Email</th>
+                              <th>Role</th>
+                              <th>Status</th>
+                              <th>Student ID</th>
                             </>
 
                           ) : (
@@ -995,8 +889,7 @@ useEffect(() => {
                             Object.keys(records[0])
 
                               .filter(
-                                (key) =>
-                                  key !== "id"
+                                (key) => key !== "id"
                               )
 
                               .map((key) => (
@@ -1009,132 +902,82 @@ useEffect(() => {
 
                           )}
 
-
                         </tr>
-
                       </thead>
-
 
                       {/* TABLE BODY */}
 
                       <tbody>
 
+                        {records.map((record) => (
 
-                        {records.map(
-                          (record) => (
+                          <tr key={record.id}>
 
-                            <tr
-                              key={record.id}
-                            >
+                            {/* ACCOUNTS */}
 
+                            {selectedCollection === "accounts" ? (
 
-                              {/* ================= ACCOUNTS ================= */}
+                              <>
+                                <td>
+                                  {displayValue(record.name)}
+                                </td>
 
-                              {selectedCollection ===
-                              "accounts" ? (
+                                <td>
+                                  {displayValue(record.email)}
+                                </td>
 
-                                <>
+                                <td>
+                                  {displayValue(record.role)}
+                                </td>
 
+                                <td>
+                                  <span
+                                    className={`table-status ${String(
+                                      record.status || ""
+                                    )}`}
+                                  >
+                                    {displayValue(record.status)}
+                                  </span>
+                                </td>
 
-                                  <td>
-                                    {displayValue(
-                                      record.name
-                                    )}
-                                  </td>
+                                <td>
+                                  {displayValue(record.student_id)}
+                                </td>
+                              </>
 
+                            /* OTHER COLLECTIONS */
 
-                                  <td>
-                                    {displayValue(
-                                      record.email
-                                    )}
-                                  </td>
+                            ) : (
 
+                              Object.entries(record)
 
-                                  <td>
-                                    {displayValue(
-                                      record.role
-                                    )}
-                                  </td>
-
-
-                                  <td>
-
-                                    <span
-                                      className={`table-status ${String(
-                                        record.status || ""
-                                      )}`}
-                                    >
-
-                                      {displayValue(
-                                        record.status
-                                      )}
-
-                                    </span>
-
-                                  </td>
-
-
-                                  <td>
-                                    {displayValue(
-                                      record.student_id
-                                    )}
-                                  </td>
-
-
-                                </>
-
-
-                              /* ================= OTHER COLLECTIONS ================= */
-
-                              ) : (
-
-                                Object.entries(
-                                  record
+                                .filter(
+                                  ([key]) => key !== "id"
                                 )
 
-                                  .filter(
-                                    ([key]) =>
-                                      key !== "id"
-                                  )
+                                .map(([key, value]) => (
 
-                                  .map(
-                                    ([
-                                      key,
-                                      value,
-                                    ]) => (
+                                  <td key={key}>
+                                    {displayValue(value)}
+                                  </td>
 
-                                      <td
-                                        key={key}
-                                      >
-                                        {displayValue(
-                                          value
-                                        )}
-                                      </td>
+                                ))
 
-                                    )
-                                  )
+                            )}
 
-                              )}
+                          </tr>
 
-
-                            </tr>
-
-                          )
-                        )}
-
+                        ))}
 
                       </tbody>
-
 
                     </table>
 
                   </div>
 
-
                 </section>
 
               )}
-
 
               {/* =================================================
                   NO RESULTS
@@ -1146,13 +989,10 @@ useEffect(() => {
                 !error && (
 
                   <div className="no-records-message">
-
                     No records found.
-
                   </div>
 
                 )}
-
 
             </>
 

@@ -46,20 +46,32 @@ import GeneralOfficeDashboard from "./dashboards/GeneralOfficeDashboard/GeneralO
 type Account = {
   email?: string;
   name?: string;
+  lastName?: string;
+  firstName?: string;
+  middleName?: string;
+  suffix?: string;
   role?: string;
   status?: string;
   firebaseUid?: string;
-  student_id?: string;
 
+  // Common information
+  campus?: string;
+  contactNumber?: string;
+
+  // Student and alumni information
+  student_id?: string;
   college?: string;
-  department?: string;
   program?: string;
   yearLevel?: string;
   section?: string;
-  campus?: string;
-  contactNumber?: string;
-  graduationYear?: string;
+  semester?: string;
+
+  // Alumni-only information
+  yearGraduated?: string;
+
+  // Employee information
   employeeId?: string;
+  department?: string;
   position?: string;
 };
 
@@ -1507,13 +1519,7 @@ function App() {
 
       </Routes>
 
-      <br />
-
-      <button
-        onClick={handleLogout}
-      >
-        Log Out
-      </button>
+      
     </div>
   );
 }

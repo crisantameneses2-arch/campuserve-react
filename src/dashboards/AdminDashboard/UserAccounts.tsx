@@ -8,6 +8,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  deleteField,
 } from "firebase/firestore";
 
 import {
@@ -28,22 +29,32 @@ import {
 
 type Account = {
   id: string;
-  student_id?: string;
-  name?: string;
-  email?: string;
-  role?: string;
-  status?: string;
   firebaseUid?: string;
+  role?: string;
+  name?: string;
+  lastName?: string;
+  firstName?: string;
+  middleName?: string;
+  suffix?: string;
+  email?: string;
+  contactNumber?: string;
+  campus?: string;
+  status?: string;
 
+  // Student and alumni information
+  student_id?: string;
   college?: string;
-  department?: string;
   program?: string;
   yearLevel?: string;
   section?: string;
-  campus?: string;
-  contactNumber?: string;
-  graduationYear?: string;
+  semester?: string;
+
+  // Alumni-only information
+  yearGraduated?: string;
+
+  // Employee information
   employeeId?: string;
+  department?: string;
   position?: string;
 };
 
@@ -99,6 +110,37 @@ const collegePrograms: Record<string, string[]> = {
 
 const collegeOptions = Object.keys(collegePrograms);
 
+const formatFullName = (
+  firstName: string,
+  middleName: string,
+  lastName: string,
+  suffix: string
+) => {
+  return [
+    firstName.trim(),
+    middleName.trim(),
+    lastName.trim(),
+    suffix.trim(),
+  ]
+    .filter(Boolean)
+    .join(" ");
+};
+
+const getAccountDisplayName = (account: Account) => {
+  // Preserve the old name for existing accounts
+  // that do not have separated name fields.
+  if (!account.firstName && !account.lastName) {
+    return account.name || "—";
+  }
+
+  return formatFullName(
+    account.firstName || "",
+    account.middleName || "",
+    account.lastName || "",
+    account.suffix || ""
+  );
+};
+
 function UserAccounts() {
   // ========================================
   // CREATE ACCOUNT STATE
@@ -107,8 +149,10 @@ function UserAccounts() {
   const [createStudentId, setCreateStudentId] =
     useState("");
 
-  const [createName, setCreateName] =
-    useState("");
+  const [createLastName, setCreateLastName] = useState("");
+const [createFirstName, setCreateFirstName] = useState("");
+const [createMiddleName, setCreateMiddleName] = useState("");
+const [createSuffix, setCreateSuffix] = useState("");
 
   const [createEmail, setCreateEmail] =
     useState("");
@@ -124,13 +168,15 @@ function UserAccounts() {
 
   const [createCollege, setCreateCollege] = 
   useState("");
+
+  const [createSemester, setCreateSemester] = useState("");
+const [createYearGraduated, setCreateYearGraduated] = useState("");
 const [createDepartment, setCreateDepartment] = useState("");
 const [createProgram, setCreateProgram] = useState("");
 const [createYearLevel, setCreateYearLevel] = useState("");
 const [createSection, setCreateSection] = useState("");
 const [createCampus, setCreateCampus] = useState("Lingayen Campus");
 const [createContactNumber, setCreateContactNumber] = useState("");
-const [createGraduationYear, setCreateGraduationYear] = useState("");
 const [createEmployeeId, setCreateEmployeeId] = useState("");
 const [createPosition, setCreatePosition] = useState("");
 
@@ -176,8 +222,10 @@ const [createPosition, setCreatePosition] = useState("");
   const [editStudentId, setEditStudentId] =
     useState("");
 
-  const [editName, setEditName] =
-    useState("");
+  const [editLastName, setEditLastName] = useState("");
+const [editFirstName, setEditFirstName] = useState("");
+const [editMiddleName, setEditMiddleName] = useState("");
+const [editSuffix, setEditSuffix] = useState("");
 
   const [editEmail, setEditEmail] =
     useState("");
@@ -188,14 +236,15 @@ const [createPosition, setCreatePosition] = useState("");
   const [editStatus, setEditStatus] =
     useState("active");
 
+  const [editSemester, setEditSemester] = useState("");
+const [editYearGraduated, setEditYearGraduated] = useState("");
   const [editCollege, setEditCollege] = useState("");
 const [editDepartment, setEditDepartment] = useState("");
 const [editProgram, setEditProgram] = useState("");
 const [editYearLevel, setEditYearLevel] = useState("");
 const [editSection, setEditSection] = useState("");
 const [editCampus, setEditCampus] = useState("");
-const [editContactNumber, setEditContactNumber] = useState("");
-const [editGraduationYear, setEditGraduationYear] = useState("");
+const [editContactNumber, setEditContactNumber] = useState(""); 
 const [editEmployeeId, setEditEmployeeId] = useState("");
 const [editPosition, setEditPosition] = useState("");
 
@@ -247,8 +296,17 @@ const [editPosition, setEditPosition] = useState("");
     const normalizedEmail =
       createEmail.trim().toLowerCase();
 
-    const normalizedName =
-      createName.trim();
+    const normalizedLastName = createLastName.trim();
+const normalizedFirstName = createFirstName.trim();
+const normalizedMiddleName = createMiddleName.trim();
+const normalizedSuffix = createSuffix.trim();
+
+const normalizedName = formatFullName(
+  normalizedFirstName,
+  normalizedMiddleName,
+  normalizedLastName,
+  normalizedSuffix
+);
 
     const normalizedStudentId =
       createStudentId.trim();
@@ -257,12 +315,10 @@ const [editPosition, setEditPosition] = useState("");
       createPassword;
 
     // Validate name
-    if (!normalizedName) {
-      setCreateMessage(
-        "Please enter a name."
-      );
-      return;
-    }
+    if (!normalizedLastName || !normalizedFirstName) {
+  setCreateMessage("Please enter both first name and last name.");
+  return;
+}
 
     // Validate email
     if (!normalizedEmail) {
@@ -287,29 +343,55 @@ const [editPosition, setEditPosition] = useState("");
       return;
     }
 
-    // Validate student ID
-    if (
-      createRole === "student" &&
-      !normalizedStudentId
-    ) {
-      setCreateMessage(
-        "Student accounts require a student ID."
-      );
-      return;
-    }
+    const isStudentAccount =
+  createRole === "student" ||
+  createRole === "alumni";
 
-    
-    // Validate college
-    if (!createCollege.trim()) {
-      setCreateMessage("Please select a college.");
-      return;
-    }
+const isEmployeeAccount =
+  createRole === "general_office" ||
+  createRole === "registrar" ||
+  createRole === "admin";
 
-    // Validate program
-    if (!createProgram.trim()) {
-      setCreateMessage("Please select a program.");
-      return;
-    }
+// Validate student information
+if (isStudentAccount && !normalizedStudentId) {
+  setCreateMessage("Student and alumni accounts require a student ID.");
+  return;
+}
+
+if (isStudentAccount && !createCollege.trim()) {
+  setCreateMessage("Please select a college.");
+  return;
+}
+
+if (isStudentAccount && !createProgram.trim()) {
+  setCreateMessage("Please select a program.");
+  return;
+}
+
+// Validate alumni information
+if (
+  createRole === "alumni" &&
+  !createYearGraduated.trim()
+) {
+  setCreateMessage("Please enter the year graduated.");
+  return;
+}
+
+// Validate employee information
+if (isEmployeeAccount && !createEmployeeId.trim()) {
+  setCreateMessage("Please enter an employee or staff ID.");
+  return;
+}
+
+if (isEmployeeAccount && !createDepartment.trim()) {
+  setCreateMessage("Please enter a department or office.");
+  return;
+}
+
+if (isEmployeeAccount && !createPosition.trim()) {
+  setCreateMessage("Please enter a position or job title.");
+  return;
+}
 
 
     let secondaryApp;
@@ -355,23 +437,51 @@ const [editPosition, setEditPosition] = useState("");
       );
 
       await setDoc(accountRef, {
+  // Common information
+  firebaseUid: firebaseUser.uid,
+    role: createRole,
+
+  // Separated name information
+  lastName: normalizedLastName,
+  firstName: normalizedFirstName,
+  middleName: normalizedMiddleName,
+  suffix: normalizedSuffix,
+
+  // Formatted name for compatibility
   name: normalizedName,
+
   email: normalizedEmail,
-  role: createRole,
+  contactNumber: createContactNumber.trim(),
+  campus: createCampus.trim(),
   status: createStatus,
 
-  student_id: createStudentId.trim(),
+  // Student and alumni information
+  ...(isStudentAccount
+    ? {
+        student_id: normalizedStudentId,
+        college: createCollege.trim(),
+        program: createProgram.trim(),
+        yearLevel: createYearLevel.trim(),
+        section: createSection.trim(),
+        semester: createSemester.trim(),
+      }
+    : {}),
 
-  college: createCollege.trim(),
-  department: createDepartment.trim(),
-  program: createProgram.trim(),
-  yearLevel: createYearLevel.trim(),
-  section: createSection.trim(),
-  campus: createCampus.trim(),
-  contactNumber: createContactNumber.trim(),
-  graduationYear: createGraduationYear.trim(),
-  employeeId: createEmployeeId.trim(),
-  position: createPosition.trim(),
+  // Alumni-only information
+  ...(createRole === "alumni"
+    ? {
+        yearGraduated: createYearGraduated.trim(),
+      }
+    : {}),
+
+  // Employee information
+  ...(isEmployeeAccount
+    ? {
+        employeeId: createEmployeeId.trim(),
+        department: createDepartment.trim(),
+        position: createPosition.trim(),
+      }
+    : {}),
 });
 
       /*
@@ -386,7 +496,10 @@ const [editPosition, setEditPosition] = useState("");
 
       // Clear form
       setCreateStudentId("");
-      setCreateName("");
+      setCreateLastName("");
+setCreateFirstName("");
+setCreateMiddleName("");
+setCreateSuffix("");
       setCreateEmail("");
       setCreatePassword("");
       setCreateRole("student");
@@ -399,9 +512,10 @@ setCreateYearLevel("");
 setCreateSection("");
 setCreateCampus("Lingayen Campus");
 setCreateContactNumber("");
-setCreateGraduationYear("");
 setCreateEmployeeId("");
 setCreatePosition("");
+setCreateSemester("");
+setCreateYearGraduated("");
 
       // Refresh account list
       await retrieveAccounts();
@@ -468,9 +582,10 @@ setCreatePosition("");
       account.student_id || ""
     );
 
-    setEditName(
-      account.name || ""
-    );
+    setEditLastName(account.lastName || "");
+setEditFirstName(account.firstName || "");
+setEditMiddleName(account.middleName || "");
+setEditSuffix(account.suffix || "");
 
     setEditEmail(
       account.email || ""
@@ -491,9 +606,10 @@ setEditYearLevel(account.yearLevel || "");
 setEditSection(account.section || "");
 setEditCampus(account.campus || "");
 setEditContactNumber(account.contactNumber || "");
-setEditGraduationYear(account.graduationYear || "");
 setEditEmployeeId(account.employeeId || "");
 setEditPosition(account.position || "");
+setEditSemester(account.semester || "");
+setEditYearGraduated(account.yearGraduated || "");
 
     setEditMessage("");
   };
@@ -506,7 +622,10 @@ setEditPosition(account.position || "");
     setEditingAccount(null);
 
     setEditStudentId("");
-    setEditName("");
+    setEditLastName("");
+setEditFirstName("");
+setEditMiddleName("");
+setEditSuffix("");
     setEditEmail("");
     setEditRole("student");
     setEditStatus("active");
@@ -517,10 +636,11 @@ setEditYearLevel("");
 setEditSection("");
 setEditCampus("");
 setEditContactNumber("");
-setEditGraduationYear("");
 setEditEmployeeId("");
 setEditPosition("");
     setEditMessage("");
+    setEditSemester("");
+setEditYearGraduated("");
   };
 
   // ========================================
@@ -528,178 +648,184 @@ setEditPosition("");
   // ========================================
 
   const handleUpdateAccount = async () => {
-    if (!editingAccount) {
-      return;
-    }
+  if (!editingAccount) {
+    return;
+  }
 
-    setEditMessage("");
-    setError("");
+  setEditMessage("");
+  setError("");
 
-    const normalizedName =
-      editName.trim();
+  const normalizedLastName = editLastName.trim();
+const normalizedFirstName = editFirstName.trim();
+const normalizedMiddleName = editMiddleName.trim();
+const normalizedSuffix = editSuffix.trim();
 
-    const normalizedEmail =
-      editEmail.trim().toLowerCase();
+const normalizedName = formatFullName(
+  normalizedFirstName,
+  normalizedMiddleName,
+  normalizedLastName,
+  normalizedSuffix
+);
+  const normalizedEmail = editEmail.trim().toLowerCase();
+  const normalizedStudentId = editStudentId.trim();
 
-    const normalizedStudentId =
-      editStudentId.trim();
+  const isStudentAccount =
+    editRole === "student" ||
+    editRole === "alumni";
 
-    if (!normalizedName) {
-      setEditMessage(
-        "Please enter a name."
-      );
-      return;
-    }
+  const isEmployeeAccount =
+    editRole === "general_office" ||
+    editRole === "registrar" ||
+    editRole === "admin";
 
-    if (!normalizedEmail) {
-      setEditMessage(
-        "Please enter an email."
-      );
-      return;
-    }
+  // Validate common information
+  if (!normalizedLastName || !normalizedFirstName) {
+  setEditMessage("Please enter both first name and last name.");
+  return;
+}
 
-    if (
-      editRole === "student" &&
-      !normalizedStudentId
-    ) {
-      setEditMessage(
-        "Student accounts require a student ID."
-      );
-      return;
-    }
+  if (!normalizedEmail) {
+    setEditMessage("Please enter an email.");
+    return;
+  }
 
-    try {
-      const oldDocumentId =
-        editingAccount.id;
+  // Validate student and alumni information
+  if (isStudentAccount && !normalizedStudentId) {
+    setEditMessage("Student and alumni accounts require a student ID.");
+    return;
+  }
 
-      /*
-       * If the email has NOT changed,
-       * simply update the existing document.
-       */
-      if (
-        normalizedEmail ===
+  if (isStudentAccount && !editCollege.trim()) {
+    setEditMessage("Please enter a college.");
+    return;
+  }
+
+  if (isStudentAccount && !editProgram.trim()) {
+    setEditMessage("Please enter a program.");
+    return;
+  }
+
+  // Validate alumni-only information
+  if (
+    editRole === "alumni" &&
+    !editYearGraduated.trim()
+  ) {
+    setEditMessage("Please enter the year graduated.");
+    return;
+  }
+
+  // Validate employee information
+  if (isEmployeeAccount && !editEmployeeId.trim()) {
+    setEditMessage("Please enter an employee or staff ID.");
+    return;
+  }
+
+  if (isEmployeeAccount && !editDepartment.trim()) {
+    setEditMessage("Please enter a department or office.");
+    return;
+  }
+
+  if (isEmployeeAccount && !editPosition.trim()) {
+    setEditMessage("Please enter a position or job title.");
+    return;
+  }
+
+  try {
+    const oldDocumentId = editingAccount.id;
+
+    const accountData = {
+      // Common information
+      firebaseUid: editingAccount.firebaseUid || "",
+      role: editRole,
+      name: normalizedName,
+      email: normalizedEmail,
+      contactNumber: editContactNumber.trim(),
+      campus: editCampus.trim(),
+      status: editStatus,
+
+      // Remove old fields before applying the new role's data
+      graduationYear: deleteField(),
+      student_id: deleteField(),
+      college: deleteField(),
+      program: deleteField(),
+      yearLevel: deleteField(),
+      section: deleteField(),
+      semester: deleteField(),
+      yearGraduated: deleteField(),
+      employeeId: deleteField(),
+      department: deleteField(),
+      position: deleteField(),
+
+      // Student and alumni information
+      ...(isStudentAccount
+        ? {
+            student_id: normalizedStudentId,
+            college: editCollege.trim(),
+            program: editProgram.trim(),
+            yearLevel: editYearLevel.trim(),
+            section: editSection.trim(),
+            semester: editSemester.trim(),
+          }
+        : {}),
+
+      // Alumni-only information
+      ...(editRole === "alumni"
+        ? {
+            yearGraduated: editYearGraduated.trim(),
+          }
+        : {}),
+
+      // Employee information
+      ...(isEmployeeAccount
+        ? {
+            employeeId: editEmployeeId.trim(),
+            department: editDepartment.trim(),
+            position: editPosition.trim(),
+          }
+        : {}),
+    };
+
+    if (normalizedEmail === oldDocumentId) {
+      // Email has not changed
+      const accountRef = doc(
+        db,
+        "accounts",
         oldDocumentId
-      ) {
-        const accountRef = doc(
-          db,
-          "accounts",
-          oldDocumentId
-        );
-
-        await updateDoc(
-          accountRef,
-          {
-            name: normalizedName,
-            email: normalizedEmail,
-            role: editRole,
-            status: editStatus,
-            college: editCollege.trim(),
-department: editDepartment.trim(),
-program: editProgram.trim(),
-yearLevel: editYearLevel.trim(),
-section: editSection.trim(),
-campus: editCampus.trim(),
-contactNumber: editContactNumber.trim(),
-graduationYear: editGraduationYear.trim(),
-employeeId: editEmployeeId.trim(),
-position: editPosition.trim(),
-
-            ...(editRole === "student"
-              ? {
-                  student_id:
-                    normalizedStudentId,
-                }
-              : {
-                  student_id: "",
-                }),
-          }
-        );
-      } else {
-        /*
-         * If the email changed, create the
-         * new Firestore document first.
-         *
-         * NOTE:
-         * This does NOT change the Firebase
-         * Authentication email.
-         */
-        const newAccountRef = doc(
-          db,
-          "accounts",
-          normalizedEmail
-        );
-
-        await setDoc(
-          newAccountRef,
-          {
-            name: normalizedName,
-            email: normalizedEmail,
-            role: editRole,
-            status: editStatus,
-            college: editCollege.trim(),
-department: editDepartment.trim(),
-program: editProgram.trim(),
-yearLevel: editYearLevel.trim(),
-section: editSection.trim(),
-campus: editCampus.trim(),
-contactNumber: editContactNumber.trim(),
-graduationYear: editGraduationYear.trim(),
-employeeId: editEmployeeId.trim(),
-position: editPosition.trim(),
-
-            ...(editRole === "student"
-              ? {
-                  student_id:
-                    normalizedStudentId,
-                }
-              : {}),
-
-            ...(editingAccount.firebaseUid
-              ? {
-                  firebaseUid:
-                    editingAccount.firebaseUid,
-                }
-              : {}),
-          }
-        );
-
-        /*
-         * Mark the old Firestore document
-         * as deleted instead of permanently
-         * removing it.
-         */
-        const oldAccountRef = doc(
-          db,
-          "accounts",
-          oldDocumentId
-        );
-
-        await updateDoc(
-          oldAccountRef,
-          {
-            status: "deleted",
-          }
-        );
-      }
-
-      setEditMessage(
-        "Account updated successfully."
       );
 
-      setEditingAccount(null);
-
-      await retrieveAccounts();
-    } catch (error) {
-      console.error(
-        "Error updating account:",
-        error
+      await updateDoc(accountRef, accountData);
+    } else {
+      // Email has changed
+      const newAccountRef = doc(
+        db,
+        "accounts",
+        normalizedEmail
       );
 
-      setEditMessage(
-        "Failed to update account."
+      await setDoc(newAccountRef, accountData);
+
+      // Mark the old document as deleted
+      const oldAccountRef = doc(
+        db,
+        "accounts",
+        oldDocumentId
       );
+
+      await updateDoc(oldAccountRef, {
+        status: "deleted",
+      });
     }
-  };
+
+    setEditMessage("Account updated successfully.");
+    setEditingAccount(null);
+
+    await retrieveAccounts();
+  } catch (error) {
+    console.error("Error updating account:", error);
+
+    setEditMessage("Failed to update account.");
+  }
+};
 
   // ========================================
   // DELETE ACCOUNT
@@ -711,7 +837,7 @@ position: editPosition.trim(),
     const confirmed =
       window.confirm(
         `Are you sure you want to delete the account for ${
-          account.name || account.email
+          getAccountDisplayName(account) || account.email
         }?`
       );
 
@@ -815,9 +941,21 @@ position: editPosition.trim(),
       filteredAccounts =
         filteredAccounts.filter(
           (account) =>
-            (account.name || "")
-              .toLowerCase()
-              .includes(search) ||
+            getAccountDisplayName(account)
+  .toLowerCase()
+  .includes(search) ||
+
+(account.lastName || "")
+  .toLowerCase()
+  .includes(search) ||
+
+(account.firstName || "")
+  .toLowerCase()
+  .includes(search) ||
+
+(account.middleName || "")
+  .toLowerCase()
+  .includes(search) ||
 
             (account.email || "")
               .toLowerCase()
@@ -859,6 +997,14 @@ position: editPosition.trim(),
         account.role === "student"
     ).length;
   }, [accounts]);
+
+  const alumniCount = useMemo(() => {
+  return accounts.filter(
+    (account) =>
+      account.status !== "deleted" &&
+      account.role === "alumni"
+  ).length;
+}, [accounts]);
 
   const generalOfficeCount = useMemo(() => {
     return accounts.filter(
@@ -957,6 +1103,11 @@ position: editPosition.trim(),
             {studentCount}
           </strong>
         </div>
+        
+        <div className="account-summary-card">
+  <span>Alumni</span>
+  <strong>{alumniCount}</strong>
+</div>
 
         <div className="account-summary-card">
           <span>
@@ -1026,26 +1177,61 @@ position: editPosition.trim(),
 
           <div className="create-account-form">
 
-            {/* NAME */}
+            {/* LAST NAME */}
 
-            <div className="create-account-field">
+<div className="create-account-field">
+  <label>Last Name *</label>
+  <input
+    type="text"
+    placeholder="Enter last name"
+    value={createLastName}
+    onChange={(event) =>
+      setCreateLastName(event.target.value)
+    }
+  />
+</div>
 
-              <label>
-                Name
-              </label>
+{/* FIRST NAME */}
 
-              <input
-                type="text"
-                placeholder="Enter full name"
-                value={createName}
-                onChange={(event) =>
-                  setCreateName(
-                    event.target.value
-                  )
-                }
-              />
+<div className="create-account-field">
+  <label>First Name *</label>
+  <input
+    type="text"
+    placeholder="Enter first name"
+    value={createFirstName}
+    onChange={(event) =>
+      setCreateFirstName(event.target.value)
+    }
+  />
+</div>
 
-            </div>
+{/* MIDDLE NAME */}
+
+<div className="create-account-field">
+  <label>Middle Name</label>
+  <input
+    type="text"
+    placeholder="Enter middle name (optional)"
+    value={createMiddleName}
+    onChange={(event) =>
+      setCreateMiddleName(event.target.value)
+    }
+  />
+</div>
+
+{/* SUFFIX */}
+
+<div className="create-account-field">
+  <label>Suffix</label>
+  <input
+    type="text"
+    placeholder="e.g. Jr., Sr., III (optional)"
+    value={createSuffix}
+    onChange={(event) =>
+      setCreateSuffix(event.target.value)
+    }
+  />
+</div>
 
             {/* EMAIL */}
 
@@ -1130,173 +1316,188 @@ position: editPosition.trim(),
 
             </div>
 
-            {/* STUDENT ID */}
+            {/* STUDENT AND ALUMNI FIELDS */}
 
-            <div className="create-account-field">
+{(createRole === "student" || createRole === "alumni") && (
+  <>
+    <div className="create-account-field">
+      <label>Student ID</label>
+      <input
+        type="text"
+        placeholder="Enter student ID"
+        value={createStudentId}
+        onChange={(event) =>
+          setCreateStudentId(event.target.value)
+        }
+      />
+    </div>
 
-              <label>
-                Student ID
-              </label>
+    <div className="create-account-field">
+      <label>College</label>
+      <select
+        value={createCollege}
+        onChange={(event) => {
+          setCreateCollege(event.target.value);
+          setCreateDepartment(event.target.value);
+          setCreateProgram("");
+        }}
+      >
+        <option value="">Select college</option>
+        {collegeOptions.map((college) => (
+          <option key={college} value={college}>
+            {college}
+          </option>
+        ))}
+      </select>
+    </div>
 
-              <input
-                type="text"
-                placeholder={
-                  createRole === "student"
-                    ? "Enter student ID"
-                    : "Not required"
-                }
-                value={createStudentId}
-                disabled={
-                  createRole !== "student"
-                }
-                onChange={(event) =>
-                  setCreateStudentId(
-                    event.target.value
-                  )
-                }
-              />
+    <div className="create-account-field">
+      <label>Program</label>
+      <select
+        value={createProgram}
+        onChange={(event) =>
+          setCreateProgram(event.target.value)
+        }
+        disabled={!createCollege}
+      >
+        <option value="">Select program</option>
+        {(collegePrograms[createCollege] || []).map((program) => (
+          <option key={program} value={program}>
+            {program}
+          </option>
+        ))}
+      </select>
+    </div>
 
-            </div>
+    <div className="create-account-field">
+      <label>Year Level</label>
+      <select
+        value={createYearLevel}
+        onChange={(event) =>
+          setCreateYearLevel(event.target.value)
+        }
+      >
+        <option value="">Select year level</option>
+        <option value="1st Year">1st Year</option>
+        <option value="2nd Year">2nd Year</option>
+        <option value="3rd Year">3rd Year</option>
+        <option value="4th Year">4th Year</option>
+        <option value="5th Year">5th Year</option>
+        <option value="Graduate">Graduate</option>
+        <option value="N/A">Not applicable</option>
+      </select>
+    </div>
 
-            {/* STATUS */}
+    <div className="create-account-field">
+      <label>Section</label>
+      <input
+        type="text"
+        placeholder="Enter section"
+        value={createSection}
+        onChange={(event) =>
+          setCreateSection(event.target.value)
+        }
+      />
+    </div>
 
-{/* COLLEGE */}
+    <div className="create-account-field">
+      <label>Semester</label>
+      <select
+        value={createSemester}
+        onChange={(event) =>
+          setCreateSemester(event.target.value)
+        }
+      >
+        <option value="">Select semester</option>
+        <option value="1st Semester">1st Semester</option>
+        <option value="2nd Semester">2nd Semester</option>
+        <option value="Summer">Summer</option>
+      </select>
+    </div>
+  </>
+)}
 
-<div className="create-account-field">
-  <label>College</label>
-  <select
-    value={createCollege}
-    onChange={(event) => {
-      const selectedCollege = event.target.value;
-      setCreateCollege(selectedCollege);
-      setCreateDepartment(selectedCollege);
-      setCreateProgram("");
-    }}
-  >
-    <option value="">Select college</option>
-    {collegeOptions.map((college) => (
-      <option key={college} value={college}>
-        {college}
-      </option>
-    ))}
-  </select>
-</div>
+{/* ALUMNI-ONLY FIELD */}
 
+{createRole === "alumni" && (
+  <div className="create-account-field">
+    <label>Year Graduated</label>
+    <input
+      type="number"
+      placeholder="Enter year graduated"
+      value={createYearGraduated}
+      onChange={(event) =>
+        setCreateYearGraduated(event.target.value)
+      }
+    />
+  </div>
+)}
 
-{/* DEPARTMENT */}
-<div className="create-account-field">
-  <label>Department</label>
-  <select
-    value={createDepartment}
-    onChange={(event) => setCreateDepartment(event.target.value)}
-    disabled={!createCollege}
-  >
-    <option value="">Select department</option>
-    {createCollege && (
-      <option value={createCollege}>{createCollege}</option>
-    )}
-  </select>
-</div>
+{/* EMPLOYEE FIELDS */}
 
-{/* PROGRAM */}
-<div className="create-account-field">
-  <label>Program</label>
-  <select
-    value={createProgram}
-    onChange={(event) => setCreateProgram(event.target.value)}
-    disabled={!createCollege}
-  >
-    <option value="">Select program</option>
-    {(collegePrograms[createCollege] || []).map((program) => (
-      <option key={program} value={program}>
-        {program}
-      </option>
-    ))}
-  </select>
-</div>
+{["general_office", "registrar", "admin"].includes(createRole) && (
+  <>
+    <div className="create-account-field">
+      <label>Employee / Staff ID</label>
+      <input
+        type="text"
+        placeholder="Enter employee or staff ID"
+        value={createEmployeeId}
+        onChange={(event) =>
+          setCreateEmployeeId(event.target.value)
+        }
+      />
+    </div>
 
+    <div className="create-account-field">
+      <label>Department / Office</label>
+      <input
+        type="text"
+        placeholder="Enter department or office"
+        value={createDepartment}
+        onChange={(event) =>
+          setCreateDepartment(event.target.value)
+        }
+      />
+    </div>
 
-{/* YEAR LEVEL */}
-<div className="create-account-field">
-  <label>Year Level</label>
-  <select
-    value={createYearLevel}
-    onChange={(event) => setCreateYearLevel(event.target.value)}
-  >
-    <option value="">Select year level</option>
-    <option value="1st Year">1st Year</option>
-    <option value="2nd Year">2nd Year</option>
-    <option value="3rd Year">3rd Year</option>
-    <option value="4th Year">4th Year</option>
-    <option value="5th Year">5th Year</option>
-    <option value="Graduate">Graduate</option>
-    <option value="N/A">Not applicable</option>
-  </select>
-</div>
+    <div className="create-account-field">
+      <label>Position / Job Title</label>
+      <input
+        type="text"
+        placeholder="Enter position or job title"
+        value={createPosition}
+        onChange={(event) =>
+          setCreatePosition(event.target.value)
+        }
+      />
+    </div>
+  </>
+)}
 
-{/* SECTION */}
-<div className="create-account-field">
-  <label>Section</label>
-  <input
-    type="text"
-    placeholder="Enter section"
-    value={createSection}
-    onChange={(event) => setCreateSection(event.target.value)}
-  />
-</div>
+{/* COMMON FIELDS */}
 
-{/* CAMPUS */}
 <div className="create-account-field">
   <label>Campus</label>
   <input
     type="text"
     placeholder="Enter campus"
     value={createCampus}
-    onChange={(event) => setCreateCampus(event.target.value)}
+    onChange={(event) =>
+      setCreateCampus(event.target.value)
+    }
   />
 </div>
 
-{/* CONTACT NUMBER */}
 <div className="create-account-field">
   <label>Contact Number</label>
   <input
     type="tel"
     placeholder="Enter contact number"
     value={createContactNumber}
-    onChange={(event) => setCreateContactNumber(event.target.value)}
-  />
-</div>
-
-{/* GRADUATION YEAR */}
-<div className="create-account-field">
-  <label>Graduation Year</label>
-  <input
-    type="number"
-    placeholder="Enter graduation year"
-    value={createGraduationYear}
-    onChange={(event) => setCreateGraduationYear(event.target.value)}
-  />
-</div>
-
-{/* EMPLOYEE ID */}
-<div className="create-account-field">
-  <label>Employee / Staff ID</label>
-  <input
-    type="text"
-    placeholder="Enter employee or staff ID"
-    value={createEmployeeId}
-    onChange={(event) => setCreateEmployeeId(event.target.value)}
-  />
-</div>
-
-{/* POSITION */}
-<div className="create-account-field">
-  <label>Position / Job Title</label>
-  <input
-    type="text"
-    placeholder="Enter position or job title"
-    value={createPosition}
-    onChange={(event) => setCreatePosition(event.target.value)}
+    onChange={(event) =>
+      setCreateContactNumber(event.target.value)
+    }
   />
 </div>
 
@@ -1388,25 +1589,61 @@ position: editPosition.trim(),
 
           <div className="edit-account-form">
 
-            {/* NAME */}
+            {/* LAST NAME */}
 
-            <div className="edit-account-field">
+<div className="edit-account-field">
+  <label>Last Name *</label>
+  <input
+    type="text"
+    placeholder="Enter last name"
+    value={editLastName}
+    onChange={(event) =>
+      setEditLastName(event.target.value)
+    }
+  />
+</div>
 
-              <label>
-                Name
-              </label>
+{/* FIRST NAME */}
 
-              <input
-                type="text"
-                value={editName}
-                onChange={(event) =>
-                  setEditName(
-                    event.target.value
-                  )
-                }
-              />
+<div className="edit-account-field">
+  <label>First Name *</label>
+  <input
+    type="text"
+    placeholder="Enter first name"
+    value={editFirstName}
+    onChange={(event) =>
+      setEditFirstName(event.target.value)
+    }
+  />
+</div>
 
-            </div>
+{/* MIDDLE NAME */}
+
+<div className="edit-account-field">
+  <label>Middle Name</label>
+  <input
+    type="text"
+    placeholder="Enter middle name (optional)"
+    value={editMiddleName}
+    onChange={(event) =>
+      setEditMiddleName(event.target.value)
+    }
+  />
+</div>
+
+{/* SUFFIX */}
+
+<div className="edit-account-field">
+  <label>Suffix</label>
+  <input
+    type="text"
+    placeholder="e.g. Jr., Sr., III (optional)"
+    value={editSuffix}
+    onChange={(event) =>
+      setEditSuffix(event.target.value)
+    }
+  />
+</div>
 
             {/* EMAIL */}
 
@@ -1470,172 +1707,175 @@ position: editPosition.trim(),
 
             </div>
 
-            {/* STUDENT ID */}
+            {/* STUDENT AND ALUMNI FIELDS */}
 
-            <div className="edit-account-field">
+{(editRole === "student" || editRole === "alumni") && (
+  <>
+    <div className="edit-account-field">
+      <label>Student ID</label>
+      <input
+        type="text"
+        placeholder="Enter student ID"
+        value={editStudentId}
+        onChange={(event) =>
+          setEditStudentId(event.target.value)
+        }
+      />
+    </div>
 
-              <label>
-                Student ID
-              </label>
+    <div className="edit-account-field">
+      <label>College</label>
+      <input
+        type="text"
+        placeholder="Enter college"
+        value={editCollege}
+        onChange={(event) =>
+          setEditCollege(event.target.value)
+        }
+      />
+    </div>
 
-              <input
-                type="text"
-                placeholder={
-                  editRole === "student"
-                    ? "Enter student ID"
-                    : "Not required"
-                }
-                value={editStudentId}
-                disabled={
-                  editRole !== "student"
-                }
-                onChange={(event) =>
-                  setEditStudentId(
-                    event.target.value
-                  )
-                }
-              />
+    <div className="edit-account-field">
+      <label>Program</label>
+      <input
+        type="text"
+        placeholder="Enter program"
+        value={editProgram}
+        onChange={(event) =>
+          setEditProgram(event.target.value)
+        }
+      />
+    </div>
 
-            </div>
+    <div className="edit-account-field">
+      <label>Year Level</label>
+      <select
+        value={editYearLevel}
+        onChange={(event) =>
+          setEditYearLevel(event.target.value)
+        }
+      >
+        <option value="">Select year level</option>
+        <option value="1st Year">1st Year</option>
+        <option value="2nd Year">2nd Year</option>
+        <option value="3rd Year">3rd Year</option>
+        <option value="4th Year">4th Year</option>
+        <option value="5th Year">5th Year</option>
+        <option value="Graduate">Graduate</option>
+        <option value="N/A">Not applicable</option>
+      </select>
+    </div>
 
-            {/* STATUS */}
+    <div className="edit-account-field">
+      <label>Section</label>
+      <input
+        type="text"
+        placeholder="Enter section"
+        value={editSection}
+        onChange={(event) =>
+          setEditSection(event.target.value)
+        }
+      />
+    </div>
 
+    <div className="edit-account-field">
+      <label>Semester</label>
+      <select
+        value={editSemester}
+        onChange={(event) =>
+          setEditSemester(event.target.value)
+        }
+      >
+        <option value="">Select semester</option>
+        <option value="1st Semester">1st Semester</option>
+        <option value="2nd Semester">2nd Semester</option>
+        <option value="Summer">Summer</option>
+      </select>
+    </div>
+  </>
+)}
 
-{/* COLLEGE */}
-<div className="edit-account-field">
-  <label>College</label>
-  <select
-    value={editCollege}
-    onChange={(event) => {
-      const selectedCollege = event.target.value;
-      setEditCollege(selectedCollege);
-      setEditDepartment(selectedCollege);
-      setEditProgram("");
-    }}
-  >
-    <option value="">Select college</option>
-    {collegeOptions.map((college) => (
-      <option key={college} value={college}>
-        {college}
-      </option>
-    ))}
-  </select>
-</div>
+{/* ALUMNI-ONLY FIELD */}
 
-{/* DEPARTMENT */}
-<div className="edit-account-field">
-  <label>Department</label>
-  <select
-    value={editDepartment}
-    onChange={(event) => setEditDepartment(event.target.value)}
-    disabled={!editCollege}
-  >
-    <option value="">Select department</option>
-    {editCollege && (
-      <option value={editCollege}>{editCollege}</option>
-    )}
-  </select>
-</div>
+{editRole === "alumni" && (
+  <div className="edit-account-field">
+    <label>Year Graduated</label>
+    <input
+      type="number"
+      placeholder="Enter year graduated"
+      value={editYearGraduated}
+      onChange={(event) =>
+        setEditYearGraduated(event.target.value)
+      }
+    />
+  </div>
+)}
 
-{/* PROGRAM */}
-<div className="edit-account-field">
-  <label>Program</label>
-  <select
-    value={editProgram}
-    onChange={(event) => setEditProgram(event.target.value)}
-    disabled={!editCollege}
-  >
-    <option value="">Select program</option>
-    {(collegePrograms[editCollege] || []).map((program) => (
-      <option key={program} value={program}>
-        {program}
-      </option>
-    ))}
-  </select>
-</div>
+{/* EMPLOYEE FIELDS */}
 
+{["general_office", "registrar", "admin"].includes(editRole) && (
+  <>
+    <div className="edit-account-field">
+      <label>Employee / Staff ID</label>
+      <input
+        type="text"
+        placeholder="Enter employee or staff ID"
+        value={editEmployeeId}
+        onChange={(event) =>
+          setEditEmployeeId(event.target.value)
+        }
+      />
+    </div>
 
-{/* YEAR LEVEL */}
-<div className="edit-account-field">
-  <label>Year Level</label>
-  <select
-    value={editYearLevel}
-    onChange={(event) => setEditYearLevel(event.target.value)}
-  >
-    <option value="">Select year level</option>
-    <option value="1st Year">1st Year</option>
-    <option value="2nd Year">2nd Year</option>
-    <option value="3rd Year">3rd Year</option>
-    <option value="4th Year">4th Year</option>
-    <option value="5th Year">5th Year</option>
-    <option value="Graduate">Graduate</option>
-    <option value="N/A">Not applicable</option>
-  </select>
-</div>
+    <div className="edit-account-field">
+      <label>Department / Office</label>
+      <input
+        type="text"
+        placeholder="Enter department or office"
+        value={editDepartment}
+        onChange={(event) =>
+          setEditDepartment(event.target.value)
+        }
+      />
+    </div>
 
-{/* SECTION */}
-<div className="edit-account-field">
-  <label>Section</label>
-  <input
-    type="text"
-    placeholder="Enter section"
-    value={editSection}
-    onChange={(event) => setEditSection(event.target.value)}
-  />
-</div>
+    <div className="edit-account-field">
+      <label>Position / Job Title</label>
+      <input
+        type="text"
+        placeholder="Enter position or job title"
+        value={editPosition}
+        onChange={(event) =>
+          setEditPosition(event.target.value)
+        }
+      />
+    </div>
+  </>
+)}
 
-{/* CAMPUS */}
+{/* COMMON FIELDS */}
+
 <div className="edit-account-field">
   <label>Campus</label>
   <input
     type="text"
     placeholder="Enter campus"
     value={editCampus}
-    onChange={(event) => setEditCampus(event.target.value)}
+    onChange={(event) =>
+      setEditCampus(event.target.value)
+    }
   />
 </div>
 
-{/* CONTACT NUMBER */}
 <div className="edit-account-field">
   <label>Contact Number</label>
   <input
     type="tel"
     placeholder="Enter contact number"
     value={editContactNumber}
-    onChange={(event) => setEditContactNumber(event.target.value)}
-  />
-</div>
-
-{/* GRADUATION YEAR */}
-<div className="edit-account-field">
-  <label>Graduation Year</label>
-  <input
-    type="number"
-    placeholder="Enter graduation year"
-    value={editGraduationYear}
-    onChange={(event) => setEditGraduationYear(event.target.value)}
-  />
-</div>
-
-{/* EMPLOYEE ID */}
-<div className="edit-account-field">
-  <label>Employee / Staff ID</label>
-  <input
-    type="text"
-    placeholder="Enter employee or staff ID"
-    value={editEmployeeId}
-    onChange={(event) => setEditEmployeeId(event.target.value)}
-  />
-</div>
-
-{/* POSITION */}
-<div className="edit-account-field">
-  <label>Position / Job Title</label>
-  <input
-    type="text"
-    placeholder="Enter position or job title"
-    value={editPosition}
-    onChange={(event) => setEditPosition(event.target.value)}
+    onChange={(event) =>
+      setEditContactNumber(event.target.value)
+    }
   />
 </div>
 
@@ -1851,8 +2091,8 @@ position: editPosition.trim(),
                     <tr key={account.id}>
 
                       <td>
-                        {account.name || "—"}
-                      </td>
+  {getAccountDisplayName(account)}
+</td>
 
                       <td>
                         {account.email || "—"}
