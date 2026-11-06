@@ -4323,8 +4323,8 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                         style={{ padding: "8px" }}
                                     >
                                         <option value="All">All</option>
-                                        <option value="Pending">Pending</option>
                                         <option value="Unsettled">Unsettled</option>
+                                        <option value="Pending">Pending</option>
                                         <option value="Approved">Approved</option>
                                         <option value="Claimed">Claimed</option>
                                         <option value="Cancelled">Cancelled</option>
