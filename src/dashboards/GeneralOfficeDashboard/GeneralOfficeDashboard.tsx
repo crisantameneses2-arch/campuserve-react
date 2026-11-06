@@ -2455,14 +2455,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                     Items
                                                 </th>
 
-                                                <th>
-                                                    Pickup Date
-                                                </th>
-
-                                                <th>
-                                                    Pickup Time
-                                                </th>
-
+                                              
                                                 <th>
                                                     Total
                                                 </th>
@@ -2583,18 +2576,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                         </td>
 
 
-                                                        <td>
-                                                            {
-                                                                reservation.pickupDate
-                                                            }
-                                                        </td>
-
-
-                                                        <td>
-                                                            {
-                                                                reservation.pickupTime
-                                                            }
-                                                        </td>
 
 
                                                         <td>
@@ -2622,18 +2603,19 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                                         <td>
 
-                                                            {reservation.status.toLowerCase() ===
-                                                                "unsettled" ? (
+                                                            {reservation.status.toLowerCase() === "unsettled" ? (
 
                                                                 <button
                                                                     onClick={() =>
-                                                                        sendPaymentCode(
-                                                                            reservation.id
-                                                                        )
+                                                                        sendPaymentCode(reservation.id)
                                                                     }
+                                                                    disabled={!!reservation.paymentCode}
                                                                 >
-                                                                    Send Code
+                                                                    {reservation.paymentCode
+                                                                        ? "Code Sent"
+                                                                        : "Send Code"}
                                                                 </button>
+
 
                                                             ) : (
 
