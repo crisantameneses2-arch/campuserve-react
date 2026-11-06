@@ -2455,7 +2455,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                     Items
                                                 </th>
 
-                                              
+
                                                 <th>
                                                     Total
                                                 </th>
@@ -4893,7 +4893,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                             marginTop: "6px",
                                         }}
                                     >
-
+                                        <option value="Unsettled">Unsettled</option>
                                         <option value="Pending">
                                             Pending
                                         </option>
