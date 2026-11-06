@@ -4324,6 +4324,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     >
                                         <option value="All">All</option>
                                         <option value="Pending">Pending</option>
+                                        <option value="Unsettled">Unsettled</option>
                                         <option value="Approved">Approved</option>
                                         <option value="Claimed">Claimed</option>
                                         <option value="Cancelled">Cancelled</option>
