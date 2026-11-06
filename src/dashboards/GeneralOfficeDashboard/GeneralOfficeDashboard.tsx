@@ -1248,7 +1248,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         reservations.filter(
             (reservation) =>
                 reservation.status.toLowerCase() === "pending" ||
-            reservation.status.toLowerCase() === "unsettled"
+                reservation.status.toLowerCase() === "unsettled"
         );
 
 
@@ -1493,12 +1493,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         );
     };
 
-    const filteredPending = reservations.filter((reservation) =>
-            matchesReservationSearch(reservation, requestSearch)
-        );
+    const filteredPending = pendingReservations.filter((reservation) =>
+        matchesReservationSearch(reservation, requestSearch)
+    );
 
 
-        
+
+
     const filteredApproved = approvedReservations.filter((reservation) =>
         matchesReservationSearch(reservation, reservationSearch)
     );
