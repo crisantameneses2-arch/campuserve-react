@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
 
-  addDoc,
+ // addDoc,
 
   collection,
 
@@ -12,7 +12,7 @@ import {
 
   onSnapshot,
 
-  query,
+ // query,
 
   serverTimestamp,
 
@@ -626,13 +626,13 @@ export default function RegistrarDashboard({
 
 
 
-  const registrarId =
+  //const registrarId =
 
-    account.firebaseUid ||
+   // account.firebaseUid ||
 
-    account.email ||
+  //  account.email ||
 
-    "registrar";
+  //    "registrar";
 
 
 
