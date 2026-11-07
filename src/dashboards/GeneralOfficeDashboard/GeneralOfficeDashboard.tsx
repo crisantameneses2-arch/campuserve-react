@@ -64,7 +64,8 @@ type ItemReservation = {
     status: string;
     totalAmount: number;
     cancellationReason?: string;
-     createdAt: any;
+    paymentCode?: string;
+    createdAt: any;
     items: ReservationItem[];
 };
 
@@ -79,14 +80,14 @@ type GeneralOfficeDashboardProps = {
 function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
     const [activePage, setActivePage] = useState("Dashboard");
- 
 
-const [requestSearch, setRequestSearch] = useState("");
-const [reservationSearch, setReservationSearch] = useState("");
-const [claimingSearch, setClaimingSearch] = useState("");
 
-const [reportType, setReportType] =
-    useState<"All" | "Online" | "Walk-in">("All");
+    const [requestSearch, setRequestSearch] = useState("");
+    const [reservationSearch, setReservationSearch] = useState("");
+    const [claimingSearch, setClaimingSearch] = useState("");
+
+    const [reportType, setReportType] =
+        useState<"All" | "Online" | "Walk-in">("All");
     // =========================
     // INVENTORY STATE
     // =========================
@@ -140,7 +141,7 @@ const [reportType, setReportType] =
         purchaseType: "Walk-in",
     });
     const [transactionFilter, setTransactionFilter] = useState("All");
-const [transactionSearch, setTransactionSearch] = useState("");
+    const [transactionSearch, setTransactionSearch] = useState("");
 
     // =========================
     // EDIT STOCK MODAL
@@ -340,7 +341,7 @@ const [transactionSearch, setTransactionSearch] = useState("");
             activePage === "Requests" ||
             activePage === "Claiming" ||
             activePage === "Dashboard" ||
-             activePage === "Transactions" ||
+            activePage === "Transactions" ||
             activePage === "Reports"
         ) {
             loadReservations();
@@ -397,66 +398,69 @@ const [transactionSearch, setTransactionSearch] = useState("");
                             : [];
 
 
-                   return {
-    id: document.id,
+                    return {
+                        id: document.id,
 
-    reservationId:
-        data.reservationId || document.id,
+                        reservationId:
+                            data.reservationId || document.id,
 
-    claimStubId:
-        data.claimStubId || "",
+                        claimStubId:
+                            data.claimStubId || "",
 
-    fullName:
-        data.fullName || "",
+                        paymentCode:
+                            data.paymentCode || "",
 
-    studentId:
-        data.studentId || "",
+                        fullName:
+                            data.fullName || "",
 
-    mobileNumber:
-        data.mobileNumber || "",
+                        studentId:
+                            data.studentId || "",
 
-    program:
-        data.program || "",
+                        mobileNumber:
+                            data.mobileNumber || "",
 
-    pickupDate:
-        data.pickupDate || "",
+                        program:
+                            data.program || "",
 
-    pickupTime:
-        data.pickupTime || "",
+                        pickupDate:
+                            data.pickupDate || "",
 
-    status:
-        data.status || "Pending",
+                        pickupTime:
+                            data.pickupTime || "",
 
-    totalAmount:
-        Number(data.totalAmount) || 0,
+                        status:
+                            data.status || "Pending",
 
-    createdAt:
-        data.createdAt || null,
+                        totalAmount:
+                            Number(data.totalAmount) || 0,
 
-cancellationReason: data.cancellationReason || "",
+                        createdAt:
+                            data.createdAt || null,
 
-    items: items,
-};
+                        cancellationReason: data.cancellationReason || "",
+
+                        items: items,
+                    };
 
                 });
 
 
             reservationData.sort((a, b) => {
 
-    const dateA =
-        a.createdAt?.toMillis
-            ? a.createdAt.toMillis()
-            : 0;
+                const dateA =
+                    a.createdAt?.toMillis
+                        ? a.createdAt.toMillis()
+                        : 0;
 
-    const dateB =
-        b.createdAt?.toMillis
-            ? b.createdAt.toMillis()
-            : 0;
+                const dateB =
+                    b.createdAt?.toMillis
+                        ? b.createdAt.toMillis()
+                        : 0;
 
-    return dateB - dateA;
-});
+                return dateB - dateA;
+            });
 
-setReservations(reservationData);
+            setReservations(reservationData);
 
         } catch (error) {
 
@@ -473,149 +477,149 @@ setReservations(reservationData);
     };
 
 
-// =========================
-// APPROVE RESERVATION
-// =========================
+    // =========================
+    // APPROVE RESERVATION
+    // =========================
 
-const approveReservation = async (
-    reservationId: string
-) => {
+    const approveReservation = async (
+        reservationId: string
+    ) => {
 
-    try {
+        try {
 
-        // Find the reservation
-        const reservation =
-            reservations.find(
-                (item) =>
-                    item.id === reservationId
-            );
-
-        if (!reservation) {
-            console.error(
-                "Reservation not found."
-            );
-            return;
-        }
-
-
-        // Prevent adding reserved quantity twice
-        if (
-            reservation.status.toLowerCase() !==
-            "pending"
-        ) {
-            console.error(
-                "This reservation has already been processed."
-            );
-            return;
-        }
-
-
-        // =========================
-        // UPDATE INVENTORY RESERVED QUANTITY
-        // =========================
-
-        for (
-            const reservedItem of
-            reservation.items
-        ) {
-
-            if (!reservedItem.inventoryId) {
-                continue;
-            }
-
-
-            const inventoryItem =
-                inventory.find(
+            // Find the reservation
+            const reservation =
+                reservations.find(
                     (item) =>
-                        item.id ===
-                        reservedItem.inventoryId
+                        item.id === reservationId
                 );
 
-
-            if (!inventoryItem) {
+            if (!reservation) {
                 console.error(
-                    `Inventory item not found: ${reservedItem.inventoryId}`
+                    "Reservation not found."
                 );
-                continue;
+                return;
             }
 
 
-            const currentReserved =
-                Number(
-                    inventoryItem.reservedQuantity ||
-                    0
+            // Prevent adding reserved quantity twice
+            if (
+                reservation.status.toLowerCase() !==
+                "pending"
+            ) {
+                console.error(
+                    "This reservation has already been processed."
+                );
+                return;
+            }
+
+
+            // =========================
+            // UPDATE INVENTORY RESERVED QUANTITY
+            // =========================
+
+            for (
+                const reservedItem of
+                reservation.items
+            ) {
+
+                if (!reservedItem.inventoryId) {
+                    continue;
+                }
+
+
+                const inventoryItem =
+                    inventory.find(
+                        (item) =>
+                            item.id ===
+                            reservedItem.inventoryId
+                    );
+
+
+                if (!inventoryItem) {
+                    console.error(
+                        `Inventory item not found: ${reservedItem.inventoryId}`
+                    );
+                    continue;
+                }
+
+
+                const currentReserved =
+                    Number(
+                        inventoryItem.reservedQuantity ||
+                        0
+                    );
+
+
+                const quantityToReserve =
+                    Number(
+                        reservedItem.quantity ||
+                        0
+                    );
+
+
+                const newReservedQuantity =
+                    currentReserved +
+                    quantityToReserve;
+
+
+                // Update the inventory document
+                await updateDoc(
+                    doc(
+                        db,
+                        "inventory",
+                        reservedItem.inventoryId
+                    ),
+                    {
+                        reservedQuantity:
+                            newReservedQuantity,
+                    }
                 );
 
-
-            const quantityToReserve =
-                Number(
-                    reservedItem.quantity ||
-                    0
-                );
+            }
 
 
-            const newReservedQuantity =
-                currentReserved +
-                quantityToReserve;
+            // =========================
+            // CREATE CLAIM STUB
+            // =========================
+
+            const claimStubId =
+                `CS-${Date.now()}`;
 
 
-            // Update the inventory document
+            // =========================
+            // UPDATE RESERVATION
+            // =========================
+
             await updateDoc(
                 doc(
                     db,
-                    "inventory",
-                    reservedItem.inventoryId
+                    "itemReservations",
+                    reservationId
                 ),
                 {
-                    reservedQuantity:
-                        newReservedQuantity,
+                    status: "Approved",
+                    claimStubId:
+                        claimStubId,
                 }
             );
 
+
+            // Reload both
+            // reservation and inventory data
+            await loadReservations();
+            await loadInventory();
+
+
+        } catch (error) {
+
+            console.error(
+                "Error approving reservation:",
+                error
+            );
+
         }
-
-
-        // =========================
-        // CREATE CLAIM STUB
-        // =========================
-
-        const claimStubId =
-            `CS-${Date.now()}`;
-
-
-        // =========================
-        // UPDATE RESERVATION
-        // =========================
-
-        await updateDoc(
-            doc(
-                db,
-                "itemReservations",
-                reservationId
-            ),
-            {
-                status: "Approved",
-                claimStubId:
-                    claimStubId,
-            }
-        );
-
-
-        // Reload both
-        // reservation and inventory data
-        await loadReservations();
-        await loadInventory();
-
-
-    } catch (error) {
-
-        console.error(
-            "Error approving reservation:",
-            error
-        );
-
-    }
-};
+    };
 
 
     // =========================
@@ -654,46 +658,109 @@ const approveReservation = async (
     };
 
 
-   const cancelReservation = async () => {
-    if (!selectedReservationForCancel) {
-        return;
-    }
+    const cancelReservation = async () => {
+        if (!selectedReservationForCancel) {
+            return;
+        }
 
-    if (!cancellationReason.trim()) {
-        alert("Please enter a cancellation reason.");
-        return;
-    }
+        if (!cancellationReason.trim()) {
+            alert("Please enter a cancellation reason.");
+            return;
+        }
 
-    try {
-        await updateDoc(
-            doc(
-                db,
-                "itemReservations",
-                selectedReservationForCancel.id
-            ),
-            {
-                status: "Cancelled",
-                cancellationReason:
-                    cancellationReason.trim(),
-            }
-        );
+        try {
+            await updateDoc(
+                doc(
+                    db,
+                    "itemReservations",
+                    selectedReservationForCancel.id
+                ),
+                {
+                    status: "Cancelled",
+                    cancellationReason:
+                        cancellationReason.trim(),
+                }
+            );
 
-        alert("Reservation cancelled successfully.");
+            alert("Reservation cancelled successfully.");
 
-        setShowCancelModal(false);
-        setSelectedReservationForCancel(null);
-        setCancellationReason("");
+            setShowCancelModal(false);
+            setSelectedReservationForCancel(null);
+            setCancellationReason("");
 
-        loadReservations();
-    } catch (error) {
-        console.error(
-            "Error cancelling reservation:",
-            error
-        );
+            loadReservations();
+        } catch (error) {
+            console.error(
+                "Error cancelling reservation:",
+                error
+            );
 
-        alert("Failed to cancel reservation.");
-    }
-};
+            alert("Failed to cancel reservation.");
+        }
+    };
+    // =========================
+    // GENERATE 8-CHAR ALPHANUMERIC PAYMENT CODE
+    // =========================
+
+    const generatePaymentCode = (length = 8): string => {
+
+        // Excludes 0, 1, I, O to avoid ambiguity
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+        const randomValues = new Uint32Array(length);
+        crypto.getRandomValues(randomValues);
+
+        let code = "";
+
+        for (let i = 0; i < length; i++) {
+            code += chars[randomValues[i] % chars.length];
+        }
+
+        return code;
+    };
+
+
+    // =========================
+    // SEND PAYMENT CODE
+    // =========================
+
+    const sendPaymentCode = async (
+        reservationId: string
+    ) => {
+
+        try {
+
+            const code = generatePaymentCode(8);
+
+            await updateDoc(
+                doc(
+                    db,
+                    "itemReservations",
+                    reservationId
+                ),
+                {
+                    paymentCode: code,
+                }
+            );
+
+            alert(
+                `Payment code sent: ${code}`
+            );
+
+            await loadReservations();
+
+        } catch (error) {
+
+            console.error(
+                "Error sending payment code:",
+                error
+            );
+
+            alert(
+                "Failed to send payment code."
+            );
+        }
+    };
     // =========================
     // UPDATE PICKUP TIME
     // =========================
@@ -730,7 +797,7 @@ const approveReservation = async (
     };
 
 
-   // =========================
+    // =========================
     // COMPLETE / CLAIM RESERVATION
     // =========================
 
@@ -845,28 +912,28 @@ const approveReservation = async (
                                 Math.max(
                                     0,
                                     currentTotalStock -
-                                        quantityBought
+                                    quantityBought
                                 ),
 
                             onlineStock:
                                 Math.max(
                                     0,
                                     currentOnlineStock -
-                                        quantityBought
+                                    quantityBought
                                 ),
 
                             availableOnline:
                                 Math.max(
                                     0,
                                     currentAvailableOnline -
-                                        quantityBought
+                                    quantityBought
                                 ),
 
                             reservedQuantity:
                                 Math.max(
                                     0,
                                     currentReservedQuantity -
-                                        quantityBought
+                                    quantityBought
                                 ),
                         }
                     );
@@ -891,28 +958,28 @@ const approveReservation = async (
                                 Math.max(
                                     0,
                                     currentTotalStock -
-                                        quantityBought
+                                    quantityBought
                                 ),
 
                             walkInStock:
                                 Math.max(
                                     0,
                                     currentWalkInStock -
-                                        quantityBought
+                                    quantityBought
                                 ),
 
                             availableWalkIn:
                                 Math.max(
                                     0,
                                     currentAvailableWalkIn -
-                                        quantityBought
+                                    quantityBought
                                 ),
 
                             reservedQuantity:
                                 Math.max(
                                     0,
                                     currentReservedQuantity -
-                                        quantityBought
+                                    quantityBought
                                 ),
                         }
                     );
@@ -1180,8 +1247,8 @@ const approveReservation = async (
     const pendingReservations =
         reservations.filter(
             (reservation) =>
-                reservation.status.toLowerCase() ===
-                "pending"
+                reservation.status.toLowerCase() === "pending" ||
+                reservation.status.toLowerCase() === "unsettled"
         );
 
 
@@ -1200,261 +1267,264 @@ const approveReservation = async (
                 "claimed"
         );
 
-    
-        const [showCancelModal, setShowCancelModal] = useState(false);
-const [selectedReservationForCancel, setSelectedReservationForCancel] =
-    useState<ItemReservation | null>(null);
-const [cancellationReason, setCancellationReason] = useState("");
+
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [selectedReservationForCancel, setSelectedReservationForCancel] =
+        useState<ItemReservation | null>(null);
+    const [cancellationReason, setCancellationReason] = useState("");
     // =========================
     // REPORTS DATA
     // =========================
 
-// =========================
-// REPORT FILTER HELPERS
-// =========================
+    // =========================
+    // REPORT FILTER HELPERS
+    // =========================
 
-const itemMatchesReport = (item: ReservationItem) =>
-    reportType === "All" || item.purchaseType === reportType;
+    const itemMatchesReport = (item: ReservationItem) =>
+        reportType === "All" || item.purchaseType === reportType;
 
-const reservationMatchesReport = (reservation: ItemReservation) =>
-    reservation.items.some(itemMatchesReport);
+    const reservationMatchesReport = (reservation: ItemReservation) =>
+        reservation.items.some(itemMatchesReport);
 
-const getReportItems = (reservation: ItemReservation) =>
-    reservation.items.filter(itemMatchesReport);
+    const getReportItems = (reservation: ItemReservation) =>
+        reservation.items.filter(itemMatchesReport);
 
-const getReportAmount = (reservation: ItemReservation) =>
-    getReportItems(reservation).reduce(
-        (total, item) => total + Number(item.subtotal || 0),
-        0
-    );
+    const getReportAmount = (reservation: ItemReservation) =>
+        getReportItems(reservation).reduce(
+            (total, item) => total + Number(item.subtotal || 0),
+            0
+        );
 
-const getTypeStats = (type: "All" | "Online" | "Walk-in") => {
+    const getTypeStats = (type: "All" | "Online" | "Walk-in") => {
 
-    const matches = (item: ReservationItem) =>
-        type === "All" || item.purchaseType === type;
+        const matches = (item: ReservationItem) =>
+            type === "All" || item.purchaseType === type;
 
-    const matchingReservations = claimedReservations.filter(
-        (reservation) => reservation.items.some(matches)
-    );
+        const matchingReservations = claimedReservations.filter(
+            (reservation) => reservation.items.some(matches)
+        );
 
-    const sales = matchingReservations.reduce(
-        (total, reservation) =>
-            total +
-            reservation.items
-                .filter(matches)
-                .reduce(
-                    (sum, item) => sum + Number(item.subtotal || 0),
-                    0
-                ),
-        0
-    );
+        const sales = matchingReservations.reduce(
+            (total, reservation) =>
+                total +
+                reservation.items
+                    .filter(matches)
+                    .reduce(
+                        (sum, item) => sum + Number(item.subtotal || 0),
+                        0
+                    ),
+            0
+        );
 
-    const quantity = matchingReservations.reduce(
-        (total, reservation) =>
-            total +
-            reservation.items
-                .filter(matches)
-                .reduce(
-                    (sum, item) => sum + Number(item.quantity || 0),
-                    0
-                ),
-        0
-    );
+        const quantity = matchingReservations.reduce(
+            (total, reservation) =>
+                total +
+                reservation.items
+                    .filter(matches)
+                    .reduce(
+                        (sum, item) => sum + Number(item.quantity || 0),
+                        0
+                    ),
+            0
+        );
 
-    return {
-        transactions: matchingReservations.length,
-        sales,
-        quantity,
-        average:
-            matchingReservations.length > 0
-                ? sales / matchingReservations.length
-                : 0,
+        return {
+            transactions: matchingReservations.length,
+            sales,
+            quantity,
+            average:
+                matchingReservations.length > 0
+                    ? sales / matchingReservations.length
+                    : 0,
+        };
     };
-};
 
-// =========================
-// REPORT STATISTICS
-// =========================
+    // =========================
+    // REPORT STATISTICS
+    // =========================
 
-const currentStats = getTypeStats(reportType);
+    const currentStats = getTypeStats(reportType);
 
-const totalSales = currentStats.sales;
-const totalItemsSold = currentStats.quantity;
-const averageTransaction = currentStats.average;
+    const totalSales = currentStats.sales;
+    const totalItemsSold = currentStats.quantity;
+    const averageTransaction = currentStats.average;
 
-const reportAllReservations =
-    reservations.filter(reservationMatchesReport);
+    const reportAllReservations =
+        reservations.filter(reservationMatchesReport);
 
-const reportPending =
-    pendingReservations.filter(reservationMatchesReport);
+    const reportPending =
+        pendingReservations.filter(reservationMatchesReport);
 
-const reportApproved =
-    approvedReservations.filter(reservationMatchesReport);
+    const reportApproved =
+        approvedReservations.filter(reservationMatchesReport);
 
-const reportClaimed =
-    claimedReservations.filter(reservationMatchesReport);
+    const reportClaimed =
+        claimedReservations.filter(reservationMatchesReport);
 
-const reportCancelled =
-    reservations
-        .filter(
-            (reservation) =>
-                reservation.status.toLowerCase() === "cancelled"
-        )
-        .filter(reservationMatchesReport);
+    const reportCancelled =
+        reservations
+            .filter(
+                (reservation) =>
+                    reservation.status.toLowerCase() === "cancelled"
+            )
+            .filter(reservationMatchesReport);
 
-// =========================
-// REPORT INVENTORY
-// =========================
+    // =========================
+    // REPORT INVENTORY
+    // =========================
 
-const getAvailable = (item: InventoryItem) => {
+    const getAvailable = (item: InventoryItem) => {
 
-    if (reportType === "Online") {
-        return Number(item.availableOnline || 0);
-    }
-
-    if (reportType === "Walk-in") {
-        return Number(item.availableWalkIn || 0);
-    }
-
-    return (
-        Number(item.availableOnline || 0) +
-        Number(item.availableWalkIn || 0)
-    );
-};
-
-const totalStock = inventory.reduce((total, item) => {
-
-    if (reportType === "Online") {
-        return total + Number(item.onlineStock || 0);
-    }
-
-    if (reportType === "Walk-in") {
-        return total + Number(item.walkInStock || 0);
-    }
-
-    return total + Number(item.totalStock || 0);
-
-}, 0);
-
-const totalAvailableStock = inventory.reduce(
-    (total, item) => total + getAvailable(item),
-    0
-);
-
-// Online / Walk-in reserved is worked out from approved
-// reservations because inventory stores one combined number.
-const totalReservedStock =
-    reportType === "All"
-        ? inventory.reduce(
-              (total, item) =>
-                  total + Number(item.reservedQuantity || 0),
-              0
-          )
-        : approvedReservations.reduce(
-              (total, reservation) =>
-                  total +
-                  getReportItems(reservation).reduce(
-                      (sum, item) =>
-                          sum + Number(item.quantity || 0),
-                      0
-                  ),
-              0
-          );
-
-const lowStockItems = inventory.filter(
-    (item) => getAvailable(item) <= 5
-);
-
-// =========================
-// TOP ITEMS
-// =========================
-
-const itemSales: {
-    [key: string]: {
-        itemName: string;
-        quantity: number;
-        sales: number;
-    };
-} = {};
-
-reportClaimed.forEach((reservation) => {
-
-    getReportItems(reservation).forEach((item) => {
-
-        if (!itemSales[item.itemName]) {
-            itemSales[item.itemName] = {
-                itemName: item.itemName,
-                quantity: 0,
-                sales: 0,
-            };
+        if (reportType === "Online") {
+            return Number(item.availableOnline || 0);
         }
 
-        itemSales[item.itemName].quantity +=
-            Number(item.quantity || 0);
+        if (reportType === "Walk-in") {
+            return Number(item.availableWalkIn || 0);
+        }
 
-        itemSales[item.itemName].sales +=
-            Number(item.subtotal || 0);
-    });
-});
+        return (
+            Number(item.availableOnline || 0) +
+            Number(item.availableWalkIn || 0)
+        );
+    };
 
-const topItems =
-    Object.values(itemSales)
-        .sort((a, b) => b.quantity - a.quantity)
-        .slice(0, 5);
+    const totalStock = inventory.reduce((total, item) => {
 
-            const matchesReservationSearch = (
-    reservation: ItemReservation,
-    searchText: string
-) => {
+        if (reportType === "Online") {
+            return total + Number(item.onlineStock || 0);
+        }
 
-    const search = searchText.trim().toLowerCase();
+        if (reportType === "Walk-in") {
+            return total + Number(item.walkInStock || 0);
+        }
 
-    if (!search) {
-        return true;
-    }
+        return total + Number(item.totalStock || 0);
 
-    return (
-        reservation.reservationId.toLowerCase().includes(search) ||
-        reservation.claimStubId.toLowerCase().includes(search) ||
-        reservation.fullName.toLowerCase().includes(search) ||
-        reservation.studentId.toLowerCase().includes(search) ||
-        reservation.mobileNumber.toLowerCase().includes(search) ||
-        reservation.program.toLowerCase().includes(search) ||
-        reservation.items.some((item) =>
-            item.itemName.toLowerCase().includes(search)
-        )
+    }, 0);
+
+    const totalAvailableStock = inventory.reduce(
+        (total, item) => total + getAvailable(item),
+        0
     );
-};
 
-const filteredPending = pendingReservations.filter((reservation) =>
-    matchesReservationSearch(reservation, requestSearch)
-);
+    // Online / Walk-in reserved is worked out from approved
+    // reservations because inventory stores one combined number.
+    const totalReservedStock =
+        reportType === "All"
+            ? inventory.reduce(
+                (total, item) =>
+                    total + Number(item.reservedQuantity || 0),
+                0
+            )
+            : approvedReservations.reduce(
+                (total, reservation) =>
+                    total +
+                    getReportItems(reservation).reduce(
+                        (sum, item) =>
+                            sum + Number(item.quantity || 0),
+                        0
+                    ),
+                0
+            );
 
-const filteredApproved = approvedReservations.filter((reservation) =>
-    matchesReservationSearch(reservation, reservationSearch)
-);
+    const lowStockItems = inventory.filter(
+        (item) => getAvailable(item) <= 5
+    );
 
-const filteredClaimed = claimedReservations.filter((reservation) =>
-    matchesReservationSearch(reservation, claimingSearch)
-);
-const filteredTransactions = reservations.filter((reservation) => {
+    // =========================
+    // TOP ITEMS
+    // =========================
 
-    const matchesStatus =
-        transactionFilter === "All" ||
-        reservation.status.toLowerCase() ===
+    const itemSales: {
+        [key: string]: {
+            itemName: string;
+            quantity: number;
+            sales: number;
+        };
+    } = {};
+
+    reportClaimed.forEach((reservation) => {
+
+        getReportItems(reservation).forEach((item) => {
+
+            if (!itemSales[item.itemName]) {
+                itemSales[item.itemName] = {
+                    itemName: item.itemName,
+                    quantity: 0,
+                    sales: 0,
+                };
+            }
+
+            itemSales[item.itemName].quantity +=
+                Number(item.quantity || 0);
+
+            itemSales[item.itemName].sales +=
+                Number(item.subtotal || 0);
+        });
+    });
+
+    const topItems =
+        Object.values(itemSales)
+            .sort((a, b) => b.quantity - a.quantity)
+            .slice(0, 5);
+
+    const matchesReservationSearch = (
+        reservation: ItemReservation,
+        searchText: string
+    ) => {
+
+        const search = searchText.trim().toLowerCase();
+
+        if (!search) {
+            return true;
+        }
+
+        return (
+            reservation.reservationId.toLowerCase().includes(search) ||
+            reservation.claimStubId.toLowerCase().includes(search) ||
+            reservation.fullName.toLowerCase().includes(search) ||
+            reservation.studentId.toLowerCase().includes(search) ||
+            reservation.mobileNumber.toLowerCase().includes(search) ||
+            reservation.program.toLowerCase().includes(search) ||
+            reservation.items.some((item) =>
+                item.itemName.toLowerCase().includes(search)
+            )
+        );
+    };
+
+    const filteredPending = pendingReservations.filter((reservation) =>
+        matchesReservationSearch(reservation, requestSearch)
+    );
+
+
+
+
+    const filteredApproved = approvedReservations.filter((reservation) =>
+        matchesReservationSearch(reservation, reservationSearch)
+    );
+
+    const filteredClaimed = claimedReservations.filter((reservation) =>
+        matchesReservationSearch(reservation, claimingSearch)
+    );
+    const filteredTransactions = reservations.filter((reservation) => {
+
+        const matchesStatus =
+            transactionFilter === "All" ||
+            reservation.status.toLowerCase() ===
             transactionFilter.toLowerCase();
 
-    const search = transactionSearch.trim().toLowerCase();
+        const search = transactionSearch.trim().toLowerCase();
 
-    const matchesSearch =
-        !search ||
-        reservation.reservationId.toLowerCase().includes(search) ||
-        reservation.claimStubId.toLowerCase().includes(search) ||
-        reservation.fullName.toLowerCase().includes(search) ||
-        reservation.studentId.toLowerCase().includes(search);
+        const matchesSearch =
+            !search ||
+            reservation.reservationId.toLowerCase().includes(search) ||
+            reservation.claimStubId.toLowerCase().includes(search) ||
+            reservation.fullName.toLowerCase().includes(search) ||
+            reservation.studentId.toLowerCase().includes(search);
 
-    return matchesStatus && matchesSearch;
-});
+        return matchesStatus && matchesSearch;
+    });
 
     return (
 
@@ -1478,11 +1548,10 @@ const filteredTransactions = reservations.filter((reservation) => {
                     {/* DASHBOARD */}
 
                     <button
-                        className={`go-nav-item ${
-                            activePage === "Dashboard"
-                                ? "active"
-                                : ""
-                        }`}
+                        className={`go-nav-item ${activePage === "Dashboard"
+                            ? "active"
+                            : ""
+                            }`}
                         onClick={() =>
                             setActivePage("Dashboard")
                         }
@@ -1495,11 +1564,10 @@ const filteredTransactions = reservations.filter((reservation) => {
                     {/* INVENTORY */}
 
                     <button
-                        className={`go-nav-item ${
-                            activePage === "Inventory"
-                                ? "active"
-                                : ""
-                        }`}
+                        className={`go-nav-item ${activePage === "Inventory"
+                            ? "active"
+                            : ""
+                            }`}
                         onClick={() =>
                             setActivePage("Inventory")
                         }
@@ -1512,11 +1580,10 @@ const filteredTransactions = reservations.filter((reservation) => {
                     {/* REQUESTS */}
 
                     <button
-                        className={`go-nav-item ${
-                            activePage === "Requests"
-                                ? "active"
-                                : ""
-                        }`}
+                        className={`go-nav-item ${activePage === "Requests"
+                            ? "active"
+                            : ""
+                            }`}
                         onClick={() =>
                             setActivePage("Requests")
                         }
@@ -1529,11 +1596,10 @@ const filteredTransactions = reservations.filter((reservation) => {
                     {/* RESERVATIONS */}
 
                     <button
-                        className={`go-nav-item ${
-                            activePage === "Reservations"
-                                ? "active"
-                                : ""
-                        }`}
+                        className={`go-nav-item ${activePage === "Reservations"
+                            ? "active"
+                            : ""
+                            }`}
                         onClick={() =>
                             setActivePage("Reservations")
                         }
@@ -1546,11 +1612,10 @@ const filteredTransactions = reservations.filter((reservation) => {
                     {/* CLAIMING */}
 
                     <button
-                        className={`go-nav-item ${
-                            activePage === "Claiming"
-                                ? "active"
-                                : ""
-                        }`}
+                        className={`go-nav-item ${activePage === "Claiming"
+                            ? "active"
+                            : ""
+                            }`}
                         onClick={() =>
                             setActivePage("Claiming")
                         }
@@ -1559,25 +1624,23 @@ const filteredTransactions = reservations.filter((reservation) => {
                         Claimed Items
                     </button>
 
-{/* TRANSACTIONS */}
+                    {/* TRANSACTIONS */}
 
-<button
-    className={`go-nav-item ${
-        activePage === "Transactions" ? "active" : ""
-    }`}
-    onClick={() => setActivePage("Transactions")}
->
-    <span>💳</span>
-    Transactions
-</button>
+                    <button
+                        className={`go-nav-item ${activePage === "Transactions" ? "active" : ""
+                            }`}
+                        onClick={() => setActivePage("Transactions")}
+                    >
+                        <span>💳</span>
+                        Transactions
+                    </button>
                     {/* REPORTS */}
 
                     <button
-                        className={`go-nav-item ${
-                            activePage === "Reports"
-                                ? "active"
-                                : ""
-                        }`}
+                        className={`go-nav-item ${activePage === "Reports"
+                            ? "active"
+                            : ""
+                            }`}
                         onClick={() =>
                             setActivePage("Reports")
                         }
@@ -1612,11 +1675,11 @@ const filteredTransactions = reservations.filter((reservation) => {
                                 : activePage}
                         </h1>
 
-                       <p>
-    {activePage === "Dashboard"
-        ? `Welcome, ${account.name || "General Office"}.`
-        : `Manage ${activePage.toLowerCase()}.`}
-</p>
+                        <p>
+                            {activePage === "Dashboard"
+                                ? `Welcome, ${account.name || "General Office"}.`
+                                : `Manage ${activePage.toLowerCase()}.`}
+                        </p>
                     </div>
 
 
@@ -1676,7 +1739,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                     </p>
 
                                     <h2>
-                                      {pendingReservations.length}
+                                        {pendingReservations.length}
                                     </h2>
 
                                     <span>
@@ -2155,7 +2218,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                 <th>
                                                     Status
                                                 </th>
-                                                
+
                                                 <th>
                                                     Action
                                                 </th>
@@ -2244,14 +2307,13 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                             <td>
 
                                                                 <span
-                                                                    className={`inventory-status ${
-                                                                        item.status
-                                                                            .toLowerCase()
-                                                                            .replace(
-                                                                                /\s+/g,
-                                                                                "-"
-                                                                            )
-                                                                    }`}
+                                                                    className={`inventory-status ${item.status
+                                                                        .toLowerCase()
+                                                                        .replace(
+                                                                            /\s+/g,
+                                                                            "-"
+                                                                        )
+                                                                        }`}
                                                                 >
 
                                                                     {
@@ -2263,13 +2325,13 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                             </td>
                                                             <td>
                                                                 <button
-    className="inventory-action-button"
-    onClick={() =>
-        openEditStockModal(item)
-    }
->
-    Edit Stock
-</button>
+                                                                    className="inventory-action-button"
+                                                                    onClick={() =>
+                                                                        openEditStockModal(item)
+                                                                    }
+                                                                >
+                                                                    Edit Stock
+                                                                </button>
                                                             </td>
 
                                                         </tr>
@@ -2327,12 +2389,12 @@ const filteredTransactions = reservations.filter((reservation) => {
                                         alignItems: "center",
                                     }}
                                 > <input
-    type="text"
-    placeholder="Search name, ID, item..."
-    value={requestSearch}
-    onChange={(e) => setRequestSearch(e.target.value)}
-    style={{ padding: "8px" }}
-/>
+                                        type="text"
+                                        placeholder="Search name, ID, item..."
+                                        value={requestSearch}
+                                        onChange={(e) => setRequestSearch(e.target.value)}
+                                        style={{ padding: "8px" }}
+                                    />
 
                                     <button
                                         className="inventory-refresh-button"
@@ -2393,13 +2455,6 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                     Items
                                                 </th>
 
-                                                <th>
-                                                    Pickup Date
-                                                </th>
-
-                                                <th>
-                                                    Pickup Time
-                                                </th>
 
                                                 <th>
                                                     Total
@@ -2411,6 +2466,9 @@ const filteredTransactions = reservations.filter((reservation) => {
 
                                                 <th>
                                                     Action
+                                                </th>
+                                                <th>
+                                                    Payment Code
                                                 </th>
 
                                             </tr>
@@ -2518,18 +2576,6 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                         </td>
 
 
-                                                        <td>
-                                                            {
-                                                                reservation.pickupDate
-                                                            }
-                                                        </td>
-
-
-                                                        <td>
-                                                            {
-                                                                reservation.pickupTime
-                                                            }
-                                                        </td>
 
 
                                                         <td>
@@ -2557,25 +2603,56 @@ const filteredTransactions = reservations.filter((reservation) => {
 
                                                         <td>
 
-                                                         <div style={{ display: "flex", gap: "8px" }}>
-    <button
-        onClick={() => approveReservation(reservation.id)}
-    >
-        Approve
-    </button>
+                                                            {reservation.status.toLowerCase() === "unsettled" ? (
 
-    <button
-   
-    onClick={() => {
-        setSelectedReservationForCancel(reservation);
-        setCancellationReason("");
-        setShowCancelModal(true);
-    }}
->
+                                                                <button
+                                                                    onClick={() =>
+                                                                        sendPaymentCode(reservation.id)
+                                                                    }
+                                                                    disabled={!!reservation.paymentCode}
+                                                                >
+                                                                    {reservation.paymentCode
+                                                                        ? "Code Sent"
+                                                                        : "Send Code"}
+                                                                </button>
 
-        Cancel
-    </button>
-</div>
+
+                                                            ) : (
+
+                                                                <div
+                                                                    style={{
+                                                                        display: "flex",
+                                                                        gap: "8px",
+                                                                    }}
+                                                                >
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            approveReservation(
+                                                                                reservation.id
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Approve
+                                                                    </button>
+
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSelectedReservationForCancel(
+                                                                                reservation
+                                                                            );
+                                                                            setCancellationReason("");
+                                                                            setShowCancelModal(true);
+                                                                        }}
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+
+                                                            )}
+
+                                                        </td>
+                                                        <td>
+                                                            {reservation.paymentCode || "—"}
                                                         </td>
 
                                                     </tr>
@@ -2626,28 +2703,28 @@ const filteredTransactions = reservations.filter((reservation) => {
                                 </div>
 
 
-                              <div
-    style={{
-        display: "flex",
-        gap: "10px",
-        alignItems: "center",
-    }}
->
-    <input
-        type="text"
-        placeholder="Search name, ID, stub, item..."
-        value={reservationSearch}
-        onChange={(e) => setReservationSearch(e.target.value)}
-        style={{ padding: "8px" }}
-    />
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
+                                    }}
+                                >
+                                    <input
+                                        type="text"
+                                        placeholder="Search name, ID, stub, item..."
+                                        value={reservationSearch}
+                                        onChange={(e) => setReservationSearch(e.target.value)}
+                                        style={{ padding: "8px" }}
+                                    />
 
-    <button
-        className="inventory-refresh-button"
-        onClick={loadReservations}
-    >
-        ↻ Refresh
-    </button>
-</div>
+                                    <button
+                                        className="inventory-refresh-button"
+                                        onClick={loadReservations}
+                                    >
+                                        ↻ Refresh
+                                    </button>
+                                </div>
 
                             </div>
 
@@ -2660,7 +2737,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                     Loading reservations...
                                 </p>
 
-                            )  : filteredApproved.length === 0 ? (
+                            ) : filteredApproved.length === 0 ? (
 
                                 <p className="inventory-message">
                                     No approved reservations found.
@@ -2724,7 +2801,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                         <tbody>
 
 
-                                           {filteredApproved.map(
+                                            {filteredApproved.map(
                                                 (reservation) => (
 
                                                     <tr
@@ -2945,27 +3022,27 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                         {/* ACTION */}
 
                                                         <td>
-  <div style={{ display: "flex", gap: "8px" }}>
- 
-                                                            <button
-                                                                onClick={() =>
-                                                                    completeReservation(
-                                                                        reservation.id
-                                                                    )
-                                                                }
-                                                            >
-                                                                Complete
-                                                            </button>
-                                                             <button
-    onClick={() => {
-        setSelectedReservationForCancel(reservation);
-        setCancellationReason("");
-        setShowCancelModal(true);
-    }}
->
-    Cancel
-</button>
-</div>
+                                                            <div style={{ display: "flex", gap: "8px" }}>
+
+                                                                <button
+                                                                    onClick={() =>
+                                                                        completeReservation(
+                                                                            reservation.id
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Complete
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedReservationForCancel(reservation);
+                                                                        setCancellationReason("");
+                                                                        setShowCancelModal(true);
+                                                                    }}
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
 
                                                         </td>
 
@@ -3017,28 +3094,28 @@ const filteredTransactions = reservations.filter((reservation) => {
                                 </div>
 
 
-                            <div
-    style={{
-        display: "flex",
-        gap: "10px",
-        alignItems: "center",
-    }}
->
-    <input
-        type="text"
-        placeholder="Search name, ID, stub, item..."
-        value={claimingSearch}
-        onChange={(e) => setClaimingSearch(e.target.value)}
-        style={{ padding: "8px" }}
-    />
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
+                                    }}
+                                >
+                                    <input
+                                        type="text"
+                                        placeholder="Search name, ID, stub, item..."
+                                        value={claimingSearch}
+                                        onChange={(e) => setClaimingSearch(e.target.value)}
+                                        style={{ padding: "8px" }}
+                                    />
 
-    <button
-        className="inventory-refresh-button"
-        onClick={loadReservations}
-    >
-        ↻ Refresh
-    </button>
-</div>
+                                    <button
+                                        className="inventory-refresh-button"
+                                        onClick={loadReservations}
+                                    >
+                                        ↻ Refresh
+                                    </button>
+                                </div>
 
                             </div>
 
@@ -3051,7 +3128,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                     Loading claimed items...
                                 </p>
 
-                           ) : filteredClaimed.length === 0 ? (
+                            ) : filteredClaimed.length === 0 ? (
 
                                 <p className="inventory-message">
                                     No claimed items found.
@@ -3298,99 +3375,99 @@ const filteredTransactions = reservations.filter((reservation) => {
                 {activePage === "Reports" && (
 
                     <section className="go-content">
-{/* REPORT TYPE FILTER */}
+                        {/* REPORT TYPE FILTER */}
 
-<section className="go-panel">
+                        <section className="go-panel">
 
-    <div className="inventory-page-header">
+                            <div className="inventory-page-header">
 
-        <div>
-            <h2>Report Type</h2>
-            <p>
-                Showing:{" "}
-                <strong>
-                    {reportType === "All"
-                        ? "Combined (Online + Walk-in)"
-                        : reportType}
-                </strong>
-            </p>
-        </div>
+                                <div>
+                                    <h2>Report Type</h2>
+                                    <p>
+                                        Showing:{" "}
+                                        <strong>
+                                            {reportType === "All"
+                                                ? "Combined (Online + Walk-in)"
+                                                : reportType}
+                                        </strong>
+                                    </p>
+                                </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
-            {(["All", "Online", "Walk-in"] as const).map((type) => (
-                <button
-                    key={type}
-                    className="inventory-refresh-button"
-                    onClick={() => setReportType(type)}
-                    style={{
-                        fontWeight: reportType === type ? 700 : 400,
-                        outline:
-                            reportType === type
-                                ? "2px solid #4f46e5"
-                                : "none",
-                    }}
-                >
-                    {type === "All" ? "Combined" : type}
-                </button>
-            ))}
-        </div>
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                    {(["All", "Online", "Walk-in"] as const).map((type) => (
+                                        <button
+                                            key={type}
+                                            className="inventory-refresh-button"
+                                            onClick={() => setReportType(type)}
+                                            style={{
+                                                fontWeight: reportType === type ? 700 : 400,
+                                                outline:
+                                                    reportType === type
+                                                        ? "2px solid #4f46e5"
+                                                        : "none",
+                                            }}
+                                        >
+                                            {type === "All" ? "Combined" : type}
+                                        </button>
+                                    ))}
+                                </div>
 
-    </div>
+                            </div>
 
-    <div className="inventory-table-container">
+                            <div className="inventory-table-container">
 
-        <table className="inventory-table">
+                                <table className="inventory-table">
 
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Claimed Transactions</th>
-                    <th>Items Sold</th>
-                    <th>Total Sales</th>
-                    <th>Average Transaction</th>
-                </tr>
-            </thead>
+                                    <thead>
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Claimed Transactions</th>
+                                            <th>Items Sold</th>
+                                            <th>Total Sales</th>
+                                            <th>Average Transaction</th>
+                                        </tr>
+                                    </thead>
 
-            <tbody>
+                                    <tbody>
 
-                {(["Online", "Walk-in", "All"] as const).map((type) => {
+                                        {(["Online", "Walk-in", "All"] as const).map((type) => {
 
-                    const stats = getTypeStats(type);
+                                            const stats = getTypeStats(type);
 
-                    return (
-                        <tr key={type}>
-                            <td>
-                                <strong>
-                                    {type === "All" ? "Combined" : type}
-                                </strong>
-                            </td>
-                            <td>{stats.transactions}</td>
-                            <td>{stats.quantity}</td>
-                            <td>
-                                ₱
-                                {stats.sales.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}
-                            </td>
-                            <td>
-                                ₱
-                                {stats.average.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}
-                            </td>
-                        </tr>
-                    );
-                })}
+                                            return (
+                                                <tr key={type}>
+                                                    <td>
+                                                        <strong>
+                                                            {type === "All" ? "Combined" : type}
+                                                        </strong>
+                                                    </td>
+                                                    <td>{stats.transactions}</td>
+                                                    <td>{stats.quantity}</td>
+                                                    <td>
+                                                        ₱
+                                                        {stats.sales.toLocaleString(undefined, {
+                                                            minimumFractionDigits: 2,
+                                                            maximumFractionDigits: 2,
+                                                        })}
+                                                    </td>
+                                                    <td>
+                                                        ₱
+                                                        {stats.average.toLocaleString(undefined, {
+                                                            minimumFractionDigits: 2,
+                                                            maximumFractionDigits: 2,
+                                                        })}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
 
-            </tbody>
+                                    </tbody>
 
-        </table>
+                                </table>
 
-    </div>
+                            </div>
 
-</section>
+                        </section>
 
                         {/* REPORT SUMMARY */}
 
@@ -3706,7 +3783,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                             </td>
 
                                             <td>
-                                               {reportPending.length}
+                                                {reportPending.length}
                                             </td>
 
                                         </tr>
@@ -3973,7 +4050,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                             lowStockItems.map(
                                                 (item) => {
 
-                                                   const available = getAvailable(item);
+                                                    const available = getAvailable(item);
                                                     return (
 
                                                         <tr
@@ -4099,7 +4176,7 @@ const filteredTransactions = reservations.filter((reservation) => {
 
                                     <tbody>
 
-                                      {reportClaimed.length === 0 ? (
+                                        {reportClaimed.length === 0 ? (
                                             <tr>
 
                                                 <td
@@ -4117,8 +4194,8 @@ const filteredTransactions = reservations.filter((reservation) => {
 
                                         ) : (
 
-                                           reportClaimed
-    .slice(0, 10)
+                                            reportClaimed
+                                                .slice(0, 10)
                                                 .map(
                                                     (
                                                         reservation
@@ -4148,9 +4225,9 @@ const filteredTransactions = reservations.filter((reservation) => {
 
                                                             <td>
 
-                                                              {getReportItems(reservation)
-    .map((item) => `${item.itemName} (${item.quantity})`)
-    .join(", ")}
+                                                                {getReportItems(reservation)
+                                                                    .map((item) => `${item.itemName} (${item.quantity})`)
+                                                                    .join(", ")}
 
                                                             </td>
 
@@ -4158,11 +4235,11 @@ const filteredTransactions = reservations.filter((reservation) => {
 
                                                                 <strong>
 
-                                                                  ₱
-{getReportAmount(reservation).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-})}
+                                                                    ₱
+                                                                    {getReportAmount(reservation).toLocaleString(undefined, {
+                                                                        minimumFractionDigits: 2,
+                                                                        maximumFractionDigits: 2,
+                                                                    })}
 
                                                                 </strong>
 
@@ -4204,202 +4281,203 @@ const filteredTransactions = reservations.filter((reservation) => {
                     </section>
 
                 )}
-{/* ========================= */}
-{/* TRANSACTIONS PAGE */}
-{/* ========================= */}
+                {/* ========================= */}
+                {/* TRANSACTIONS PAGE */}
+                {/* ========================= */}
 
-{activePage === "Transactions" && (
+                {activePage === "Transactions" && (
 
-    <section className="go-content">
+                    <section className="go-content">
 
-        <section className="go-panel inventory-page">
+                        <section className="go-panel inventory-page">
 
-            <div className="inventory-page-header">
+                            <div className="inventory-page-header">
 
-                <div>
-                    <h2>Transactions</h2>
-                    <p>View all reservation transactions.</p>
-                </div>
+                                <div>
+                                    <h2>Transactions</h2>
+                                    <p>View all reservation transactions.</p>
+                                </div>
 
-                <div
-                    style={{
-                        display: "flex",
-                        gap: "10px",
-                        alignItems: "center",
-                    }}
-                >
-                    <input
-                        type="text"
-                        placeholder="Search name, ID, stub..."
-                        value={transactionSearch}
-                        onChange={(e) =>
-                            setTransactionSearch(e.target.value)
-                        }
-                        style={{ padding: "8px" }}
-                    />
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
+                                    }}
+                                >
+                                    <input
+                                        type="text"
+                                        placeholder="Search name, ID, stub..."
+                                        value={transactionSearch}
+                                        onChange={(e) =>
+                                            setTransactionSearch(e.target.value)
+                                        }
+                                        style={{ padding: "8px" }}
+                                    />
 
-                    <select
-                        value={transactionFilter}
-                        onChange={(e) =>
-                            setTransactionFilter(e.target.value)
-                        }
-                        style={{ padding: "8px" }}
-                    >
-                        <option value="All">All</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Claimed">Claimed</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
+                                    <select
+                                        value={transactionFilter}
+                                        onChange={(e) =>
+                                            setTransactionFilter(e.target.value)
+                                        }
+                                        style={{ padding: "8px" }}
+                                    >
+                                        <option value="All">All</option>
+                                        <option value="Unsettled">Unsettled</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Approved">Approved</option>
+                                        <option value="Claimed">Claimed</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                    </select>
 
-                    <button
-                        className="inventory-refresh-button"
-                        onClick={loadReservations}
-                    >
-                        ↻ Refresh
-                    </button>
-                </div>
+                                    <button
+                                        className="inventory-refresh-button"
+                                        onClick={loadReservations}
+                                    >
+                                        ↻ Refresh
+                                    </button>
+                                </div>
 
-            </div>
+                            </div>
 
-            {loadingReservations ? (
+                            {loadingReservations ? (
 
-                <p className="inventory-message">
-                    Loading transactions...
-                </p>
+                                <p className="inventory-message">
+                                    Loading transactions...
+                                </p>
 
-            ) : filteredTransactions.length === 0 ? (
+                            ) : filteredTransactions.length === 0 ? (
 
-                <p className="inventory-message">
-                    No transactions found.
-                </p>
+                                <p className="inventory-message">
+                                    No transactions found.
+                                </p>
 
-            ) : (
+                            ) : (
 
-                <div className="inventory-table-container">
+                                <div className="inventory-table-container">
 
-                    <table className="inventory-table">
+                                    <table className="inventory-table">
 
-                        <thead>
-                            <tr>
-                                <th>Reservation ID</th>
-                                <th>Claim Stub ID</th>
-                                <th>Student</th>
-                                <th>Items</th>
-                                <th>Pickup</th>
-                                <th>Total</th>
-                                <th>Status</th>
-                                <th>Note</th>
-                            </tr>
-                        </thead>
+                                        <thead>
+                                            <tr>
+                                                <th>Reservation ID</th>
+                                                <th>Claim Stub ID</th>
+                                                <th>Student</th>
+                                                <th>Items</th>
+                                                <th>Pickup</th>
+                                                <th>Total</th>
+                                                <th>Status</th>
+                                                <th>Note</th>
+                                            </tr>
+                                        </thead>
 
-                        <tbody>
+                                        <tbody>
 
-                            {filteredTransactions.map((reservation) => (
+                                            {filteredTransactions.map((reservation) => (
 
-                                <tr key={reservation.id}>
+                                                <tr key={reservation.id}>
 
-                                    <td>
-                                        <strong>
-                                            {reservation.reservationId}
-                                        </strong>
-                                    </td>
+                                                    <td>
+                                                        <strong>
+                                                            {reservation.reservationId}
+                                                        </strong>
+                                                    </td>
 
-                                    <td>
-                                        {reservation.claimStubId || "—"}
-                                    </td>
+                                                    <td>
+                                                        {reservation.claimStubId || "—"}
+                                                    </td>
 
-                                    <td>
-                                        <strong>
-                                            {reservation.fullName}
-                                        </strong>
-                                        <br />
-                                        <small>
-                                            ID: {reservation.studentId}
-                                        </small>
-                                    </td>
+                                                    <td>
+                                                        <strong>
+                                                            {reservation.fullName}
+                                                        </strong>
+                                                        <br />
+                                                        <small>
+                                                            ID: {reservation.studentId}
+                                                        </small>
+                                                    </td>
 
-                                    <td>
-                                        {reservation.items.map(
-                                            (item, index) => (
-                                                <div
-                                                    key={index}
-                                                    style={{
-                                                        marginBottom: "6px",
-                                                    }}
-                                                >
-                                                    <strong>
-                                                        {item.itemName}
-                                                    </strong>
-                                                    <br />
-                                                    <small>
-                                                        Size: {item.size}
-                                                        {" | "}
-                                                        Qty: {item.quantity}
-                                                        {" | "}
-                                                        {item.purchaseType}
-                                                    </small>
-                                                </div>
-                                            )
-                                        )}
-                                    </td>
+                                                    <td>
+                                                        {reservation.items.map(
+                                                            (item, index) => (
+                                                                <div
+                                                                    key={index}
+                                                                    style={{
+                                                                        marginBottom: "6px",
+                                                                    }}
+                                                                >
+                                                                    <strong>
+                                                                        {item.itemName}
+                                                                    </strong>
+                                                                    <br />
+                                                                    <small>
+                                                                        Size: {item.size}
+                                                                        {" | "}
+                                                                        Qty: {item.quantity}
+                                                                        {" | "}
+                                                                        {item.purchaseType}
+                                                                    </small>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </td>
 
-                                    <td>
-                                        <strong>
-                                            {reservation.pickupDate}
-                                        </strong>
-                                        <br />
-                                        <small>
-                                            {reservation.pickupTime}
-                                        </small>
-                                    </td>
+                                                    <td>
+                                                        <strong>
+                                                            {reservation.pickupDate}
+                                                        </strong>
+                                                        <br />
+                                                        <small>
+                                                            {reservation.pickupTime}
+                                                        </small>
+                                                    </td>
 
-                                    <td>
-                                        <strong>
-                                            ₱
-                                            {reservation.totalAmount.toLocaleString(
-                                                undefined,
-                                                {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2,
-                                                }
-                                            )}
-                                        </strong>
-                                    </td>
+                                                    <td>
+                                                        <strong>
+                                                            ₱
+                                                            {reservation.totalAmount.toLocaleString(
+                                                                undefined,
+                                                                {
+                                                                    minimumFractionDigits: 2,
+                                                                    maximumFractionDigits: 2,
+                                                                }
+                                                            )}
+                                                        </strong>
+                                                    </td>
 
-                                    <td>
-                                        <span
-                                            className={`status ${reservation.status.toLowerCase()}`}
-                                        >
-                                            {reservation.status}
-                                        </span>
-                                    </td>
+                                                    <td>
+                                                        <span
+                                                            className={`status ${reservation.status.toLowerCase()}`}
+                                                        >
+                                                            {reservation.status}
+                                                        </span>
+                                                    </td>
 
-                                    <td>
-                                        {reservation.status.toLowerCase() ===
-                                        "cancelled"
-                                            ? reservation.cancellationReason ||
-                                              "—"
-                                            : "—"}
-                                    </td>
+                                                    <td>
+                                                        {reservation.status.toLowerCase() ===
+                                                            "cancelled"
+                                                            ? reservation.cancellationReason ||
+                                                            "—"
+                                                            : "—"}
+                                                    </td>
 
-                                </tr>
+                                                </tr>
 
-                            ))}
+                                            ))}
 
-                        </tbody>
+                                        </tbody>
 
-                    </table>
+                                    </table>
 
-                </div>
+                                </div>
 
-            )}
+                            )}
 
-        </section>
+                        </section>
 
-    </section>
+                    </section>
 
-)}
+                )}
 
                 {/* ========================= */}
                 {/* OTHER PAGES */}
@@ -4410,31 +4488,31 @@ const filteredTransactions = reservations.filter((reservation) => {
                     activePage !== "Requests" &&
                     activePage !== "Reservations" &&
                     activePage !== "Claiming" &&
-                    activePage !== "Reports" && 
+                    activePage !== "Reports" &&
                     activePage !== "Transactions" && (
 
-                    <section className="go-content">
+                        <section className="go-content">
 
-                        <section className="go-panel">
+                            <section className="go-panel">
 
-                            <h2>
-                                {activePage}
-                            </h2>
+                                <h2>
+                                    {activePage}
+                                </h2>
 
-                            <p
-                                style={{
-                                    marginTop: "10px",
-                                    color: "#71849a",
-                                }}
-                            >
-                                This section will be built next.
-                            </p>
+                                <p
+                                    style={{
+                                        marginTop: "10px",
+                                        color: "#71849a",
+                                    }}
+                                >
+                                    This section will be built next.
+                                </p>
+
+                            </section>
 
                         </section>
 
-                    </section>
-
-                )}
+                    )}
 
                 {/* ========================= */}
                 {/* ADD REQUEST MODAL */}
@@ -4815,7 +4893,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                             marginTop: "6px",
                                         }}
                                     >
-
+                                        <option value="Unsettled">Unsettled</option>
                                         <option value="Pending">
                                             Pending
                                         </option>
@@ -4901,29 +4979,29 @@ const filteredTransactions = reservations.filter((reservation) => {
                                             Inventory Item *
                                         </label>
 
-                                       <select
-    value={newRequestItem.inventoryId}
-    onChange={(e) => {
-        const selectedItem = inventory.find(
-            (item) => item.id === e.target.value
-        );
+                                        <select
+                                            value={newRequestItem.inventoryId}
+                                            onChange={(e) => {
+                                                const selectedItem = inventory.find(
+                                                    (item) => item.id === e.target.value
+                                                );
 
-        setNewRequestItem({
-            inventoryId: selectedItem?.id || "",
-            itemName: selectedItem?.itemName || "",
-            price: Number(selectedItem?.price || 0),
-            quantity: 1,
-            size: selectedItem?.size || "",
-            subtotal: Number(selectedItem?.price || 0),
-            purchaseType: "Online",
-        });
-    }}
-    style={{
-        width: "100%",
-        padding: "10px",
-        marginTop: "6px",
-    }}
->
+                                                setNewRequestItem({
+                                                    inventoryId: selectedItem?.id || "",
+                                                    itemName: selectedItem?.itemName || "",
+                                                    price: Number(selectedItem?.price || 0),
+                                                    quantity: 1,
+                                                    size: selectedItem?.size || "",
+                                                    subtotal: Number(selectedItem?.price || 0),
+                                                    purchaseType: "Online",
+                                                });
+                                            }}
+                                            style={{
+                                                width: "100%",
+                                                padding: "10px",
+                                                marginTop: "6px",
+                                            }}
+                                        >
 
                                             <option value="">
                                                 Select item
@@ -5079,7 +5157,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                         1,
                                                         Number(
                                                             e.target.value ||
-                                                                1
+                                                            1
                                                         )
                                                     );
 
@@ -5091,7 +5169,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                         subtotal:
                                                             Number(
                                                                 previous.price ||
-                                                                    0
+                                                                0
                                                             ) *
                                                             quantity,
                                                     })
@@ -5140,7 +5218,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                 >
 
                                     {newRequest.items.length ===
-                                    0 ? (
+                                        0 ? (
 
                                         <p
                                             style={{
@@ -5222,7 +5300,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                                     ₱
                                                                     {Number(
                                                                         item.price ||
-                                                                            0
+                                                                        0
                                                                     ).toLocaleString()}
                                                                 </td>
 
@@ -5242,7 +5320,7 @@ const filteredTransactions = reservations.filter((reservation) => {
                                                                     ₱
                                                                     {Number(
                                                                         item.subtotal ||
-                                                                            0
+                                                                        0
                                                                     ).toLocaleString(
                                                                         undefined,
                                                                         {
@@ -5350,469 +5428,469 @@ const filteredTransactions = reservations.filter((reservation) => {
 
 
 
-{/* ========================= */}
-{/* EDIT STOCK MODAL */}
-{/* ========================= */}
-{showCancelModal && selectedReservationForCancel && (
-    <div
-        style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
-        }}
-    >
-        <div
-            style={{
-                backgroundColor: "white",
-                padding: "25px",
-                borderRadius: "10px",
-                width: "450px",
-                maxWidth: "90%",
-            }}
-        >
-            <h2>Cancel Reservation</h2>
-
-            <p>
-                Please provide a reason for cancelling this
-                reservation.
-            </p>
-
-            <p>
-                <strong>
-                    Reservation ID:
-                </strong>{" "}
-                {selectedReservationForCancel.reservationId}
-            </p>
-
-            <label>
-                Note / Cancellation Reason
-            </label>
-
-            <textarea
-                value={cancellationReason}
-                onChange={(e) =>
-                    setCancellationReason(e.target.value)
-                }
-                placeholder="Enter the reason for cancellation..."
-                rows={5}
-                style={{
-                    width: "100%",
-                    padding: "10px",
-                    marginTop: "6px",
-                    marginBottom: "15px",
-                    resize: "vertical",
-                    boxSizing: "border-box",
-                }}
-            />
-
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: "10px",
-                }}
-            >
-                <button
-                    onClick={() => {
-                        setShowCancelModal(false);
-                        setSelectedReservationForCancel(null);
-                        setCancellationReason("");
-                    }}
-                >
-                    Go Back
-                </button>
-
-                <button
-                    onClick={cancelReservation}
-                    disabled={!cancellationReason.trim()}
-                >
-                    Continue Cancellation
-                </button>
-            </div>
-        </div>
-    </div>
-)}
-{showEditStockModal &&
-    selectedInventoryItem && (
-
-        <div
-            style={{
-                position: "fixed",
-                inset: 0,
-                backgroundColor:
-                    "rgba(0, 0, 0, 0.45)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 9999,
-            }}
-        >
-
-            <div
-                style={{
-                    backgroundColor: "#fff",
-                    width: "500px",
-                    maxWidth: "90%",
-                    maxHeight: "90vh",
-                    overflowY: "auto",
-                    borderRadius: "12px",
-                    padding: "25px",
-                    boxShadow:
-                        "0 10px 30px rgba(0,0,0,0.2)",
-                }}
-            >
-
-                <h2>
-                    Edit Stock
-                </h2>
-
-                <p
-                    style={{
-                        color: "#666",
-                        marginBottom: "20px",
-                    }}
-                >
-                    Edit the stock values for this
-                    inventory item.
-                </p>
-
-
-                {/* ITEM NAME */}
-                <div
-                    style={{
-                        marginBottom: "15px",
-                    }}
-                >
-
-                    <label>
-                        Item
-                    </label>
-
-                    <input
-                        type="text"
-                        value={
-                            `${selectedInventoryItem.itemName} - ${selectedInventoryItem.size}`
-                        }
-                        readOnly
+                {/* ========================= */}
+                {/* EDIT STOCK MODAL */}
+                {/* ========================= */}
+                {showCancelModal && selectedReservationForCancel && (
+                    <div
                         style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
                             width: "100%",
-                            padding: "10px",
-                            marginTop: "5px",
-                            boxSizing:
-                                "border-box",
-                        }}
-                    />
-
-                </div>
-
-
-                {/* PRICE */}
-                <div
-                    style={{
-                        marginBottom: "15px",
-                    }}
-                >
-
-                    <label>
-                        Price
-                    </label>
-
-                    <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={editStock.price}
-                        onChange={(e) =>
-                            setEditStock({
-                                ...editStock,
-                                price: Number(
-                                    e.target.value
-                                ),
-                            })
-                        }
-                        style={{
-                            width: "100%",
-                            padding: "10px",
-                            marginTop: "5px",
-                            boxSizing: "border-box",
-                        }}
-                    />
-
-                </div>
-
-
-                {/* TOTAL STOCK */}
-                <div
-                    style={{
-                        marginBottom: "15px",
-                    }}
-                >
-
-                    <label>
-                        Total Stock
-                    </label>
-
-                    <input
-                        type="number"
-                        min="0"
-                        value={
-                            editStock.totalStock
-                        }
-                        onChange={(e) =>
-                            setEditStock({
-                                ...editStock,
-                                totalStock:
-                                    Number(
-                                        e.target.value
-                                    ),
-                            })
-                        }
-                        style={{
-                            width: "100%",
-                            padding: "10px",
-                            marginTop: "5px",
-                            boxSizing:
-                                "border-box",
-                        }}
-                    />
-
-                </div>
-
-
-                {/* ONLINE STOCK */}
-                <div
-                    style={{
-                        marginBottom: "15px",
-                    }}
-                >
-
-                    <label>
-                        Online Stock
-                    </label>
-
-                    <input
-                        type="number"
-                        min="0"
-                        value={
-                            editStock.onlineStock
-                        }
-                        onChange={(e) =>
-                            setEditStock({
-                                ...editStock,
-                                onlineStock:
-                                    Number(
-                                        e.target.value
-                                    ),
-                            })
-                        }
-                        style={{
-                            width: "100%",
-                            padding: "10px",
-                            marginTop: "5px",
-                            boxSizing:
-                                "border-box",
-                        }}
-                    />
-
-                </div>
-
-
-                {/* WALK-IN STOCK */}
-                <div
-                    style={{
-                        marginBottom: "15px",
-                    }}
-                >
-
-                    <label>
-                        Walk-in Stock
-                    </label>
-
-                    <input
-                        type="number"
-                        min="0"
-                        value={
-                            editStock.walkInStock
-                        }
-                        onChange={(e) =>
-                            setEditStock({
-                                ...editStock,
-                                walkInStock:
-                                    Number(
-                                        e.target.value
-                                    ),
-                            })
-                        }
-                        style={{
-                            width: "100%",
-                            padding: "10px",
-                            marginTop: "5px",
-                            boxSizing:
-                                "border-box",
-                        }}
-                    />
-
-                </div>
-
-
-                {/* RESERVED QUANTITY */}
-                <div
-                    style={{
-                        marginBottom: "15px",
-                    }}
-                >
-
-                    <label>
-                        Reserved Quantity
-                    </label>
-
-                    <input
-                        type="number"
-                        min="0"
-                        value={
-                            editStock.reservedQuantity
-                        }
-                        onChange={(e) =>
-                            setEditStock({
-                                ...editStock,
-                                reservedQuantity:
-                                    Number(
-                                        e.target.value
-                                    ),
-                            })
-                        }
-                        style={{
-                            width: "100%",
-                            padding: "10px",
-                            marginTop: "5px",
-                            boxSizing:
-                                "border-box",
-                        }}
-                    />
-
-                </div>
-
-
-                {/* AVAILABLE ONLINE */}
-                <div
-                    style={{
-                        marginBottom: "15px",
-                    }}
-                >
-
-                    <label>
-                        Available Online
-                    </label>
-
-                    <input
-                        type="number"
-                        min="0"
-                        value={
-                            editStock.availableOnline
-                        }
-                        onChange={(e) =>
-                            setEditStock({
-                                ...editStock,
-                                availableOnline:
-                                    Number(
-                                        e.target.value
-                                    ),
-                            })
-                        }
-                        style={{
-                            width: "100%",
-                            padding: "10px",
-                            marginTop: "5px",
-                            boxSizing:
-                                "border-box",
-                        }}
-                    />
-
-                </div>
-
-
-                {/* AVAILABLE WALK-IN */}
-                <div
-                    style={{
-                        marginBottom: "20px",
-                    }}
-                >
-
-                    <label>
-                        Available Walk-in
-                    </label>
-
-                    <input
-                        type="number"
-                        min="0"
-                        value={
-                            editStock.availableWalkIn
-                        }
-                        onChange={(e) =>
-                            setEditStock({
-                                ...editStock,
-                                availableWalkIn:
-                                    Number(
-                                        e.target.value
-                                    ),
-                            })
-                        }
-                        style={{
-                            width: "100%",
-                            padding: "10px",
-                            marginTop: "5px",
-                            boxSizing:
-                                "border-box",
-                        }}
-                    />
-
-                </div>
-
-
-                {/* BUTTONS */}
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent:
-                            "flex-end",
-                        gap: "10px",
-                    }}
-                >
-
-                    <button
-                        onClick={() => {
-                            setShowEditStockModal(
-                                false
-                            );
-
-                            setSelectedInventoryItem(
-                                null
-                            );
+                            height: "100%",
+                            backgroundColor: "rgba(0, 0, 0, 0.5)",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            zIndex: 9999,
                         }}
                     >
-                        Cancel
-                    </button>
+                        <div
+                            style={{
+                                backgroundColor: "white",
+                                padding: "25px",
+                                borderRadius: "10px",
+                                width: "450px",
+                                maxWidth: "90%",
+                            }}
+                        >
+                            <h2>Cancel Reservation</h2>
+
+                            <p>
+                                Please provide a reason for cancelling this
+                                reservation.
+                            </p>
+
+                            <p>
+                                <strong>
+                                    Reservation ID:
+                                </strong>{" "}
+                                {selectedReservationForCancel.reservationId}
+                            </p>
+
+                            <label>
+                                Note / Cancellation Reason
+                            </label>
+
+                            <textarea
+                                value={cancellationReason}
+                                onChange={(e) =>
+                                    setCancellationReason(e.target.value)
+                                }
+                                placeholder="Enter the reason for cancellation..."
+                                rows={5}
+                                style={{
+                                    width: "100%",
+                                    padding: "10px",
+                                    marginTop: "6px",
+                                    marginBottom: "15px",
+                                    resize: "vertical",
+                                    boxSizing: "border-box",
+                                }}
+                            />
+
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "flex-end",
+                                    gap: "10px",
+                                }}
+                            >
+                                <button
+                                    onClick={() => {
+                                        setShowCancelModal(false);
+                                        setSelectedReservationForCancel(null);
+                                        setCancellationReason("");
+                                    }}
+                                >
+                                    Go Back
+                                </button>
+
+                                <button
+                                    onClick={cancelReservation}
+                                    disabled={!cancellationReason.trim()}
+                                >
+                                    Continue Cancellation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {showEditStockModal &&
+                    selectedInventoryItem && (
+
+                        <div
+                            style={{
+                                position: "fixed",
+                                inset: 0,
+                                backgroundColor:
+                                    "rgba(0, 0, 0, 0.45)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                zIndex: 9999,
+                            }}
+                        >
+
+                            <div
+                                style={{
+                                    backgroundColor: "#fff",
+                                    width: "500px",
+                                    maxWidth: "90%",
+                                    maxHeight: "90vh",
+                                    overflowY: "auto",
+                                    borderRadius: "12px",
+                                    padding: "25px",
+                                    boxShadow:
+                                        "0 10px 30px rgba(0,0,0,0.2)",
+                                }}
+                            >
+
+                                <h2>
+                                    Edit Stock
+                                </h2>
+
+                                <p
+                                    style={{
+                                        color: "#666",
+                                        marginBottom: "20px",
+                                    }}
+                                >
+                                    Edit the stock values for this
+                                    inventory item.
+                                </p>
 
 
-                    <button
-                        onClick={saveEditedStock}
-                    >
-                        Save Changes
-                    </button>
+                                {/* ITEM NAME */}
+                                <div
+                                    style={{
+                                        marginBottom: "15px",
+                                    }}
+                                >
 
-                </div>
+                                    <label>
+                                        Item
+                                    </label>
 
-            </div>
+                                    <input
+                                        type="text"
+                                        value={
+                                            `${selectedInventoryItem.itemName} - ${selectedInventoryItem.size}`
+                                        }
+                                        readOnly
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "5px",
+                                            boxSizing:
+                                                "border-box",
+                                        }}
+                                    />
 
-        </div>
-    )}
+                                </div>
+
+
+                                {/* PRICE */}
+                                <div
+                                    style={{
+                                        marginBottom: "15px",
+                                    }}
+                                >
+
+                                    <label>
+                                        Price
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={editStock.price}
+                                        onChange={(e) =>
+                                            setEditStock({
+                                                ...editStock,
+                                                price: Number(
+                                                    e.target.value
+                                                ),
+                                            })
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "5px",
+                                            boxSizing: "border-box",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                {/* TOTAL STOCK */}
+                                <div
+                                    style={{
+                                        marginBottom: "15px",
+                                    }}
+                                >
+
+                                    <label>
+                                        Total Stock
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={
+                                            editStock.totalStock
+                                        }
+                                        onChange={(e) =>
+                                            setEditStock({
+                                                ...editStock,
+                                                totalStock:
+                                                    Number(
+                                                        e.target.value
+                                                    ),
+                                            })
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "5px",
+                                            boxSizing:
+                                                "border-box",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                {/* ONLINE STOCK */}
+                                <div
+                                    style={{
+                                        marginBottom: "15px",
+                                    }}
+                                >
+
+                                    <label>
+                                        Online Stock
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={
+                                            editStock.onlineStock
+                                        }
+                                        onChange={(e) =>
+                                            setEditStock({
+                                                ...editStock,
+                                                onlineStock:
+                                                    Number(
+                                                        e.target.value
+                                                    ),
+                                            })
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "5px",
+                                            boxSizing:
+                                                "border-box",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                {/* WALK-IN STOCK */}
+                                <div
+                                    style={{
+                                        marginBottom: "15px",
+                                    }}
+                                >
+
+                                    <label>
+                                        Walk-in Stock
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={
+                                            editStock.walkInStock
+                                        }
+                                        onChange={(e) =>
+                                            setEditStock({
+                                                ...editStock,
+                                                walkInStock:
+                                                    Number(
+                                                        e.target.value
+                                                    ),
+                                            })
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "5px",
+                                            boxSizing:
+                                                "border-box",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                {/* RESERVED QUANTITY */}
+                                <div
+                                    style={{
+                                        marginBottom: "15px",
+                                    }}
+                                >
+
+                                    <label>
+                                        Reserved Quantity
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={
+                                            editStock.reservedQuantity
+                                        }
+                                        onChange={(e) =>
+                                            setEditStock({
+                                                ...editStock,
+                                                reservedQuantity:
+                                                    Number(
+                                                        e.target.value
+                                                    ),
+                                            })
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "5px",
+                                            boxSizing:
+                                                "border-box",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                {/* AVAILABLE ONLINE */}
+                                <div
+                                    style={{
+                                        marginBottom: "15px",
+                                    }}
+                                >
+
+                                    <label>
+                                        Available Online
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={
+                                            editStock.availableOnline
+                                        }
+                                        onChange={(e) =>
+                                            setEditStock({
+                                                ...editStock,
+                                                availableOnline:
+                                                    Number(
+                                                        e.target.value
+                                                    ),
+                                            })
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "5px",
+                                            boxSizing:
+                                                "border-box",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                {/* AVAILABLE WALK-IN */}
+                                <div
+                                    style={{
+                                        marginBottom: "20px",
+                                    }}
+                                >
+
+                                    <label>
+                                        Available Walk-in
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={
+                                            editStock.availableWalkIn
+                                        }
+                                        onChange={(e) =>
+                                            setEditStock({
+                                                ...editStock,
+                                                availableWalkIn:
+                                                    Number(
+                                                        e.target.value
+                                                    ),
+                                            })
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px",
+                                            marginTop: "5px",
+                                            boxSizing:
+                                                "border-box",
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                {/* BUTTONS */}
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent:
+                                            "flex-end",
+                                        gap: "10px",
+                                    }}
+                                >
+
+                                    <button
+                                        onClick={() => {
+                                            setShowEditStockModal(
+                                                false
+                                            );
+
+                                            setSelectedInventoryItem(
+                                                null
+                                            );
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+
+
+                                    <button
+                                        onClick={saveEditedStock}
+                                    >
+                                        Save Changes
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                    )}
             </main>
 
         </div>

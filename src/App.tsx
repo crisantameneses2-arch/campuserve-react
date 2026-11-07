@@ -710,16 +710,16 @@ function App() {
   // LOGOUT
   // ==================================================
 
-  const handleLogout = async () => {
-    await signOut(auth);
+  //const handleLogout = async () => {
+ //   await signOut(auth);
 
-    setAccount(null);
+ //   setAccount(null);
 
-    setEmail("");
-    setPassword("");
-    setError("");
-    setMessage("");
-  };
+   // setEmail("");
+  //  setPassword("");
+  //  setError("");
+  //  setMessage("");
+//  };
 
   // ==================================================
   // LOGIN SCREEN

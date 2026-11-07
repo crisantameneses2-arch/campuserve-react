@@ -7,7 +7,6 @@ import {
   onSnapshot,
  // query,
   serverTimestamp,
-  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import { signOut } from "firebase/auth";
@@ -15,6 +14,9 @@ import { auth, db } from "../../../firebase";
 import {
   approveDocumentRequest,
   startPaidDocumentProcessing,
+  sortPaidProcessingQueue,
+  createClaimingSchedule,
+  logRegistrarActivity,
 } from "../../services/registrarWorkflow";
 import "./RegistrarDashboard.css";
 
@@ -29,7 +31,6 @@ type Account = {
 interface RegistrarDashboardProps {
   account: Account;
 }
-
 type Status =
   | "PENDING"
   | "APPROVED"
@@ -88,6 +89,7 @@ type ScheduleRecord = {
   scheduleId?: string;
   claimDate?: string;
   timeSlot?: string;
+  period?: "AM" | "PM";
   slotCapacity?: number;
   availableSlot?: number;
   availableSlots?: number;
@@ -444,6 +446,7 @@ export default function RegistrarDashboard({
           documents,
           request.purpose,
           request.claim_code,
+          request.payment_stub_code,
         ].some((value) =>
           String(value || "")
             .toLowerCase()
@@ -460,6 +463,34 @@ export default function RegistrarDashboard({
     search,
     statusFilter,
   ]);
+  const paidProcessingQueue = useMemo(() => {
+    const paidRequests = requests.filter(
+      (request) =>
+        request.status === "APPROVED" &&
+        request.payment_status === "PAID",
+    );
+    return sortPaidProcessingQueue(paidRequests);
+  }, [requests]);
+  const awaitingPaymentQueue = useMemo(
+    () =>
+      requests
+        .filter(
+          (request) =>
+            request.status === "APPROVED" &&
+            request.payment_status !== "PAID",
+        )
+        .sort((a, b) => {
+          const getTime = (value: any) => {
+            if (!value) return 0;
+            if (typeof value.toMillis === "function") return value.toMillis();
+            if (typeof value.toDate === "function") return value.toDate().getTime();
+            const parsed = new Date(value).getTime();
+            return Number.isNaN(parsed) ? 0 : parsed;
+          };
+          return getTime(a.approved_at || a.created_at) - getTime(b.approved_at || b.created_at);
+        }),
+    [requests],
+  );
   const count = (status: Status) =>
     requests.filter(
       (request) => request.status === status,
@@ -506,6 +537,7 @@ export default function RegistrarDashboard({
       setBusyId("");
     }
   };
+
 
   const updateStatus = async (
     request: RequestRecord,
@@ -693,8 +725,7 @@ export default function RegistrarDashboard({
           previous_requested_time:
             rescheduleTarget.requested_time || null,
           requested_date: rescheduleDate,
-          requested_time:
-            rescheduleTime.trim(),
+          requested_time: rescheduleTime,
           rescheduled_at:
             serverTimestamp(),
           reschedule_count:
@@ -812,7 +843,7 @@ export default function RegistrarDashboard({
       schedule.claimDate || "",
     );
     setScheduleTime(
-      schedule.timeSlot || "",
+      schedule.period || (String(schedule.timeSlot || "").toUpperCase().includes("PM") ? "PM" : "AM"),
     );
     setScheduleCapacity(
       String(
@@ -837,10 +868,10 @@ export default function RegistrarDashboard({
     );
     if (
       !scheduleDate ||
-      !scheduleTime.trim()
+      !(scheduleTime === "AM" || scheduleTime === "PM")
     ) {
       setError(
-        "Enter a claiming date and time slot.",
+        "Choose a claiming period (AM or PM).",
       );
       return;
     }
@@ -884,35 +915,31 @@ export default function RegistrarDashboard({
           ),
           {
             claimDate: scheduleDate,
-            timeSlot:
-              scheduleTime.trim(),
+            timeSlot: scheduleTime,
+            period: scheduleTime,
             slotCapacity: capacity,
             availableSlot: available,
             availableSlots: available,
             updatedAt: serverTimestamp(),
           },
         );
+        await logRegistrarActivity(
+          { id: registrarId, name: registrarName },
+          "CLAIMING_SCHEDULE_UPDATED",
+          `Updated ${scheduleTime} claiming schedule for ${scheduleDate}.`,
+          undefined,
+          { schedule_id: editingScheduleId, claim_date: scheduleDate, period: scheduleTime, capacity, available_slots: available },
+        );
         setNotice(
           "Claiming schedule updated successfully.",
         );
       } else {
-        const scheduleRef = doc(
-          collection(
-            db,
-            "claimingSchedules",
-          ),
+        await createClaimingSchedule(
+          scheduleDate,
+          scheduleTime as "AM" | "PM",
+          capacity,
+          { id: registrarId, name: registrarName },
         );
-        await setDoc(scheduleRef, {
-          scheduleId: scheduleRef.id,
-          claimDate: scheduleDate,
-          timeSlot:
-            scheduleTime.trim(),
-          slotCapacity: capacity,
-          availableSlot: capacity,
-          availableSlots: capacity,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
         setNotice(
           "Claiming schedule created successfully.",
         );
@@ -1113,13 +1140,15 @@ export default function RegistrarDashboard({
         )}
         {status === "APPROVED" && (
           request.payment_status === "PAID" ? (
-            <button
-              className="rd-action-button"
-              disabled={busyId === request.id}
-              onClick={() => startProcessing(request)}
-            >
-              Start Processing
-            </button>
+            <>
+              <button
+                className="rd-action-button"
+                disabled={busyId === request.id}
+                onClick={() => startProcessing(request)}
+              >
+                Start Processing
+              </button>
+            </>
           ) : (
             <span className="rd-muted">
               Awaiting Cashier payment confirmation
@@ -1170,8 +1199,7 @@ export default function RegistrarDashboard({
                   "",
               );
               setRescheduleTime(
-                request.requested_time ||
-                  "",
+                String(request.requested_time || "").toUpperCase().includes("PM") ? "PM" : "AM",
               );
             }}
           >
@@ -1516,6 +1544,36 @@ export default function RegistrarDashboard({
             </option>
           ))}
         </select>
+      </div>
+      <div className="rd-detail-section" style={{ marginBottom: 20 }}>
+        <h3>Awaiting Payment</h3>
+        <p className="rd-muted">
+          Approved requests remain visible here until the Cashier confirms payment. Students use the Payment Stub Code when paying.
+        </p>
+        {awaitingPaymentQueue.length > 0 ? (
+          <div className="rd-request-list">
+            {requestTable(awaitingPaymentQueue)}
+          </div>
+        ) : (
+          <div className="rd-empty">
+            No approved requests are currently awaiting payment.
+          </div>
+        )}
+      </div>
+      <div className="rd-detail-section" style={{ marginBottom: 20 }}>
+        <h3>Paid Processing Queue</h3>
+        <p className="rd-muted">
+          Requests are automatically arranged by the earliest Cashier payment confirmation time. No manual sorting is needed.
+        </p>
+        {paidProcessingQueue.length > 0 ? (
+          <div className="rd-request-list">
+            {requestTable(paidProcessingQueue)}
+          </div>
+        ) : (
+          <div className="rd-empty">
+            No paid requests are waiting for Registrar processing.
+          </div>
+        )}
       </div>
       <div className="rd-master-detail">
         <div className="rd-request-list">
@@ -1940,8 +1998,7 @@ export default function RegistrarDashboard({
                   : "Create Schedule"}
               </h3>
               <p>
-                Set the date, time slot, and
-                maximum number of students.
+                Set the claiming date, AM/PM period, and maximum number of students.
               </p>
             </div>
             {editingScheduleId && (
@@ -1972,18 +2029,18 @@ export default function RegistrarDashboard({
             </label>
             <label>
               <span>
-                Time Slot
+                Claiming Period
               </span>
-              <input
-                type="text"
+              <select
                 value={scheduleTime}
                 onChange={(event) =>
-                  setScheduleTime(
-                    event.target.value,
-                  )
+                  setScheduleTime(event.target.value)
                 }
-                placeholder="e.g. 8:00 AM – 10:00 AM"
-              />
+              >
+                <option value="">Choose period</option>
+                <option value="AM">Morning (AM)</option>
+                <option value="PM">Afternoon (PM)</option>
+              </select>
             </label>
             <label>
               <span>
@@ -2051,8 +2108,8 @@ export default function RegistrarDashboard({
                             "No date"}
                         </strong>
                         <span>
-                          {schedule.timeSlot ||
-                            "No time slot"}
+                          {schedule.period || schedule.timeSlot ||
+                            "No claiming period"}
                         </span>
                       </div>
                       <div className="schedule-capacity">
@@ -3129,8 +3186,7 @@ export default function RegistrarDashboard({
               </button>
             </div>
             <p>
-              Select the new claiming date
-              and time.
+              Select the new claiming date and AM/PM period.
             </p>
             <div className="modal-form-grid">
               <label>
@@ -3149,18 +3205,18 @@ export default function RegistrarDashboard({
               </label>
               <label>
                 <span>
-                  New Time
+                  New Claiming Period
                 </span>
-                <input
-                  type="text"
+                <select
                   value={rescheduleTime}
                   onChange={(event) =>
-                    setRescheduleTime(
-                      event.target.value,
-                    )
+                    setRescheduleTime(event.target.value)
                   }
-                  placeholder="e.g. 10:00 AM – 12:00 PM"
-                />
+                >
+                  <option value="">Choose period</option>
+                  <option value="AM">Morning (AM)</option>
+                  <option value="PM">Afternoon (PM)</option>
+                </select>
               </label>
             </div>
             <div className="rd-modal-actions">
