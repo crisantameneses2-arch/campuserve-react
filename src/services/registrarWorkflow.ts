@@ -162,82 +162,6 @@ export async function startPaidDocumentProcessing(
 }
 
 /**
- * Gives a paid request temporary priority in the Registrar processing queue.
- * A reason is mandatory. The original payment_confirmed_at is never changed.
- */
-export async function setProcessingPriority(
-  requestDocumentId: string,
-  requestId: string,
-  enabled: boolean,
-  reason: string,
-  actor: RegistrarActor,
-) {
-  if (enabled && !reason.trim()) {
-    throw new Error("A reason is required when prioritizing a request.");
-  }
-
-  const requestRef = doc(db, "document_requests", requestDocumentId);
-
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(requestRef);
-
-    if (!snapshot.exists()) {
-      throw new Error("This request no longer exists.");
-    }
-
-    const request = snapshot.data();
-
-    if (request.status !== "APPROVED" || request.payment_status !== "PAID") {
-      throw new Error("Only approved and paid requests can be prioritized.");
-    }
-
-    if (enabled) {
-      transaction.update(requestRef, {
-        processing_priority: true,
-        priority_reason: reason.trim(),
-        priority_set_at: serverTimestamp(),
-        priority_set_by: actor.id,
-        priority_set_by_name: actor.name,
-        updated_at: serverTimestamp(),
-      });
-
-      writeActivityLog(
-        transaction,
-        actor,
-        "PROCESSING_PRIORITY_SET",
-        `Prioritized request ${requestId}. Reason: ${reason.trim()}`,
-        requestId,
-        {
-          payment_confirmed_at: request.payment_confirmed_at || null,
-          priority_reason: reason.trim(),
-        },
-      );
-    } else {
-      transaction.update(requestRef, {
-        processing_priority: false,
-        priority_reason: null,
-        priority_set_at: null,
-        priority_set_by: null,
-        priority_set_by_name: null,
-        updated_at: serverTimestamp(),
-      });
-
-      writeActivityLog(
-        transaction,
-        actor,
-        "PROCESSING_PRIORITY_REMOVED",
-        `Removed priority from request ${requestId}.`,
-        requestId,
-        {
-          original_payment_confirmed_at:
-            request.payment_confirmed_at || null,
-        },
-      );
-    }
-  });
-}
-
-/**
  * Marks a request ready for pickup and generates its separate claim stub.
  * This is NOT the payment queue stub.
  */
@@ -314,36 +238,23 @@ export function sortRequestsFIFO<T extends {
 }
 
 /**
- * Sorts the paid Registrar processing queue:
- * 1. Explicitly prioritized requests first.
- * 2. Otherwise, earliest Cashier payment confirmation first.
+ * Sorts paid requests by Cashier confirmation time, oldest first.
+ * Requests without a valid payment timestamp remain at the end.
  */
 export function sortPaidProcessingQueue<T extends {
-  processing_priority?: boolean;
   payment_confirmed_at?: any;
 }>(requests: T[]): T[] {
   const getTime = (value: any) => {
     if (!value) return Number.MAX_SAFE_INTEGER;
     if (typeof value.toMillis === "function") return value.toMillis();
     if (typeof value.toDate === "function") return value.toDate().getTime();
-
     const parsed = new Date(value).getTime();
     return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
   };
 
-  return [...requests].sort((a, b) => {
-    const aPriority = a.processing_priority ? 1 : 0;
-    const bPriority = b.processing_priority ? 1 : 0;
-
-    if (aPriority !== bPriority) {
-      return bPriority - aPriority;
-    }
-
-    return (
-      getTime(a.payment_confirmed_at) -
-      getTime(b.payment_confirmed_at)
-    );
-  });
+  return [...requests].sort(
+    (a, b) => getTime(a.payment_confirmed_at) - getTime(b.payment_confirmed_at),
+  );
 }
 
 /**

@@ -216,6 +216,9 @@ export async function finalizeDraftGroupDocumentRequest(
 
       finalized_at:
         serverTimestamp(),
+
+      submitted_at:
+        serverTimestamp(),
     }
   );
 }
@@ -265,6 +268,9 @@ export async function createDocumentRequest(
       input.requested_time,
 
     created_at:
+      serverTimestamp(),
+
+    submitted_at:
       serverTimestamp(),
 
     /*

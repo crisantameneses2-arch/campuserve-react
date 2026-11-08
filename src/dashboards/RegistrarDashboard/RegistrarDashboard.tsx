@@ -15,6 +15,7 @@ import {
   approveDocumentRequest,
   startPaidDocumentProcessing,
   sortPaidProcessingQueue,
+  sortRequestsFIFO,
   createClaimingSchedule,
   logRegistrarActivity,
 } from "../../services/registrarWorkflow";
@@ -31,6 +32,7 @@ type Account = {
 interface RegistrarDashboardProps {
   account: Account;
 }
+
 type Status =
   | "PENDING"
   | "APPROVED"
@@ -314,14 +316,7 @@ export default function RegistrarDashboard({
               ...item.data(),
             }) as RequestRecord,
         );
-        rows.sort((a, b) => {
-          const first =
-            getDateValue(a.created_at)?.getTime() || 0;
-          const second =
-            getDateValue(b.created_at)?.getTime() || 0;
-          return second - first;
-        });
-        setRequests(rows);
+        setRequests(sortRequestsFIFO(rows));
         setLoading(false);
       },
       (snapshotError) => {
@@ -3249,3 +3244,4 @@ export default function RegistrarDashboard({
     </div>
   );
 }
+
