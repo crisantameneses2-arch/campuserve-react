@@ -42,6 +42,8 @@ import AdminDashboard from "./dashboards/AdminDashboard/AdminDashboard";
 import StudentDashboard from "./dashboards/StudentDashboard/StudentDashboard";
 import RegistrarDashboard from "./dashboards/RegistrarDashboard/RegistrarDashboard";
 import GeneralOfficeDashboard from "./dashboards/GeneralOfficeDashboard/GeneralOfficeDashboard";
+import CashierDashboard from "./dashboards/CashierDashboard/CashierDashboard";
+
 
 type Account = {
   email?: string;
@@ -1460,6 +1462,18 @@ function App() {
           }
         />
 
+{/* CASHIER DASHBOARD */}
+<Route
+  path="/cashier"
+  element={
+    account.role === "cashier" ? (
+      <CashierDashboard account={account} />
+    ) : (
+      <Navigate to="/" replace />
+    )
+  }
+/>
+
         {/* -------------------------------------------
             DEFAULT DASHBOARD
         ------------------------------------------- */}
@@ -1477,6 +1491,10 @@ function App() {
                   replace
                 />
               )}
+
+{account.role === "cashier" && (
+  <Navigate to="/cashier" replace />
+)}
 
               {account.role ===
                 "admin" && (

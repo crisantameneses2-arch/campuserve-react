@@ -350,6 +350,7 @@ const normalizedName = formatFullName(
 const isEmployeeAccount =
   createRole === "general_office" ||
   createRole === "registrar" ||
+  createRole === "cashier" ||
   createRole === "admin";
 
 // Validate student information
@@ -674,9 +675,10 @@ const normalizedName = formatFullName(
     editRole === "alumni";
 
   const isEmployeeAccount =
-    editRole === "general_office" ||
-    editRole === "registrar" ||
-    editRole === "admin";
+  editRole === "general_office" ||
+  editRole === "registrar" ||
+  editRole === "cashier" ||
+  editRole === "admin";
 
   // Validate common information
   if (!normalizedLastName || !normalizedFirstName) {
@@ -1030,6 +1032,14 @@ const normalizedName = formatFullName(
     ).length;
   }, [accounts]);
 
+  const cashierCount = useMemo(() => {
+  return accounts.filter(
+    (account) =>
+      account.status !== "deleted" &&
+      account.role === "cashier"
+  ).length;
+}, [accounts]);
+
   // ========================================
   // SEARCH
   // ========================================
@@ -1128,6 +1138,11 @@ const normalizedName = formatFullName(
             {registrarCount}
           </strong>
         </div>
+
+        <div className="account-summary-card">
+  <span>Cashiers</span>
+  <strong>{cashierCount}</strong>
+</div>
 
         <div className="account-summary-card">
           <span>
@@ -1308,6 +1323,10 @@ const normalizedName = formatFullName(
                   Registrar
                 </option>
 
+                <option value="cashier">
+  Cashier
+</option>
+
                 <option value="admin">
                   Administrator
                 </option>
@@ -1435,7 +1454,7 @@ const normalizedName = formatFullName(
 
 {/* EMPLOYEE FIELDS */}
 
-{["general_office", "registrar", "admin"].includes(createRole) && (
+{["general_office", "registrar", "cashier", "admin"].includes(createRole) && (
   <>
     <div className="create-account-field">
       <label>Employee / Staff ID</label>
@@ -1699,6 +1718,10 @@ const normalizedName = formatFullName(
                   Registrar
                 </option>
 
+                <option value="cashier">
+  Cashier
+</option>
+
                 <option value="admin">
                   Administrator
                 </option>
@@ -1813,7 +1836,7 @@ const normalizedName = formatFullName(
 
 {/* EMPLOYEE FIELDS */}
 
-{["general_office", "registrar", "admin"].includes(editRole) && (
+{["general_office", "registrar", "cashier", "admin"].includes(editRole) && (
   <>
     <div className="edit-account-field">
       <label>Employee / Staff ID</label>
