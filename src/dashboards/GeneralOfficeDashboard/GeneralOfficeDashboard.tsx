@@ -579,12 +579,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             }
 
 
-            // =========================
-            // CREATE CLAIM STUB
-            // =========================
-
-            const claimStubId =
-                `CS-${Date.now()}`;
+            
 
 
             // =========================
@@ -592,17 +587,15 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             // =========================
 
             await updateDoc(
-                doc(
-                    db,
-                    "itemReservations",
-                    reservationId
-                ),
-                {
-                    status: "Approved",
-                    claimStubId:
-                        claimStubId,
-                }
-            );
+    doc(
+        db,
+        "itemReservations",
+        reservationId
+    ),
+    {
+        status: "Approved",
+    }
+);
 
 
             // Reload both
@@ -1208,7 +1201,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 pickupDate: "",
                 pickupTime:
                     "8:00AM - 10:00AM",
-                status: "Pending",
+                status: "Unsettled",
                 totalAmount: 0,
                 items: [],
             });
@@ -1220,7 +1213,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 quantity: 1,
                 size: "",
                 subtotal: 0,
-                purchaseType: "Online",
+                purchaseType: "Walk-in",
             });
 
             await loadReservations();
