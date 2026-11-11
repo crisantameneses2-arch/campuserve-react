@@ -109,6 +109,17 @@ const collegePrograms: Record<string, string[]> = {
 };
 
 const collegeOptions = Object.keys(collegePrograms);
+const campusOptions = [
+  "Alaminos City Campus",
+  "Asingan Campus",
+  "Bayambang Campus",
+  "Binmaley Campus",
+  "Infanta Campus",
+  "Lingayen Campus",
+  "San Carlos City Campus",
+  "Sta. Maria Campus",
+  "Urdaneta City Campus",
+];
 
 const formatFullName = (
   firstName: string,
@@ -145,6 +156,13 @@ function UserAccounts() {
   // ========================================
   // CREATE ACCOUNT STATE
   // ========================================
+
+const departmentOptions = [
+  "COLLEGE OF ARTS, SCIENCES AND LETTERS / COLLEGE OF COMPUTING SCIENCES",
+  "COLLEGE OF INDUSTRIAL TECHNOLOGY / COLLEGE OF HOSPITALITY AND TOURISM MANAGEMENT",
+  "COLLEGE OF BUSINESS AND PUBLIC ADMINISTRATION",
+  "COLLEGE OF TEACHER EDUCATION",
+];
 
   const [createStudentId, setCreateStudentId] =
     useState("");
@@ -1469,16 +1487,22 @@ const normalizedName = formatFullName(
     </div>
 
     <div className="create-account-field">
-      <label>Department / Office</label>
-      <input
-        type="text"
-        placeholder="Enter department or office"
-        value={createDepartment}
-        onChange={(event) =>
-          setCreateDepartment(event.target.value)
-        }
-      />
-    </div>
+  <label>Department / Office</label>
+  <select
+    value={createDepartment}
+    onChange={(event) =>
+      setCreateDepartment(event.target.value)
+    }
+  >
+    <option value="">Select department / office</option>
+
+    {departmentOptions.map((department) => (
+      <option key={department} value={department}>
+        {department}
+      </option>
+    ))}
+  </select>
+</div>
 
     <div className="create-account-field">
       <label>Position / Job Title</label>
@@ -1498,14 +1522,31 @@ const normalizedName = formatFullName(
 
 <div className="create-account-field">
   <label>Campus</label>
-  <input
-    type="text"
-    placeholder="Enter campus"
+
+  <select
     value={createCampus}
     onChange={(event) =>
       setCreateCampus(event.target.value)
     }
-  />
+  >
+    <option value="">Select campus</option>
+
+    {campusOptions.map((campus) => (
+      <option
+        key={campus}
+        value={campus}
+        disabled={campus !== "Lingayen Campus"}
+        style={{
+          color:
+            campus === "Lingayen Campus"
+              ? "inherit"
+              : "rgba(0, 0, 0, 0.18)",
+        }}
+      >
+        {campus}
+      </option>
+    ))}
+  </select>
 </div>
 
 <div className="create-account-field">
@@ -1747,28 +1788,38 @@ const normalizedName = formatFullName(
     </div>
 
     <div className="edit-account-field">
-      <label>College</label>
-      <input
-        type="text"
-        placeholder="Enter college"
-        value={editCollege}
-        onChange={(event) =>
-          setEditCollege(event.target.value)
-        }
-      />
-    </div>
+  <label>College</label>
+  <select
+    value={editCollege}
+    onChange={(event) => {
+      setEditCollege(event.target.value);
+      setEditProgram("");
+    }}
+  >
+    <option value="">Select college</option>
+    {collegeOptions.map((college) => (
+      <option key={college} value={college}>
+        {college}
+      </option>
+    ))}
+  </select>
+</div>
 
-    <div className="edit-account-field">
-      <label>Program</label>
-      <input
-        type="text"
-        placeholder="Enter program"
-        value={editProgram}
-        onChange={(event) =>
-          setEditProgram(event.target.value)
-        }
-      />
-    </div>
+<div className="edit-account-field">
+  <label>Program</label>
+  <select
+    value={editProgram}
+    onChange={(event) => setEditProgram(event.target.value)}
+    disabled={!editCollege}
+  >
+    <option value="">Select program</option>
+    {(collegePrograms[editCollege] || []).map((program) => (
+      <option key={program} value={program}>
+        {program}
+      </option>
+    ))}
+  </select>
+</div>
 
     <div className="edit-account-field">
       <label>Year Level</label>
@@ -1851,16 +1902,22 @@ const normalizedName = formatFullName(
     </div>
 
     <div className="edit-account-field">
-      <label>Department / Office</label>
-      <input
-        type="text"
-        placeholder="Enter department or office"
-        value={editDepartment}
-        onChange={(event) =>
-          setEditDepartment(event.target.value)
-        }
-      />
-    </div>
+  <label>Department / Office</label>
+  <select
+    value={editDepartment}
+    onChange={(event) =>
+      setEditDepartment(event.target.value)
+    }
+  >
+    <option value="">Select department / office</option>
+
+    {departmentOptions.map((department) => (
+      <option key={department} value={department}>
+        {department}
+      </option>
+    ))}
+  </select>
+</div>
 
     <div className="edit-account-field">
       <label>Position / Job Title</label>
@@ -1880,14 +1937,31 @@ const normalizedName = formatFullName(
 
 <div className="edit-account-field">
   <label>Campus</label>
-  <input
-    type="text"
-    placeholder="Enter campus"
+
+  <select
     value={editCampus}
     onChange={(event) =>
       setEditCampus(event.target.value)
     }
-  />
+  >
+    <option value="">Select campus</option>
+
+    {campusOptions.map((campus) => (
+      <option
+        key={campus}
+        value={campus}
+        disabled={campus !== "Lingayen Campus"}
+        style={{
+          color:
+            campus === "Lingayen Campus"
+              ? "inherit"
+              : "rgba(0, 0, 0, 0.18)",
+        }}
+      >
+        {campus}
+      </option>
+    ))}
+  </select>
 </div>
 
 <div className="edit-account-field">
