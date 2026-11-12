@@ -11,8 +11,10 @@ import {
 } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../../../firebase";
+import { notify, studentAudience } from "../../services/notifications";
 import {
   approveDocumentRequest,
+  markDocumentReadyForPickup,
   startPaidDocumentProcessing,
   sortPaidProcessingQueue,
   sortRequestsFIFO,
@@ -27,6 +29,11 @@ type Account = {
   role?: string;
   firebaseUid?: string;
   student_id?: string;
+  department?: string;
+  employeeId?: string;
+  campus?: string;
+  status?: string;
+  position?: string;
 };
 
 interface RegistrarDashboardProps {
@@ -174,6 +181,20 @@ const today = () => {
 const statusLabel = (status?: Status) =>
   String(status || "PENDING").replace(/_/g, " ");
 
+const normalizeCollege = (value: unknown) =>
+  String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+
+const normalizeStudentId = (value: unknown) =>
+  String(value || "").trim().toUpperCase();
+
+const collegesFromDepartment = (department?: string): string[] => {
+  const normalized = normalizeCollege(department);
+  if (!normalized || normalized === "ALL COLLEGES") return [];
+  return normalized.split(/\s*\/\s*/).map(normalizeCollege).filter(Boolean);
+};
 const documentName = (detail?: DetailRecord) => {
   if (!detail) return "Document";
   if (detail.custom_document_name) {
@@ -249,8 +270,9 @@ export default function RegistrarDashboard({
   account,
 }: RegistrarDashboardProps) {
   const [activePage, setActivePage] = useState("overview");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [requests, setRequests] = useState<RequestRecord[]>([]);
+  const [menuOpen, setMenuOpen] = useState(true);
+  const [allRequests, setAllRequests] = useState<RequestRecord[]>([]);
+  const [studentCollegesById, setStudentCollegesById] = useState<Record<string, string>>({});
   const [requestDetails, setRequestDetails] = useState<
     Record<string, DetailRecord[]>
   >({});
@@ -294,6 +316,10 @@ export default function RegistrarDashboard({
   const registrarId =
     account.firebaseUid || account.email || "registrar";
   const registrarName = account.name || "Registrar Staff";
+  const registrarAssignmentLabel =
+    normalizeCollege(account.department) === "ALL COLLEGES"
+      ? "All Colleges"
+      : collegesFromDepartment(account.department).join(" • ") || "Assignment not set";
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "document_requests"),
@@ -305,7 +331,7 @@ export default function RegistrarDashboard({
               ...item.data(),
             }) as RequestRecord,
         );
-        setRequests(sortRequestsFIFO(rows));
+        setAllRequests(rows);
         setLoading(false);
       },
       (snapshotError) => {
@@ -317,6 +343,49 @@ export default function RegistrarDashboard({
     );
     return unsubscribe;
   }, []);
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "accounts"),
+      (snapshot) => {
+        const colleges: Record<string, string> = {};
+        snapshot.docs.forEach((item) => {
+          const data = item.data();
+          if (!["student", "alumni"].includes(String(data.role || ""))) return;
+          const studentId = normalizeStudentId(data.student_id);
+          const college = normalizeCollege(data.college);
+          if (studentId && college) colleges[studentId] = college;
+        });
+        setStudentCollegesById(colleges);
+      },
+      (snapshotError) => {
+        setError("Could not load student college assignments: " + snapshotError.message);
+      },
+    );
+    return unsubscribe;
+  }, []);
+  const requests = useMemo(() => {
+    const assignedColleges = collegesFromDepartment(account.department);
+    if (normalizeCollege(account.department) === "ALL COLLEGES") {
+      return sortRequestsFIFO(allRequests);
+    }
+    if (assignedColleges.length === 0) return [];
+    const assigned = new Set(assignedColleges);
+    return sortRequestsFIFO(
+      allRequests.filter((request) => {
+        const studentCollege = studentCollegesById[normalizeStudentId(request.student_id)];
+        return Boolean(studentCollege && assigned.has(normalizeCollege(studentCollege)));
+      }),
+    );
+  }, [allRequests, studentCollegesById, account.department]);
+  useEffect(() => {
+    if (!selected) return;
+    const latestRequest = requests.find((request) => request.id === selected.id);
+    if (!latestRequest) {
+      setSelected(null);
+      return;
+    }
+    if (latestRequest !== selected) setSelected(latestRequest);
+  }, [requests, selected]);
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "document_request_details"),
@@ -390,6 +459,9 @@ export default function RegistrarDashboard({
     setNotificationsOpen(false);
     setSelected(null);
     setClaimResult(null);
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      setMenuOpen(false);
+    }
     clearFeedback();
   };
 
@@ -455,6 +527,28 @@ export default function RegistrarDashboard({
     );
     return sortPaidProcessingQueue(paidRequests);
   }, [requests]);
+  const inProcessingQueue = useMemo(
+    () => sortPaidProcessingQueue(
+      requests.filter((request) => request.status === "PROCESSING"),
+    ),
+    [requests],
+  );
+  const unclaimedRequests = useMemo(
+    () => sortRequestsFIFO(
+      requests.filter(
+        (request) =>
+          request.status === "READY_FOR_PICKUP",
+      ),
+    ),
+    [requests],
+  );
+  const claimCodeSuggestions = useMemo(() => {
+    const prefix = claimCode.trim().toUpperCase();
+    if (!prefix) return [];
+    return unclaimedRequests.filter((request) =>
+      String(request.claim_code || "").trim().toUpperCase().startsWith(prefix),
+    ).slice(0, 8);
+  }, [claimCode, unclaimedRequests]);
   const awaitingPaymentQueue = useMemo(
     () =>
       requests
@@ -508,6 +602,8 @@ export default function RegistrarDashboard({
         request.request_id,
         { id: registrarId, name: registrarName },
       );
+      setStatusFilter("ALL");
+      setSelected({ ...request, status: "PROCESSING" });
       setNotice(`${request.request_id} moved to PROCESSING.`);
     } catch (processingError) {
       setError(
@@ -522,43 +618,29 @@ export default function RegistrarDashboard({
     }
   };
 
-
-  const updateStatus = async (
-    request: RequestRecord,
-    status: Status,
-  ) => {
+  const markReadyForPickup = async (request: RequestRecord) => {
     setBusyId(request.id);
     clearFeedback();
     try {
-      const updates: Record<string, unknown> = {
-        status,
-        updated_at: serverTimestamp(),
-      };
-      await updateDoc(
-        doc(
-          db,
-          "document_requests",
-          request.id,
-        ),
-        updates,
+      const claimCode = await markDocumentReadyForPickup(
+        request.id,
+        request.request_id,
+        { id: registrarId, name: registrarName },
       );
-      setNotice(
-        `${request.request_id} updated to ${statusLabel(
-          status,
-        )}.`,
-      );
-    } catch (updateError) {
+      setStatusFilter("ALL");
+      setSelected({ ...request, status: "READY_FOR_PICKUP", claim_code: claimCode });
+      setNotice(`${request.request_id} is ready for claiming. Claim code: ${claimCode}`);
+    } catch (readyError) {
       setError(
-        `Could not update request: ${
-          updateError instanceof Error
-            ? updateError.message
-            : "Unknown error"
+        `Could not mark request ready: ${
+          readyError instanceof Error ? readyError.message : "Unknown error"
         }`,
       );
     } finally {
       setBusyId("");
     }
   };
+
 
   const confirmApprove = async () => {
     if (!approveTarget) return;
@@ -713,6 +795,14 @@ export default function RegistrarDashboard({
             serverTimestamp(),
         },
       );
+      await notify({
+        audience: studentAudience(rescheduleTarget.student_id),
+        type: "RESCHEDULED",
+        title: "Document request rescheduled",
+        message: `Your document request ${rescheduleTarget.request_id} has a new claiming schedule: ${rescheduleDate} (${rescheduleTime}).`,
+        kind: "DOCUMENT",
+        relatedId: rescheduleTarget.request_id,
+      });
       setNotice(
         `${rescheduleTarget.request_id} was rescheduled successfully.`,
       );
@@ -730,6 +820,23 @@ export default function RegistrarDashboard({
       );
     } finally {
       setBusyId("");
+    }
+  };
+
+  const copyClaimCode = async (code: string) => {
+    try {
+      if (!navigator.clipboard) {
+        throw new Error("Clipboard access is unavailable in this browser.");
+      }
+      await navigator.clipboard.writeText(code);
+      setNotice("Claim code copied to clipboard.");
+      setError("");
+    } catch (copyError) {
+      setError(
+        copyError instanceof Error
+          ? `${copyError.message} You can select and copy the code manually.`
+          : "Could not copy the claim code. You can select and copy it manually.",
+      );
     }
   };
 
@@ -1137,29 +1244,15 @@ export default function RegistrarDashboard({
           <button
             className="rd-action-button"
             disabled={busyId === request.id}
-            onClick={() =>
-              updateStatus(
-                request,
-                "READY_FOR_PICKUP",
-              )
-            }
+            onClick={() => markReadyForPickup(request)}
           >
-            Mark Ready
+            Mark Ready for Claiming
           </button>
         )}
         {status === "READY_FOR_PICKUP" && (
-          <button
-            className="rd-action-button"
-            disabled={busyId === request.id}
-            onClick={() =>
-              updateStatus(
-                request,
-                "COMPLETED",
-              )
-            }
-          >
-            Mark Completed
-          </button>
+          <span className="rd-muted">
+            Awaiting student pickup. Verify the claim code under Claiming &amp; Release.
+          </span>
         )}
         {!TERMINAL_STATUSES.includes(
           status,
@@ -1218,6 +1311,7 @@ export default function RegistrarDashboard({
   );
   const requestTable = (
     rows: RequestRecord[],
+    queueAction?: "start" | "ready",
   ) => (
     <div className="rd-table-wrap">
       <table className="rd-table">
@@ -1225,9 +1319,11 @@ export default function RegistrarDashboard({
           <tr>
             <th>Request ID</th>
             <th>Student ID</th>
-            <th>Requested Document/s</th>
-            <th>Date Requested</th>
+            <th>Documents</th>
+            <th>Date</th>
             <th>Status</th>
+            <th>Pay</th>
+            {queueAction && <th>Action</th>}
           </tr>
         </thead>
         <tbody>
@@ -1278,6 +1374,38 @@ export default function RegistrarDashboard({
                   )}
                 </span>
               </td>
+              <td>
+                {request.status === "APPROVED" ? (
+                  <span className={`rd-payment-status ${request.payment_status === "PAID" ? "paid" : "unpaid"}`}>
+                    {request.payment_status === "PAID" ? "Paid" : "Unpaid"}
+                  </span>
+                ) : request.payment_status === "PAID" ? (
+                  <span className="rd-payment-status paid">Paid</span>
+                ) : (
+                  <span className="rd-muted">—</span>
+                )}
+              </td>
+              {queueAction && (
+                <td>
+                  <button
+                    type="button"
+                    className="rd-action-button"
+                    aria-label={queueAction === "start" ? "Start Processing" : "Mark Ready for Claiming"}
+                    title={queueAction === "start" ? "Start Processing" : "Mark Ready for Claiming"}
+                    disabled={busyId === request.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (queueAction === "start") {
+                        void startProcessing(request);
+                      } else {
+                        void markReadyForPickup(request);
+                      }
+                    }}
+                  >
+                    {queueAction === "start" ? "Start" : "Ready"}
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -1293,24 +1421,12 @@ export default function RegistrarDashboard({
   );
   const renderOverview = () => (
     <section className="registrar-page">
-      <div className="welcome-section">
-        <p className="eyebrow">
-          CAMPUSERVE
-        </p>
-        <h1>Registrar Dashboard</h1>
-        <p className="welcome-text">
-          Welcome,{" "}
-          {account.name ||
-            "Registrar Staff"}
-        </p>
-      </div>
-      <div className="overview-header">
-        <div>
-          <h2>Overview</h2>
-          <p>
-            Manage student document
-            requests and claiming schedules.
-          </p>
+      <div className="registrar-identity-card">
+        <div className="registrar-identity-copy">
+          <h1>Registrar: {registrarName}</h1>
+        </div>
+        <div className="registrar-identity-colleges">
+          {registrarAssignmentLabel}
         </div>
       </div>
       <div className="stats-grid">
@@ -1389,7 +1505,7 @@ export default function RegistrarDashboard({
       </div>
       <div className="services-section">
         <div className="services-heading">
-          <h2>Registrar Services</h2>
+          <h2>Services</h2>
           <p>
             Open a section to continue
             managing transactions.
@@ -1523,7 +1639,9 @@ export default function RegistrarDashboard({
           ))}
         </select>
       </div>
-      <div className="rd-detail-section" style={{ marginBottom: 20 }}>
+      <div className="rd-request-workspace">
+        <div className="rd-request-worklists">
+      <div className="rd-detail-section request-queue-card">
         <h3>Awaiting Payment</h3>
         <p className="rd-muted">
           Approved requests remain visible here until the Cashier confirms payment. Students use the Payment Stub Code when paying.
@@ -1538,14 +1656,14 @@ export default function RegistrarDashboard({
           </div>
         )}
       </div>
-      <div className="rd-detail-section" style={{ marginBottom: 20 }}>
+      <div className="rd-detail-section request-queue-card">
         <h3>Paid Processing Queue</h3>
         <p className="rd-muted">
           Requests are automatically arranged by the earliest Cashier payment confirmation time. No manual sorting is needed.
         </p>
         {paidProcessingQueue.length > 0 ? (
           <div className="rd-request-list">
-            {requestTable(paidProcessingQueue)}
+            {requestTable(paidProcessingQueue, "start")}
           </div>
         ) : (
           <div className="rd-empty">
@@ -1553,24 +1671,60 @@ export default function RegistrarDashboard({
           </div>
         )}
       </div>
-      <div className="rd-master-detail">
+      <div className="rd-detail-section request-queue-card">
+        <h3>In Processing</h3>
+        <p className="rd-muted">
+          These paid requests stay here while Registrar staff prepare the documents. Select a request to mark it ready for claiming when preparation is complete.
+        </p>
+        {inProcessingQueue.length > 0 ? (
+          <div className="rd-request-list">
+            {requestTable(inProcessingQueue, "ready")}
+          </div>
+        ) : (
+          <div className="rd-empty">No requests are currently being processed.</div>
+        )}
+      </div>
+      <div className="rd-detail-section request-queue-card unclaimed-requests-card">
+        <h3>Unclaimed Requests</h3>
+        <p className="rd-muted">
+          Documents marked ready remain here until staff verifies the student's claim code and releases them.
+        </p>
+        {unclaimedRequests.length > 0 ? (
+          <div className="rd-request-list">
+            {requestTable(unclaimedRequests)}
+          </div>
+        ) : (
+          <div className="rd-empty">There are no requests waiting to be claimed.</div>
+        )}
+      </div>
+      <div className="rd-detail-section request-queue-card all-requests-card">
+        <h3>All Document Requests</h3>
         <div className="rd-request-list">
           {requestTable(
             filteredRequests,
           )}
         </div>
-        <div className="rd-detail-panel">
+      </div>
+        </div>
+        <div className="rd-detail-panel" aria-live="polite">
           {selected ? (
             <>
               <div className="rd-detail-header">
                 <div>
-                  <span className="rd-detail-label">
-                    REQUEST
-                  </span>
-                  <h2>
-                    {selected.request_id ||
-                      selected.id}
-                  </h2>
+                  <span className="rd-detail-label">REQUEST DETAILS</span>
+                  <div className="rd-detail-title-row">
+                    <h2>{selected.request_id || selected.id}</h2>
+                    <span
+                      className={`rd-status ${String(selected.status || "PENDING").toLowerCase()}`}
+                    >
+                      {statusLabel(selected.status)}
+                    </span>
+                    {(selected.payment_status === "PAID" || selected.payment_status === "UNPAID" || selected.status === "APPROVED") && (
+                      <span className={`rd-payment-status ${selected.payment_status === "PAID" ? "paid" : "unpaid"}`}>
+                        {selected.payment_status === "PAID" ? "PAID" : "UNPAID"}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   className="rd-detail-close"
@@ -1581,229 +1735,94 @@ export default function RegistrarDashboard({
                   ×
                 </button>
               </div>
-              <div className="rd-detail-status">
-                <span
-                  className={`rd-status ${String(
-                    selected.status ||
-                      "PENDING",
-                  ).toLowerCase()}`}
-                >
-                  {statusLabel(
-                    selected.status,
-                  )}
-                </span>
-              </div>
-              <div className="rd-detail-section">
-                <h3>
-                  Request Information
-                </h3>
-                <div className="rd-detail-grid">
-                  <div>
-                    <span>
-                      Student ID
-                    </span>
-                    <strong>
-                      {selected.student_id ||
-                        "—"}
-                    </strong>
+              <div className="rd-request-detail-cards">
+                <section className="rd-detail-section rd-detail-card rd-request-info-card">
+                  <h3>Request Information</h3>
+                  <div className="rd-detail-grid">
+                    <div><span>Student ID</span><strong>{selected.student_id || "—"}</strong></div>
+                    <div><span>Request Method</span><strong>{selected.request_method || "—"}</strong></div>
+                    <div><span>Requested Date</span><strong>{selected.requested_date || dateOnly(selected.created_at)}</strong></div>
+                    <div><span>Requested Time</span><strong>{selected.requested_time || "—"}</strong></div>
+                    <div><span>Number of Copies</span><strong>{selected.number_of_copies ?? "—"}</strong></div>
                   </div>
-                  <div>
-                    <span>
-                      Request Method
-                    </span>
-                    <strong>
-                      {selected.request_method ||
-                        "—"}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>
-                      Requested Date
-                    </span>
-                    <strong>
-                      {selected.requested_date ||
-                        dateOnly(
-                          selected.created_at,
-                        )}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>
-                      Requested Time
-                    </span>
-                    <strong>
-                      {selected.requested_time ||
-                        "—"}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>
-                      Number of Copies
-                    </span>
-                    <strong>
-                      {selected.number_of_copies ??
-                        "—"}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>
-                      Total Amount
-                    </span>
-                    <strong>
-                      {money(
-                        selected.total_amount,
-                      )}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Payment Status</span>
-                    <strong>
-                      {selected.payment_status || "NOT YET APPROVED"}
-                    </strong>
-                  </div>
-                  {selected.payment_stub_code && (
-                    <div>
-                      <span>Payment Queue Stub Code</span>
-                      <strong>{selected.payment_stub_code}</strong>
+                  {(selected.payment_stub_code || selected.payment_confirmed_at) && (
+                    <div className="rd-request-payment-meta">
+                      {selected.payment_stub_code && <span>Payment stub <strong>{selected.payment_stub_code}</strong></span>}
+                      {selected.payment_confirmed_at && <span>Payment confirmed {dateText(selected.payment_confirmed_at)}</span>}
                     </div>
                   )}
-                  {selected.payment_confirmed_at && (
-                    <div>
-                      <span>Payment Confirmed At</span>
-                      <strong>{dateText(selected.payment_confirmed_at)}</strong>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="rd-detail-section">
-                <h3>
-                  Requested Document/s
-                </h3>
-                {getRequestDocuments(
-                  selected,
-                ).length > 0 ? (
-                  <div className="document-detail-list">
-                    {getRequestDocuments(
-                      selected,
-                    ).map((detail) => (
-                      <div
-                        className="document-detail-item"
-                        key={detail.id}
-                      >
-                        <div>
-                          <strong>
-                            {documentName(
-                              detail,
-                            )}
-                          </strong>
-                          <span>
-                            Quantity:{" "}
-                            {detail.quantity ??
-                              1}
-                          </span>
-                        </div>
-                        <div>
-                          {detail.subtotal !=
-                          null
-                            ? money(
-                                detail.subtotal,
-                              )
-                            : "—"}
-                        </div>
+                </section>
+
+                <section className="rd-detail-section rd-detail-card rd-documents-card">
+                  <h3>Requested Documents</h3>
+                  {getRequestDocuments(selected).length > 0 ? (
+                    <div className="rd-document-lines">
+                      <div className="rd-document-line rd-document-line-heading">
+                        <span>Document</span><span>Qty</span><span>Price</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="rd-muted">
-                    No separate document
-                    details were found for
-                    this request.
-                  </p>
-                )}
-              </div>
-              {selected.purpose && (
-                <div className="rd-detail-section">
+                      {getRequestDocuments(selected).map((detail) => (
+                        <div className="rd-document-line" key={detail.id}>
+                          <strong>{documentName(detail)}</strong>
+                          <span>{detail.quantity ?? 1}</span>
+                          <span>{detail.unit_price != null ? money(detail.unit_price) : detail.subtotal != null ? money(detail.subtotal) : "—"}</span>
+                        </div>
+                      ))}
+                      <div className="rd-document-total">
+                        <span>Request Total</span>
+                        <strong>{money(selected.total_amount)}</strong>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="rd-muted">No separate document details were found for this request.</p>
+                  )}
+                </section>
+
+                <section className="rd-detail-section rd-detail-card">
                   <h3>Purpose</h3>
                   <p className="rd-detail-purpose">
-                    {selected.purpose}
+                    {selected.purpose?.trim() || "No purpose provided."}
                   </p>
-                </div>
-              )}
-              {selected.decline_reason && (
-                <div className="rd-detail-section">
-                  <h3>Decline Reason</h3>
-                  <p className="cancellation-detail">
-                    {selected.decline_reason}
-                  </p>
-                </div>
-              )}
-              {selected.cancellation_reason && (
-                <div className="rd-detail-section">
-                  <h3>
-                    Cancellation Reason
-                  </h3>
-                  <p className="cancellation-detail">
-                    {
-                      selected.cancellation_reason
-                    }
-                  </p>
-                </div>
-              )}
-              {selected.claim_code && (
-                <div className="rd-detail-section">
-                  <h3>Claim Code</h3>
-                  <div className="claim-code-display">
-                    {selected.claim_code}
-                  </div>
-                </div>
-              )}
-              {selected.rescheduled_at && (
-                <div className="rd-detail-section">
-                  <h3>
-                    Rescheduling Information
-                  </h3>
-                  <div className="rd-detail-grid">
-                    <div>
-                      <span>
-                        Previous Date
-                      </span>
-                      <strong>
-                        {selected.previous_requested_date ||
-                          "—"}
-                      </strong>
+                </section>
+
+                {selected.claim_code && (
+                  <section className="rd-detail-section rd-detail-card rd-claim-code-card">
+                    <h3>Claim Code</h3>
+                    <div className="rd-claim-code-copy-row">
+                      <code className="claim-code-display">{selected.claim_code}</code>
+                      <button
+                        type="button"
+                        className="rd-copy-button"
+                        aria-label="Copy claim code"
+                        onClick={() => void copyClaimCode(selected.claim_code || "")}
+                      >
+                        Copy
+                      </button>
                     </div>
-                    <div>
-                      <span>
-                        Previous Time
-                      </span>
-                      <strong>
-                        {selected.previous_requested_time ||
-                          "—"}
-                      </strong>
+                  </section>
+                )}
+
+                {(selected.rescheduled_at || Number(selected.reschedule_count || 0) > 0) && (
+                  <section className="rd-detail-section rd-detail-card rd-reschedule-card">
+                    <h3>Rescheduling Information</h3>
+                    <div className="rd-detail-grid">
+                      <div><span>Previous Date</span><strong>{selected.previous_requested_date || "—"}</strong></div>
+                      <div><span>Previous Time</span><strong>{selected.previous_requested_time || "—"}</strong></div>
+                      <div><span>Reschedule Count</span><strong>{selected.reschedule_count ?? 0}</strong></div>
+                      <div><span>Rescheduled At</span><strong>{selected.rescheduled_at ? dateText(selected.rescheduled_at) : "—"}</strong></div>
                     </div>
-                    <div>
-                      <span>
-                        Reschedule Count
-                      </span>
-                      <strong>
-                        {selected.reschedule_count ||
-                          0}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>
-                        Rescheduled At
-                      </span>
-                      <strong>
-                        {dateText(
-                          selected.rescheduled_at,
-                        )}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="rd-detail-section">
+                  </section>
+                )}
+
+                {(selected.decline_reason || selected.cancellation_reason) && (
+                  <section className="rd-detail-section rd-detail-card rd-reason-card">
+                    <h3>{selected.decline_reason ? "Decline Reason" : "Cancellation Reason"}</h3>
+                    <p className="cancellation-detail">
+                      {selected.decline_reason || selected.cancellation_reason}
+                    </p>
+                  </section>
+                )}
+              </div>
+              <div className="rd-detail-actions-footer">
                 <h3>Actions</h3>
                 {requestActions(selected)}
               </div>
@@ -1821,7 +1840,7 @@ export default function RegistrarDashboard({
             </div>
           )}
         </div>
-      </div>
+        </div>
     </section>
   );
   const renderClaiming = () => (
@@ -1861,7 +1880,6 @@ export default function RegistrarDashboard({
                 }
               }}
               placeholder="Enter claim code"
-              maxLength={12}
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
@@ -1876,6 +1894,36 @@ export default function RegistrarDashboard({
               Verify
             </button>
           </div>
+          {claimCode.trim() && (
+            <div className="claim-code-suggestions" role="listbox" aria-label="Unreleased request claim codes">
+              {claimCodeSuggestions.length > 0 ? (
+                claimCodeSuggestions.map((request) => (
+                  <button
+                    type="button"
+                    className="claim-code-suggestion"
+                    key={request.id}
+                    onClick={() => {
+                      setClaimCode(String(request.claim_code || "").toUpperCase());
+                      setClaimResult(null);
+                      clearFeedback();
+                    }}
+                  >
+                    <span className="claim-code-suggestion-code">{request.claim_code}</span>
+                    <span className="claim-code-suggestion-meta">
+                      {request.request_id} · Student {request.student_id || "—"}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <div className="claim-code-no-match">
+                  No unreleased requests match this code prefix.
+                </div>
+              )}
+            </div>
+          )}
+          <p className="claim-code-helper">
+            Type the first few characters to find an unclaimed request, select its code, then verify it.
+          </p>
         </div>
         <div className="rd-panel">
           <h3>
@@ -2516,50 +2564,84 @@ export default function RegistrarDashboard({
   );
   const renderSettings = () => (
     <section className="registrar-page">
-      {heading(
-        "Settings",
-        "View the Registrar account and dashboard information.",
-      )}
-      <div className="settings-panel">
-        <div className="settings-account">
-          <div className="settings-avatar">
-            {(registrarName.charAt(0) ||
-              "R").toUpperCase()}
+      {heading("Settings", "Registrar account and workflow information.")}
+      <div className="registrar-settings-grid">
+        <section className="registrar-settings-card">
+          <div className="registrar-settings-heading">
+            <h2>Account information</h2>
+            <p>Details used to identify your Registrar account.</p>
           </div>
-          <div>
-            <h3>
-              {registrarName}
-            </h3>
-            <p>
-              {account.email ||
-                "No email available"}
-            </p>
+          <div className="registrar-settings-rows">
+            <div className="settings-row">
+              <span>Name</span>
+              <strong>{registrarName}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Role</span>
+              <strong>{account.position || "Registrar Staff"}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Employee ID</span>
+              <strong>{account.employeeId || "Not provided"}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Email</span>
+              <strong>{account.email || "Not provided"}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Campus</span>
+              <strong>{account.campus || "Not provided"}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Assigned college(s)</span>
+              <strong>{registrarAssignmentLabel}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Account status</span>
+              <strong className="settings-status">
+                {(account.status || "active").replace(/_/g, " ")}
+              </strong>
+            </div>
           </div>
-        </div>
-        <div className="settings-row">
-          <span>
-            Role
-          </span>
-          <strong>
-            Registrar Staff
-          </strong>
-        </div>
-        <div className="settings-row">
-          <span>
-            Account Status
-          </span>
-          <strong className="settings-status">
-            Active
-          </strong>
-        </div>
-        <div className="settings-row">
-          <span>
-            Dashboard
-          </span>
-          <strong>
-            Registrar
-          </strong>
-        </div>
+        </section>
+
+        <section className="registrar-settings-card">
+          <div className="registrar-settings-heading">
+            <h2>Workflow settings</h2>
+            <p>These rules keep Registrar requests consistent.</p>
+          </div>
+          <div className="registrar-settings-rows">
+            <div className="settings-row">
+              <span>Processing order</span>
+              <strong>Automatic FIFO</strong>
+            </div>
+            <div className="settings-row">
+              <span>Payment requirement</span>
+              <strong>Cashier confirmation before processing</strong>
+            </div>
+            <div className="settings-row">
+              <span>Claiming date authority</span>
+              <strong>Registrar and General Office</strong>
+            </div>
+            <div className="settings-row">
+              <span>Request visibility</span>
+              <strong>{registrarAssignmentLabel}</strong>
+            </div>
+          </div>
+          <p className="registrar-settings-note">
+            Account access and college assignments are managed by the Admin.
+          </p>
+        </section>
+
+        <section className="registrar-settings-card registrar-session-card">
+          <div className="registrar-settings-heading">
+            <h2>Account session</h2>
+            <p>Sign out when you finish using this workstation.</p>
+          </div>
+          <button className="logout-button settings-logout" onClick={handleLogout}>
+            Log Out
+          </button>
+        </section>
       </div>
     </section>
   );
@@ -2610,8 +2692,16 @@ export default function RegistrarDashboard({
               </span>
             </div>
           </div>
+          <button
+            className="menu-close-button"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close navigation menu"
+            title="Close menu"
+          >
+            ×
+          </button>
         </div>
-        <nav className="registrar-nav">
+        <nav className="registrar-nav" id="registrar-navigation">
           <button
             className={
               activePage === "overview"
@@ -2770,14 +2860,15 @@ export default function RegistrarDashboard({
                   (current) => !current,
                 )
               }
-              aria-label="Toggle menu"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-controls="registrar-navigation"
+              aria-expanded={menuOpen}
             >
               ☰
             </button>
-            <h3>
-              {PAGE_TITLES[activePage] ||
-                "Registrar Dashboard"}
-            </h3>
+            {activePage === "overview" && (
+              <h3>{PAGE_TITLES.overview}</h3>
+            )}
           </div>
           <div className="registrar-topbar-actions">
             <div className="registrar-top-search">
@@ -3227,4 +3318,5 @@ export default function RegistrarDashboard({
     </div>
   );
 }
+
 
