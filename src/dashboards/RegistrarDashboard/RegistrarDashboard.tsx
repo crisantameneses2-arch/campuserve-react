@@ -27,6 +27,11 @@ type Account = {
   role?: string;
   firebaseUid?: string;
   student_id?: string;
+  department?: string;
+  employeeId?: string;
+  campus?: string;
+  status?: string;
+  position?: string;
 };
 
 interface RegistrarDashboardProps {
@@ -174,6 +179,20 @@ const today = () => {
 const statusLabel = (status?: Status) =>
   String(status || "PENDING").replace(/_/g, " ");
 
+const normalizeCollege = (value: unknown) =>
+  String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+
+const normalizeStudentId = (value: unknown) =>
+  String(value || "").trim().toUpperCase();
+
+const collegesFromDepartment = (department?: string): string[] => {
+  const normalized = normalizeCollege(department);
+  if (!normalized || normalized === "ALL COLLEGES") return [];
+  return normalized.split(/\s*\/\s*/).map(normalizeCollege).filter(Boolean);
+};
 const documentName = (detail?: DetailRecord) => {
   if (!detail) return "Document";
   if (detail.custom_document_name) {
@@ -249,8 +268,9 @@ export default function RegistrarDashboard({
   account,
 }: RegistrarDashboardProps) {
   const [activePage, setActivePage] = useState("overview");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [requests, setRequests] = useState<RequestRecord[]>([]);
+  const [menuOpen, setMenuOpen] = useState(true);
+  const [allRequests, setAllRequests] = useState<RequestRecord[]>([]);
+  const [studentCollegesById, setStudentCollegesById] = useState<Record<string, string>>({});
   const [requestDetails, setRequestDetails] = useState<
     Record<string, DetailRecord[]>
   >({});
@@ -294,6 +314,10 @@ export default function RegistrarDashboard({
   const registrarId =
     account.firebaseUid || account.email || "registrar";
   const registrarName = account.name || "Registrar Staff";
+  const registrarAssignmentLabel =
+    normalizeCollege(account.department) === "ALL COLLEGES"
+      ? "All Colleges"
+      : collegesFromDepartment(account.department).join(" • ") || "Assignment not set";
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "document_requests"),
@@ -305,7 +329,7 @@ export default function RegistrarDashboard({
               ...item.data(),
             }) as RequestRecord,
         );
-        setRequests(sortRequestsFIFO(rows));
+        setAllRequests(rows);
         setLoading(false);
       },
       (snapshotError) => {
@@ -317,6 +341,40 @@ export default function RegistrarDashboard({
     );
     return unsubscribe;
   }, []);
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "accounts"),
+      (snapshot) => {
+        const colleges: Record<string, string> = {};
+        snapshot.docs.forEach((item) => {
+          const data = item.data();
+          if (!["student", "alumni"].includes(String(data.role || ""))) return;
+          const studentId = normalizeStudentId(data.student_id);
+          const college = normalizeCollege(data.college);
+          if (studentId && college) colleges[studentId] = college;
+        });
+        setStudentCollegesById(colleges);
+      },
+      (snapshotError) => {
+        setError("Could not load student college assignments: " + snapshotError.message);
+      },
+    );
+    return unsubscribe;
+  }, []);
+  const requests = useMemo(() => {
+    const assignedColleges = collegesFromDepartment(account.department);
+    if (normalizeCollege(account.department) === "ALL COLLEGES") {
+      return sortRequestsFIFO(allRequests);
+    }
+    if (assignedColleges.length === 0) return [];
+    const assigned = new Set(assignedColleges);
+    return sortRequestsFIFO(
+      allRequests.filter((request) => {
+        const studentCollege = studentCollegesById[normalizeStudentId(request.student_id)];
+        return Boolean(studentCollege && assigned.has(normalizeCollege(studentCollege)));
+      }),
+    );
+  }, [allRequests, studentCollegesById, account.department]);
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "document_request_details"),
@@ -390,6 +448,9 @@ export default function RegistrarDashboard({
     setNotificationsOpen(false);
     setSelected(null);
     setClaimResult(null);
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      setMenuOpen(false);
+    }
     clearFeedback();
   };
 
@@ -1293,24 +1354,13 @@ export default function RegistrarDashboard({
   );
   const renderOverview = () => (
     <section className="registrar-page">
-      <div className="welcome-section">
-        <p className="eyebrow">
-          CAMPUSERVE
-        </p>
-        <h1>Registrar Dashboard</h1>
-        <p className="welcome-text">
-          Welcome,{" "}
-          {account.name ||
-            "Registrar Staff"}
-        </p>
-      </div>
-      <div className="overview-header">
-        <div>
-          <h2>Overview</h2>
-          <p>
-            Manage student document
-            requests and claiming schedules.
-          </p>
+      <div className="registrar-identity-card">
+        <div className="registrar-identity-copy">
+          <span className="registrar-identity-eyebrow">REGISTRAR</span>
+          <h1>Registrar: {registrarName}</h1>
+        </div>
+        <div className="registrar-identity-colleges">
+          {registrarAssignmentLabel}
         </div>
       </div>
       <div className="stats-grid">
@@ -1389,7 +1439,7 @@ export default function RegistrarDashboard({
       </div>
       <div className="services-section">
         <div className="services-heading">
-          <h2>Registrar Services</h2>
+          <h2>Services</h2>
           <p>
             Open a section to continue
             managing transactions.
@@ -2516,50 +2566,84 @@ export default function RegistrarDashboard({
   );
   const renderSettings = () => (
     <section className="registrar-page">
-      {heading(
-        "Settings",
-        "View the Registrar account and dashboard information.",
-      )}
-      <div className="settings-panel">
-        <div className="settings-account">
-          <div className="settings-avatar">
-            {(registrarName.charAt(0) ||
-              "R").toUpperCase()}
+      {heading("Settings", "Registrar account and workflow information.")}
+      <div className="registrar-settings-grid">
+        <section className="registrar-settings-card">
+          <div className="registrar-settings-heading">
+            <h2>Account information</h2>
+            <p>Details used to identify your Registrar account.</p>
           </div>
-          <div>
-            <h3>
-              {registrarName}
-            </h3>
-            <p>
-              {account.email ||
-                "No email available"}
-            </p>
+          <div className="registrar-settings-rows">
+            <div className="settings-row">
+              <span>Name</span>
+              <strong>{registrarName}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Role</span>
+              <strong>{account.position || "Registrar Staff"}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Employee ID</span>
+              <strong>{account.employeeId || "Not provided"}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Email</span>
+              <strong>{account.email || "Not provided"}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Campus</span>
+              <strong>{account.campus || "Not provided"}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Assigned college(s)</span>
+              <strong>{registrarAssignmentLabel}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Account status</span>
+              <strong className="settings-status">
+                {(account.status || "active").replace(/_/g, " ")}
+              </strong>
+            </div>
           </div>
-        </div>
-        <div className="settings-row">
-          <span>
-            Role
-          </span>
-          <strong>
-            Registrar Staff
-          </strong>
-        </div>
-        <div className="settings-row">
-          <span>
-            Account Status
-          </span>
-          <strong className="settings-status">
-            Active
-          </strong>
-        </div>
-        <div className="settings-row">
-          <span>
-            Dashboard
-          </span>
-          <strong>
-            Registrar
-          </strong>
-        </div>
+        </section>
+
+        <section className="registrar-settings-card">
+          <div className="registrar-settings-heading">
+            <h2>Workflow settings</h2>
+            <p>These rules keep Registrar requests consistent.</p>
+          </div>
+          <div className="registrar-settings-rows">
+            <div className="settings-row">
+              <span>Processing order</span>
+              <strong>Automatic FIFO</strong>
+            </div>
+            <div className="settings-row">
+              <span>Payment requirement</span>
+              <strong>Cashier confirmation before processing</strong>
+            </div>
+            <div className="settings-row">
+              <span>Claiming date authority</span>
+              <strong>Registrar and General Office</strong>
+            </div>
+            <div className="settings-row">
+              <span>Request visibility</span>
+              <strong>{registrarAssignmentLabel}</strong>
+            </div>
+          </div>
+          <p className="registrar-settings-note">
+            Account access and college assignments are managed by the Admin.
+          </p>
+        </section>
+
+        <section className="registrar-settings-card registrar-session-card">
+          <div className="registrar-settings-heading">
+            <h2>Account session</h2>
+            <p>Sign out when you finish using this workstation.</p>
+          </div>
+          <button className="logout-button settings-logout" onClick={handleLogout}>
+            Log Out
+          </button>
+        </section>
       </div>
     </section>
   );
@@ -2610,8 +2694,16 @@ export default function RegistrarDashboard({
               </span>
             </div>
           </div>
+          <button
+            className="menu-close-button"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close navigation menu"
+            title="Close menu"
+          >
+            ×
+          </button>
         </div>
-        <nav className="registrar-nav">
+        <nav className="registrar-nav" id="registrar-navigation">
           <button
             className={
               activePage === "overview"
@@ -2770,14 +2862,15 @@ export default function RegistrarDashboard({
                   (current) => !current,
                 )
               }
-              aria-label="Toggle menu"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-controls="registrar-navigation"
+              aria-expanded={menuOpen}
             >
               ☰
             </button>
-            <h3>
-              {PAGE_TITLES[activePage] ||
-                "Registrar Dashboard"}
-            </h3>
+            {activePage === "overview" && (
+              <h3>{PAGE_TITLES.overview}</h3>
+            )}
           </div>
           <div className="registrar-topbar-actions">
             <div className="registrar-top-search">
@@ -3227,4 +3320,5 @@ export default function RegistrarDashboard({
     </div>
   );
 }
+
 
