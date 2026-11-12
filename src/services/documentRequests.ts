@@ -1,3 +1,4 @@
+
 import {
   collection,
   doc,
@@ -20,8 +21,6 @@ interface CreateDocumentRequestInput {
   student_id: string;
   request_method: "OWN" | "WITH_OTHERS";
   purpose: string;
-  requested_date: string;
-  requested_time: string;
   number_of_copies: number;
   total_amount: number;
 }
@@ -129,6 +128,10 @@ export async function createDraftGroupDocumentRequest(
 
     total_amount: 0,
 
+    /*
+     * Schedule will be assigned later
+     * by the Registrar or General Office.
+     */
     requested_date: "",
 
     requested_time: "",
@@ -178,8 +181,6 @@ export async function finalizeDraftGroupDocumentRequest(
   request_id: string,
   input: {
     purpose: string;
-    requested_date: string;
-    requested_time: string;
     number_of_copies: number;
     total_amount: number;
   }
@@ -195,12 +196,6 @@ export async function finalizeDraftGroupDocumentRequest(
     {
       purpose:
         input.purpose,
-
-      requested_date:
-        input.requested_date,
-
-      requested_time:
-        input.requested_time,
 
       number_of_copies:
         input.number_of_copies,
@@ -261,11 +256,13 @@ export async function createDocumentRequest(
     total_amount:
       input.total_amount,
 
-    requested_date:
-      input.requested_date,
+    /*
+     * Schedule will be assigned later
+     * by the Registrar or General Office.
+     */
+    requested_date: "",
 
-    requested_time:
-      input.requested_time,
+    requested_time: "",
 
     created_at:
       serverTimestamp(),
