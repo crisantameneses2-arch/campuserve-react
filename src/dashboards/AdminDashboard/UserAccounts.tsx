@@ -227,6 +227,9 @@ const [createPosition, setCreatePosition] = useState("");
   const [hasSearched, setHasSearched] =
     useState(false);
 
+  const [selectedRole, setSelectedRole] =
+  useState("all");
+
   const [showDeletedAccounts, setShowDeletedAccounts] =
     useState(false);
 
@@ -939,65 +942,46 @@ const normalizedName = formatFullName(
   // ========================================
 
   const displayedAccounts = useMemo(() => {
-    let filteredAccounts = accounts;
+  let filteredAccounts = accounts;
 
-    if (!showDeletedAccounts) {
-      filteredAccounts =
-        filteredAccounts.filter(
-          (account) =>
-            account.status !== "deleted"
-        );
-    }
+  // Hide deleted accounts unless the checkbox is enabled
+  if (!showDeletedAccounts) {
+    filteredAccounts = filteredAccounts.filter(
+      (account) => account.status !== "deleted"
+    );
+  }
 
-    if (
-      hasSearched &&
-      searchTerm.trim() !== ""
-    ) {
-      const search =
-        searchTerm
-          .trim()
-          .toLowerCase();
+  // Filter by selected role
+  if (selectedRole !== "all") {
+    filteredAccounts = filteredAccounts.filter(
+      (account) => account.role === selectedRole
+    );
+  }
 
-      filteredAccounts =
-        filteredAccounts.filter(
-          (account) =>
-            getAccountDisplayName(account)
-  .toLowerCase()
-  .includes(search) ||
+  // Filter by search term
+  if (hasSearched && searchTerm.trim() !== "") {
+    const search = searchTerm.trim().toLowerCase();
 
-(account.lastName || "")
-  .toLowerCase()
-  .includes(search) ||
+    filteredAccounts = filteredAccounts.filter(
+      (account) =>
+        getAccountDisplayName(account).toLowerCase().includes(search) ||
+        (account.lastName || "").toLowerCase().includes(search) ||
+        (account.firstName || "").toLowerCase().includes(search) ||
+        (account.middleName || "").toLowerCase().includes(search) ||
+        (account.email || "").toLowerCase().includes(search) ||
+        (account.student_id || "").toLowerCase().includes(search) ||
+        (account.role || "").toLowerCase().includes(search)
+    );
+  }
 
-(account.firstName || "")
-  .toLowerCase()
-  .includes(search) ||
-
-(account.middleName || "")
-  .toLowerCase()
-  .includes(search) ||
-
-            (account.email || "")
-              .toLowerCase()
-              .includes(search) ||
-
-            (account.student_id || "")
-              .toLowerCase()
-              .includes(search) ||
-
-            (account.role || "")
-              .toLowerCase()
-              .includes(search)
-        );
-    }
-
-    return filteredAccounts;
-  }, [
-    accounts,
-    searchTerm,
-    hasSearched,
-    showDeletedAccounts,
-  ]);
+  return filteredAccounts;
+}, [
+  accounts,
+  searchTerm,
+  hasSearched,
+  showDeletedAccounts,
+  selectedRole,
+]);
 
   // ========================================
   // SUMMARY COUNTS
@@ -1071,9 +1055,11 @@ const normalizedName = formatFullName(
   // ========================================
 
   const handleShowAll = () => {
-    setSearchTerm("");
-    setHasSearched(false);
-  };
+  setSearchTerm("");
+  setHasSearched(false);
+  setSelectedRole("all");
+  setShowDeletedAccounts(true);
+};
 
   // ========================================
   // PAGE
@@ -2048,65 +2034,74 @@ const normalizedName = formatFullName(
 
       <div className="user-accounts-search-section">
 
-        <div className="user-accounts-search">
+  <div className="user-accounts-search">
 
-          <input
-            type="text"
-            placeholder="Search by name, email, student ID, or role..."
-            value={searchTerm}
-            onChange={(event) =>
-              setSearchTerm(
-                event.target.value
-              )
-            }
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                handleSearch();
-              }
-            }}
-          />
+    <input
+      type="text"
+      placeholder="Search by name, email, student ID, or role..."
+      value={searchTerm}
+      onChange={(event) =>
+        setSearchTerm(event.target.value)
+      }
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          handleSearch();
+        }
+      }}
+    />
 
-          <button
-            onClick={handleSearch}
-          >
-            🔍 Search
-          </button>
+    <button onClick={handleSearch}>
+      🔍 Search
+    </button>
 
-        </div>
+  </div>
 
-        <div className="user-accounts-search-options">
+  {/* ROLE FILTER */}
 
-          <label>
+  <div className="user-accounts-search-options">
 
-            <input
-              type="checkbox"
-              checked={
-                showDeletedAccounts
-              }
-              onChange={(event) =>
-                setShowDeletedAccounts(
-                  event.target.checked
-                )
-              }
-            />
+    <label htmlFor="role-filter">
+      Filter by Role:
+    </label>
 
-            Show deleted accounts
+    <select
+      id="role-filter"
+      value={selectedRole}
+      onChange={(event) =>
+        setSelectedRole(event.target.value)
+      }
+    >
+      <option value="all">All Roles</option>
+      <option value="student">Students</option>
+      <option value="alumni">Alumni</option>
+      <option value="general_office">General Office</option>
+      <option value="registrar">Registrar</option>
+      <option value="cashier">Cashiers</option>
+      <option value="admin">Administrators</option>
+    </select>
 
-          </label>
+    <label>
+      <input
+        type="checkbox"
+        checked={showDeletedAccounts}
+        onChange={(event) =>
+          setShowDeletedAccounts(event.target.checked)
+        }
+      />
 
-          <button
-            onClick={handleShowAll}
-          >
-            Show All
-          </button>
+      Show deleted accounts
+    </label>
 
-        </div>
+    <button onClick={handleShowAll}>
+      Show All
+    </button>
 
-      </div>
+  </div>
 
-      {/* ========================================
-          ERROR
-      ======================================== */}
+</div>
+
+
+      
 
       {error && (
         <p className="user-accounts-error">

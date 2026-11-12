@@ -60,6 +60,8 @@ type StudentTransaction = {
   status: string;
   date: string;
   time: string;
+  paymentStatus: string;
+  claimCode: string;
   createdAt: unknown;
 };
 
@@ -153,6 +155,12 @@ export default function StudentDashboard({
               status: String(
                 data.status || "PENDING"
               ),
+              paymentStatus: String(
+  data.payment_status || "UNPAID"
+),
+claimCode: String(
+  data.claim_code || ""
+),
               date: String(
                 data.requested_date || ""
               ),
@@ -215,6 +223,12 @@ export default function StudentDashboard({
               status: String(
                 data.status || "PENDING"
               ),
+              paymentStatus: String(
+  data.payment_status || "UNPAID"
+),
+claimCode: String(
+  data.claimStubId || ""
+),
               date: String(
                 data.requestedDate || ""
               ),
@@ -1277,6 +1291,18 @@ function TrackingContent({
         />
       </div>
 
+      {transaction.paymentStatus === "PAID" && (
+  <span className="transaction-payment-status">
+    PAID
+  </span>
+)}
+
+{transaction.claimCode && (
+  <span className="transaction-claim-code">
+    Claiming Code: {transaction.claimCode}
+  </span>
+)}
+
       <div className="tracking-progress">
         {TRACKING_STEPS.map(
           (step, index) => {
@@ -1456,6 +1482,18 @@ function TransactionRow({
       </div>
 
       <StatusBadge status={status} />
+
+      {transaction.paymentStatus === "PAID" && (
+  <span className="transaction-payment-status">
+    PAID
+  </span>
+)}
+
+{transaction.claimCode && (
+  <span className="transaction-claim-code">
+    Claiming Code: {transaction.claimCode}
+  </span>
+)}
 
       <span className="transaction-row__date">
         {transaction.date

@@ -51,13 +51,6 @@ const categories = [
   "Others",
 ];
 
-const timeWindows = [
-  "8:00AM - 10:00AM",
-  "10:00AM - 12:00PM",
-  "1:00PM - 3:00PM",
-  "3:00PM - 5:00PM",
-];
-
 function getCategory(itemName: string) {
   const name = itemName.toLowerCase();
 
@@ -110,11 +103,6 @@ export default function ItemReservation({
   const [fullName, setFullName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [program, setProgram] = useState("");
-
-  // Pickup information
-  const [pickupDate, setPickupDate] = useState("");
-  const [selectedTime, setSelectedTime] =
-    useState<string | null>(null);
 
   // =========================
   // LOAD INVENTORY
@@ -232,19 +220,6 @@ export default function ItemReservation({
   }, [cart]);
 
   // =========================
-  // DATE LIMITS
-  // =========================
-
-  const today = new Date();
-
-  const maxDate = new Date();
-  maxDate.setDate(today.getDate() + 14);
-
-  const formatDate = (date: Date) => {
-    return date.toISOString().split("T")[0];
-  };
-
-  // =========================
   // RESERVE
   // =========================
 
@@ -266,17 +241,6 @@ export default function ItemReservation({
 
     if (!program.trim()) {
       window.alert("Please enter your program.");
-      return;
-    }
-
-    // Validate pickup information
-    if (!pickupDate) {
-      window.alert("Please select a pickup date.");
-      return;
-    }
-
-    if (!selectedTime) {
-      window.alert("Please select a time window.");
       return;
     }
 
@@ -468,11 +432,6 @@ export default function ItemReservation({
                   0
                 ),
 
-              pickupDate,
-
-              pickupTime:
-                selectedTime,
-
               status: "Pending",
 
               createdAt:
@@ -497,8 +456,6 @@ export default function ItemReservation({
       setMobileNumber("");
       setProgram("");
 
-      setPickupDate("");
-      setSelectedTime(null);
 
       setSelectedItem(null);
       setSelectedSize(null);
@@ -706,68 +663,6 @@ export default function ItemReservation({
                 }
                 placeholder="Enter your program"
               />
-            </div>
-          </div>
-
-          {/* PICKUP */}
-
-          <div className="checkout-section">
-            <h3>
-              PICK UP SCHEDULE
-            </h3>
-
-            <div className="pickup-field">
-              <label>
-                Preferred Date
-              </label>
-
-              <div className="date-input-wrapper">
-                <input
-                  type="date"
-                  value={pickupDate}
-                  min={formatDate(today)}
-                  max={formatDate(maxDate)}
-                  onChange={(event) =>
-                    setPickupDate(
-                      event.target.value
-                    )
-                  }
-                />
-              </div>
-
-              <small>
-                Can only be up to 14 days
-              </small>
-            </div>
-
-            <div className="pickup-field">
-              <label>
-                Time Window
-              </label>
-
-              <div className="time-window-grid">
-                {timeWindows.map(
-                  (time) => (
-                    <button
-                      type="button"
-                      key={time}
-                      className={
-                        selectedTime ===
-                        time
-                          ? "time-window selected"
-                          : "time-window"
-                      }
-                      onClick={() =>
-                        setSelectedTime(
-                          time
-                        )
-                      }
-                    >
-                      {time}
-                    </button>
-                  )
-                )}
-              </div>
             </div>
           </div>
 

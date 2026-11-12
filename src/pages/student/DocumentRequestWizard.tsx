@@ -15,7 +15,7 @@ import StepDocuments, {
   type SelectedDocument,
 } from "../../components/document-request/StepDocuments";
 import StepDetails from "../../components/document-request/StepDetails";
-import StepSchedule from "../../components/document-request/StepSchedule";
+
 
 import {
   createDocumentDetails,
@@ -27,7 +27,7 @@ import {
   subscribeToGroupRequestMembers,
 } from "../../services/documentRequests";
 
-import { SCHEDULE } from "../../constants/schedule";
+
 import { DOCUMENTS } from "../../constants/documents";
 
 import {
@@ -139,11 +139,6 @@ export default function DocumentRequestWizard({
      STEP 4 - SCHEDULE
   ======================================================= */
 
-  const [requestedDate, setRequestedDate] =
-    useState("");
-
-  const [requestedTime, setRequestedTime] =
-    useState("");
 
   /* =======================================================
      SUBMISSION STATE
@@ -787,76 +782,6 @@ export default function DocumentRequestWizard({
      STEP 4 - SCHEDULE VALIDATION
   ======================================================= */
 
-  function validateSchedule(): string | null {
-    if (!requestedDate) {
-      return "Please select a claiming date.";
-    }
-
-    if (!requestedTime) {
-      return "Please select a claiming time.";
-    }
-
-    const [
-      hourText,
-      minuteText,
-    ] =
-      requestedTime.split(":");
-
-    const hour =
-      Number(hourText);
-
-    const minute =
-      Number(minuteText);
-
-    if (
-      Number.isNaN(hour) ||
-      Number.isNaN(minute)
-    ) {
-      return "Please enter a valid claiming time.";
-    }
-
-    const totalMinutes =
-      hour * 60 + minute;
-
-    const startMinutes =
-      SCHEDULE.START_HOUR * 60;
-
-    const endMinutes =
-      SCHEDULE.END_HOUR * 60;
-
-    const lunchStart =
-      SCHEDULE.LUNCH_START_HOUR *
-      60;
-
-    const lunchEnd =
-      SCHEDULE.LUNCH_END_HOUR *
-      60;
-
-    if (
-      totalMinutes <
-        startMinutes ||
-      totalMinutes >
-        endMinutes
-    ) {
-      return (
-        "Claiming time must be between " +
-        "8:00 AM and 5:00 PM."
-      );
-    }
-
-    if (
-      totalMinutes >=
-        lunchStart &&
-      totalMinutes <
-        lunchEnd
-    ) {
-      return (
-        "12:00 PM to 1:00 PM is unavailable."
-      );
-    }
-
-    return null;
-  }
 
   /* =======================================================
      VALIDATION - METHOD
@@ -961,60 +886,46 @@ export default function DocumentRequestWizard({
   ======================================================= */
 
   function validateCurrentStep(): string | null {
-    if (currentStep === 1) {
-      return validateMethod();
-    }
-
-    if (currentStep === 2) {
-      return validateDocuments();
-    }
-
-    if (currentStep === 3) {
-      return validateDetails();
-    }
-
-    if (currentStep === 4) {
-      return validateSchedule();
-    }
-
-    return null;
+  if (currentStep === 1) {
+    return validateMethod();
   }
+
+  if (currentStep === 2) {
+    return validateDocuments();
+  }
+
+  if (currentStep === 3) {
+    return validateDetails();
+  }
+
+  return null;
+}
 
   /* =======================================================
      VALIDATION - EVERYTHING
   ======================================================= */
 
   function validateEverything(): string | null {
-    const methodError =
-      validateMethod();
+  const methodError = validateMethod();
 
-    if (methodError) {
-      return methodError;
-    }
-
-    const documentError =
-      validateDocuments();
-
-    if (documentError) {
-      return documentError;
-    }
-
-    const detailsError =
-      validateDetails();
-
-    if (detailsError) {
-      return detailsError;
-    }
-
-    const scheduleError =
-      validateSchedule();
-
-    if (scheduleError) {
-      return scheduleError;
-    }
-
-    return null;
+  if (methodError) {
+    return methodError;
   }
+
+  const documentError = validateDocuments();
+
+  if (documentError) {
+    return documentError;
+  }
+
+  const detailsError = validateDetails();
+
+  if (detailsError) {
+    return detailsError;
+  }
+
+  return null;
+}
 
   /* =======================================================
      GROUP CONFIRMATION
@@ -1092,12 +1003,11 @@ export default function DocumentRequestWizard({
       return;
     }
 
-    if (currentStep < 4) {
-      setCurrentStep(
-        (step) => step + 1
-      );
-    }
-  }
+    if (currentStep < 3) {
+  setCurrentStep(
+    (step) => step + 1
+  );
+}}
 
   function handleBack() {
     setError("");
@@ -1214,11 +1124,7 @@ export default function DocumentRequestWizard({
             purpose:
               purpose.trim(),
 
-            requested_date:
-              requestedDate,
-
-            requested_time:
-              requestedTime,
+        
 
             number_of_copies:
               numberOfCopies,
@@ -1261,12 +1167,6 @@ export default function DocumentRequestWizard({
 
             purpose:
               purpose.trim(),
-
-            requested_date:
-              requestedDate,
-
-            requested_time:
-              requestedTime,
 
             number_of_copies:
               numberOfCopies,
@@ -1359,10 +1259,6 @@ export default function DocumentRequestWizard({
 
     setPurpose("");
 
-    setRequestedDate("");
-
-    setRequestedTime("");
-
     setLoading(false);
 
     setError("");
@@ -1422,20 +1318,6 @@ export default function DocumentRequestWizard({
               Status:
             </strong>{" "}
             Pending
-          </p>
-
-          <p>
-            <strong>
-              Date:
-            </strong>{" "}
-            {requestedDate}
-          </p>
-
-          <p>
-            <strong>
-              Time:
-            </strong>{" "}
-            {requestedTime}
           </p>
 
           {requestMethod ===
@@ -1847,22 +1729,6 @@ export default function DocumentRequestWizard({
           STEP 4 - SCHEDULE
       ================================================= */}
 
-      {currentStep === 4 && (
-        <StepSchedule
-          requestedDate={
-            requestedDate
-          }
-          requestedTime={
-            requestedTime
-          }
-          onDateChange={
-            setRequestedDate
-          }
-          onTimeChange={
-            setRequestedTime
-          }
-        />
-      )}
 
       {/* =================================================
           NAVIGATION
@@ -1900,7 +1766,7 @@ export default function DocumentRequestWizard({
 
           {/* NEXT */}
 
-          {currentStep < 4 && (
+          {currentStep < 3 && (
             <button
               type="button"
               onClick={
@@ -1918,7 +1784,7 @@ export default function DocumentRequestWizard({
 
           {/* SUBMIT */}
 
-          {currentStep === 4 && (
+          {currentStep === 3 && (
             <button
               type="button"
               onClick={

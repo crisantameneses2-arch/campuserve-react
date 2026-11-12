@@ -204,17 +204,6 @@ const documentName = (detail?: DetailRecord) => {
   return aliases[raw] || detail.document_type || "Document";
 };
 
-const generateClaimCode = () => {
-  const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let result = "";
-  for (let i = 0; i < 6; i += 1) {
-    result += characters.charAt(
-      Math.floor(Math.random() * characters.length),
-    );
-  }
-  return result;
-};
-
 const csvValue = (value: unknown) =>
   `"${String(value ?? "").replace(/"/g, '""')}"`;
 
@@ -545,12 +534,6 @@ export default function RegistrarDashboard({
         status,
         updated_at: serverTimestamp(),
       };
-      if (
-        status === "READY_FOR_PICKUP" &&
-        !request.claim_code
-      ) {
-        updates.claim_code = generateClaimCode();
-      }
       await updateDoc(
         doc(
           db,

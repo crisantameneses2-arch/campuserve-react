@@ -65,8 +65,10 @@ type ItemReservation = {
     totalAmount: number;
     cancellationReason?: string;
     paymentCode?: string;
+    payment_status?: "UNPAID" | "PAID";
     createdAt: any;
     items: ReservationItem[];
+    payment_confirmed_at?: any;
 };
 
 type GeneralOfficeDashboardProps = {
@@ -409,6 +411,9 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         paymentCode:
                             data.paymentCode || "",
+
+                        payment_status:
+                            data.payment_status || "UNPAID",
 
                         fullName:
                             data.fullName || "",
@@ -822,6 +827,15 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 );
                 return;
             }
+            if (reservation.payment_status !== "PAID") {
+    alert("Payment must be confirmed by the Cashier before this item can be claimed.");
+    return;
+}
+
+if (!reservation.claimStubId) {
+    alert("No claiming code found. Please ask the Cashier to confirm payment.");
+    return;
+}
 
             // =========================
             // UPDATE INVENTORY BY PURCHASE TYPE
