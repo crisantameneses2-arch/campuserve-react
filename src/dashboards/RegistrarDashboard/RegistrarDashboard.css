@@ -942,6 +942,34 @@ body {
   letter-spacing: 2px;
 }
 
+/* Clear, readable period selector in the Claiming Schedule form. */
+.registrar-layout .schedule-fields select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 38px 10px 12px;
+  border: 1px solid #b8cce2;
+  border-radius: 9px;
+  background-color: #f7fbff;
+  color: #173b63;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  color-scheme: light;
+}
+
+.registrar-layout .schedule-fields select:focus {
+  border-color: #4d86bd;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(77, 134, 189, 0.18);
+}
+
+.registrar-layout .schedule-fields select option {
+  background-color: #ffffff;
+  color: #173b63;
+}
+
 .rd-actions {
   display: flex;
   flex-wrap: wrap;

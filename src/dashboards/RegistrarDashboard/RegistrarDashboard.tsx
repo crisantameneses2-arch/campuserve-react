@@ -3323,3 +3323,5 @@ export default function RegistrarDashboard({
     </div>
   );
 }
+
+

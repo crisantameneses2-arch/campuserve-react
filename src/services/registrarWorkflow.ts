@@ -213,6 +213,94 @@ export async function markDocumentReadyForPickup(
   });
 }
 
+/** Assigns a Registrar-created claiming slot and reserves one place in it. */
+export async function assignRequestClaimingSchedule(
+  requestDocumentId: string,
+  requestId: string,
+  scheduleId: string,
+  actor: RegistrarActor,
+) {
+  if (!scheduleId) throw new Error("Choose an available claiming schedule.");
+
+  const requestRef = doc(db, "document_requests", requestDocumentId);
+  const scheduleRef = doc(db, "claimingSchedules", scheduleId);
+
+  await runTransaction(db, async (transaction) => {
+    const requestSnapshot = await transaction.get(requestRef);
+    const scheduleSnapshot = await transaction.get(scheduleRef);
+    if (!requestSnapshot.exists()) throw new Error("This request no longer exists.");
+    if (!scheduleSnapshot.exists()) throw new Error("That claiming schedule no longer exists.");
+
+    const request = requestSnapshot.data();
+    const schedule = scheduleSnapshot.data();
+    if (!["PROCESSING", "READY_FOR_PICKUP"].includes(request.status)) {
+      throw new Error("A pickup schedule can be assigned only while the request is processing or ready for pickup.");
+    }
+    if (!schedule.claimDate || !(schedule.period || schedule.timeSlot)) {
+      throw new Error("The selected claiming schedule is missing its date or period.");
+    }
+
+    const previousScheduleId = request.claiming_schedule_id as string | undefined;
+    if (previousScheduleId !== scheduleId) {
+      const available = Number(schedule.availableSlots ?? schedule.availableSlot ?? schedule.slotCapacity ?? 0);
+      if (available < 1) throw new Error("That claiming schedule is full. Choose another slot.");
+
+      let previousScheduleSnapshot: any = null;
+      let previousScheduleRef: any = null;
+      if (previousScheduleId) {
+        previousScheduleRef = doc(db, "claimingSchedules", previousScheduleId);
+        previousScheduleSnapshot = await transaction.get(previousScheduleRef);
+      }
+
+      // All reads are completed before transaction writes.
+      transaction.update(scheduleRef, {
+        availableSlot: available - 1,
+        availableSlots: available - 1,
+        updatedAt: serverTimestamp(),
+      });
+      if (previousScheduleId && previousScheduleSnapshot?.exists()) {
+        const previous = previousScheduleSnapshot.data();
+        const capacity = Number(previous.slotCapacity ?? 0);
+        const previousAvailable = Number(previous.availableSlots ?? previous.availableSlot ?? capacity);
+        const restored = Math.min(capacity || previousAvailable + 1, previousAvailable + 1);
+        transaction.update(previousScheduleRef, {
+          availableSlot: restored,
+          availableSlots: restored,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+
+    const period = schedule.period || schedule.timeSlot;
+    const isReschedule = Boolean(previousScheduleId && previousScheduleId !== scheduleId);
+    transaction.update(requestRef, {
+      ...(isReschedule ? {
+        previous_requested_date: request.requested_date || null,
+        previous_requested_time: request.requested_time || null,
+        rescheduled_at: serverTimestamp(),
+        reschedule_count: Number(request.reschedule_count || 0) + 1,
+      } : {}),
+      requested_date: schedule.claimDate,
+      requested_time: period,
+      claiming_schedule_id: scheduleId,
+      ...(previousScheduleId ? {} : {
+        claiming_schedule_assigned_at: serverTimestamp(),
+        claiming_schedule_assigned_by: actor.id,
+        claiming_schedule_assigned_by_name: actor.name,
+      }),
+      updated_at: serverTimestamp(),
+    });
+    writeActivityLog(
+      transaction,
+      actor,
+      isReschedule ? "CLAIMING_SCHEDULE_REASSIGNED" : "CLAIMING_SCHEDULE_ASSIGNED",
+      `${isReschedule ? "Changed" : "Assigned"} the claiming schedule for request ${requestId}.`,
+      requestId,
+      { schedule_id: scheduleId, claim_date: schedule.claimDate, period },
+    );
+  });
+}
+
 /**
  * Sorts pending requests by actual submission time, oldest first.
  * Older records without submitted_at fall back to created_at.
