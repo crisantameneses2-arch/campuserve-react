@@ -187,12 +187,17 @@ const normalizeCollege = (value: unknown) =>
     .replace(/\s+/g, " ")
     .toUpperCase();
 
+const isAllCollegesDepartment = (value?: string) =>
+  ["ALL COLLEGES", "ALL DEPARTMENTS / OFFICES"].includes(
+    normalizeCollege(value),
+  );
+
 const normalizeStudentId = (value: unknown) =>
   String(value || "").trim().toUpperCase();
 
 const collegesFromDepartment = (department?: string): string[] => {
   const normalized = normalizeCollege(department);
-  if (!normalized || normalized === "ALL COLLEGES") return [];
+  if (!normalized || isAllCollegesDepartment(department)) return [];
   return normalized.split(/\s*\/\s*/).map(normalizeCollege).filter(Boolean);
 };
 const documentName = (detail?: DetailRecord) => {
@@ -317,7 +322,7 @@ export default function RegistrarDashboard({
     account.firebaseUid || account.email || "registrar";
   const registrarName = account.name || "Registrar Staff";
   const registrarAssignmentLabel =
-    normalizeCollege(account.department) === "ALL COLLEGES"
+    isAllCollegesDepartment(account.department)
       ? "All Colleges"
       : collegesFromDepartment(account.department).join(" • ") || "Assignment not set";
   useEffect(() => {
@@ -365,7 +370,7 @@ export default function RegistrarDashboard({
   }, []);
   const requests = useMemo(() => {
     const assignedColleges = collegesFromDepartment(account.department);
-    if (normalizeCollege(account.department) === "ALL COLLEGES") {
+    if (isAllCollegesDepartment(account.department)) {
       return sortRequestsFIFO(allRequests);
     }
     if (assignedColleges.length === 0) return [];
@@ -3318,5 +3323,3 @@ export default function RegistrarDashboard({
     </div>
   );
 }
-
-
