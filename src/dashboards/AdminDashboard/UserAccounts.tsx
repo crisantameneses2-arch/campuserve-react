@@ -152,6 +152,48 @@ const getAccountDisplayName = (account: Account) => {
   );
 };
 
+const getAccountNameParts = (account: Account) => {
+  // Prefer the separate name fields if available.
+  if (account.firstName || account.lastName) {
+    return {
+      firstName: account.firstName || "",
+      middleName: account.middleName || "",
+      lastName: account.lastName || "",
+      suffix: account.suffix || "",
+    };
+  }
+
+  // Fallback for older accounts with only a full name.
+  const parts = (account.name || "").trim().split(/\s+/);
+
+  if (!parts[0]) {
+    return {
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      suffix: "",
+    };
+  }
+
+  const suffixes = ["Jr.", "Jr", "Sr.", "Sr", "II", "III", "IV"];
+  let suffix = "";
+
+  if (suffixes.includes(parts[parts.length - 1])) {
+    suffix = parts.pop() || "";
+  }
+
+  return {
+    firstName: parts[0] || "",
+    middleName: parts.length > 2
+      ? parts.slice(1, -1).join(" ")
+      : "",
+    lastName: parts.length > 1
+      ? parts[parts.length - 1]
+      : "",
+    suffix,
+  };
+};
+
 function UserAccounts() {
   // ========================================
   // CREATE ACCOUNT STATE
@@ -162,6 +204,7 @@ const departmentOptions = [
   "COLLEGE OF INDUSTRIAL TECHNOLOGY / COLLEGE OF HOSPITALITY AND TOURISM MANAGEMENT",
   "COLLEGE OF BUSINESS AND PUBLIC ADMINISTRATION",
   "COLLEGE OF TEACHER EDUCATION",
+  "All Departments / Offices",
 ];
 
   const [createStudentId, setCreateStudentId] =
@@ -604,10 +647,12 @@ setCreateYearGraduated("");
       account.student_id || ""
     );
 
-    setEditLastName(account.lastName || "");
-setEditFirstName(account.firstName || "");
-setEditMiddleName(account.middleName || "");
-setEditSuffix(account.suffix || "");
+    const nameParts = getAccountNameParts(account);
+
+setEditLastName(nameParts.lastName);
+setEditFirstName(nameParts.firstName);
+setEditMiddleName(nameParts.middleName);
+setEditSuffix(nameParts.suffix);
 
     setEditEmail(
       account.email || ""
@@ -758,13 +803,22 @@ const normalizedName = formatFullName(
 
     const accountData = {
       // Common information
-      firebaseUid: editingAccount.firebaseUid || "",
-      role: editRole,
-      name: normalizedName,
-      email: normalizedEmail,
-      contactNumber: editContactNumber.trim(),
-      campus: editCampus.trim(),
-      status: editStatus,
+firebaseUid: editingAccount.firebaseUid || "",
+role: editRole,
+
+// Separated name information
+lastName: editLastName.trim(),
+firstName: editFirstName.trim(),
+middleName: editMiddleName.trim(),
+suffix: editSuffix.trim(),
+
+// Formatted name for compatibility
+name: normalizedName,
+
+email: normalizedEmail,
+contactNumber: editContactNumber.trim(),
+campus: editCampus.trim(),
+status: editStatus,
 
       // Remove old fields before applying the new role's data
       graduationYear: deleteField(),
