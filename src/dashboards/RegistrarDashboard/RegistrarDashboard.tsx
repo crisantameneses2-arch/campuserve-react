@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
  // addDoc,
   collection,
@@ -19,6 +19,7 @@ import {
   sortPaidProcessingQueue,
   sortRequestsFIFO,
   createClaimingSchedule,
+  assignRequestClaimingSchedule,
   logRegistrarActivity,
 } from "../../services/registrarWorkflow";
 import "./RegistrarDashboard.css";
@@ -78,6 +79,7 @@ type RequestRecord = {
   processing_started_by?: string;
   status?: Status;
   claim_code?: string | null;
+  claiming_schedule_id?: string | null;
   cancellation_reason?: string;
   decline_reason?: string;
   decline_review_status?: string;
@@ -114,7 +116,6 @@ const PAGE_TITLES: Record<string, string> = {
   reschedule: "Rescheduling",
   history: "Transaction History",
   reports: "Reports & Daily Summary",
-  messages: "Messages",
   settings: "Settings",
 };
 
@@ -251,26 +252,6 @@ const BellIcon = () => (
   </svg>
 );
 
-const MessageIcon = () => (
-  <svg
-    className="topbar-svg-icon"
-    viewBox="0 0 24 24"
-    width="19"
-    height="19"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.4 8.4 0 0 1-3.4-.7L4 20l1.5-3.5A7.2 7.2 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z" />
-    <path d="M8 11.5h.01" />
-    <path d="M12 11.5h.01" />
-    <path d="M16 11.5h.01" />
-  </svg>
-);
-
 export default function RegistrarDashboard({
   account,
 }: RegistrarDashboardProps) {
@@ -278,6 +259,7 @@ export default function RegistrarDashboard({
   const [menuOpen, setMenuOpen] = useState(true);
   const [allRequests, setAllRequests] = useState<RequestRecord[]>([]);
   const [studentCollegesById, setStudentCollegesById] = useState<Record<string, string>>({});
+  const [collegeAssignmentsLoaded, setCollegeAssignmentsLoaded] = useState(false);
   const [requestDetails, setRequestDetails] = useState<
     Record<string, DetailRecord[]>
   >({});
@@ -289,11 +271,25 @@ export default function RegistrarDashboard({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
-  const [topSearch, setTopSearch] = useState("");
   const [statusFilter, setStatusFilter] =
     useState<Status | "ALL">("ALL");
   const [notificationsOpen, setNotificationsOpen] =
     useState(false);
+  const [newRequestToast, setNewRequestToast] = useState<{
+    count: number;
+    type: "login" | "arrival";
+  } | null>(null);
+  const requestToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const knownRequestIdsRef = useRef<Set<string> | null>(null);
+  const showNewRequestToast = useCallback((count: number, type: "login" | "arrival") => {
+    if (count < 1) return;
+    setNewRequestToast({ count, type });
+    if (requestToastTimerRef.current) clearTimeout(requestToastTimerRef.current);
+    requestToastTimerRef.current = setTimeout(() => {
+      setNewRequestToast(null);
+      requestToastTimerRef.current = null;
+    }, 7000);
+  }, []);
   const [approveTarget, setApproveTarget] =
     useState<RequestRecord | null>(null);
   const [declineTarget, setDeclineTarget] =
@@ -304,8 +300,7 @@ export default function RegistrarDashboard({
   const [cancelReason, setCancelReason] = useState("");
   const [rescheduleTarget, setRescheduleTarget] =
     useState<RequestRecord | null>(null);
-  const [rescheduleDate, setRescheduleDate] = useState("");
-  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [rescheduleScheduleId, setRescheduleScheduleId] = useState("");
   const [claimCode, setClaimCode] = useState("");
   const [claimResult, setClaimResult] =
     useState<RequestRecord | null>(null);
@@ -361,6 +356,7 @@ export default function RegistrarDashboard({
           if (studentId && college) colleges[studentId] = college;
         });
         setStudentCollegesById(colleges);
+        setCollegeAssignmentsLoaded(true);
       },
       (snapshotError) => {
         setError("Could not load student college assignments: " + snapshotError.message);
@@ -382,6 +378,26 @@ export default function RegistrarDashboard({
       }),
     );
   }, [allRequests, studentCollegesById, account.department]);
+  useEffect(() => {
+    if (loading || !collegeAssignmentsLoaded) return;
+    const currentIds = new Set(requests.map((request) => request.id));
+    const previousIds = knownRequestIdsRef.current;
+    if (!previousIds) {
+      knownRequestIdsRef.current = currentIds;
+      const pendingAtLogin = requests.filter((request) => request.status === "PENDING").length;
+      showNewRequestToast(pendingAtLogin, "login");
+      return;
+    }
+
+    const arrivingCount = requests.filter(
+      (request) => request.status === "PENDING" && !previousIds.has(request.id),
+    ).length;
+    currentIds.forEach((id) => previousIds.add(id));
+    if (arrivingCount > 0) showNewRequestToast(arrivingCount, "arrival");
+  }, [requests, loading, collegeAssignmentsLoaded, showNewRequestToast]);
+  useEffect(() => () => {
+    if (requestToastTimerRef.current) clearTimeout(requestToastTimerRef.current);
+  }, []);
   useEffect(() => {
     if (!selected) return;
     const latestRequest = requests.find((request) => request.id === selected.id);
@@ -471,11 +487,14 @@ export default function RegistrarDashboard({
   };
 
   const openSearch = (value: string) => {
-    setTopSearch(value);
     setSearch(value);
     setStatusFilter("ALL");
     setActivePage("requests");
     setNotificationsOpen(false);
+    setSelected(null);
+  };
+  const clearRequestSearch = () => {
+    setSearch("");
     setSelected(null);
   };
 
@@ -524,28 +543,45 @@ export default function RegistrarDashboard({
     search,
     statusFilter,
   ]);
+  const statusFilteredRequests = useMemo(
+    () => requests.filter((request) => statusFilter === "ALL" || request.status === statusFilter),
+    [requests, statusFilter],
+  );
+  useEffect(() => {
+    if (activePage !== "requests" || !search.trim()) return;
+    if (filteredRequests.length === 1) {
+      setSelected((current) => current?.id === filteredRequests[0].id ? current : filteredRequests[0]);
+    } else {
+      setSelected(null);
+    }
+  }, [activePage, search, filteredRequests]);
+  const newRequestsQueue = useMemo(
+    () => requests.filter((request) => request.status === "PENDING" && (statusFilter === "ALL" || statusFilter === "PENDING")),
+    [requests, statusFilter],
+  );
   const paidProcessingQueue = useMemo(() => {
     const paidRequests = requests.filter(
       (request) =>
         request.status === "APPROVED" &&
-        request.payment_status === "PAID",
+        request.payment_status === "PAID" &&
+        (statusFilter === "ALL" || statusFilter === "APPROVED"),
     );
     return sortPaidProcessingQueue(paidRequests);
-  }, [requests]);
+  }, [requests, statusFilter]);
   const inProcessingQueue = useMemo(
     () => sortPaidProcessingQueue(
-      requests.filter((request) => request.status === "PROCESSING"),
+      requests.filter((request) => request.status === "PROCESSING" && (statusFilter === "ALL" || statusFilter === "PROCESSING")),
     ),
-    [requests],
+    [requests, statusFilter],
   );
   const unclaimedRequests = useMemo(
     () => sortRequestsFIFO(
       requests.filter(
         (request) =>
-          request.status === "READY_FOR_PICKUP",
+          request.status === "READY_FOR_PICKUP" && (statusFilter === "ALL" || statusFilter === "READY_FOR_PICKUP"),
       ),
     ),
-    [requests],
+    [requests, statusFilter],
   );
   const claimCodeSuggestions = useMemo(() => {
     const prefix = claimCode.trim().toUpperCase();
@@ -560,7 +596,8 @@ export default function RegistrarDashboard({
         .filter(
           (request) =>
             request.status === "APPROVED" &&
-            request.payment_status !== "PAID",
+            request.payment_status !== "PAID" &&
+            (statusFilter === "ALL" || statusFilter === "APPROVED"),
         )
         .sort((a, b) => {
           const getTime = (value: any) => {
@@ -572,7 +609,7 @@ export default function RegistrarDashboard({
           };
           return getTime(a.approved_at || a.created_at) - getTime(b.approved_at || b.created_at);
         }),
-    [requests],
+    [requests, statusFilter],
   );
   const count = (status: Status) =>
     requests.filter(
@@ -608,8 +645,11 @@ export default function RegistrarDashboard({
         { id: registrarId, name: registrarName },
       );
       setStatusFilter("ALL");
-      setSelected({ ...request, status: "PROCESSING" });
-      setNotice(`${request.request_id} moved to PROCESSING.`);
+      const processingRequest = { ...request, status: "PROCESSING" as const };
+      setSelected(processingRequest);
+      setRescheduleTarget(processingRequest);
+      setRescheduleScheduleId(processingRequest.claiming_schedule_id || "");
+      setNotice(`${request.request_id} moved to PROCESSING. Assign its pickup schedule to continue.`);
     } catch (processingError) {
       setError(
         `Could not start processing: ${
@@ -624,6 +664,10 @@ export default function RegistrarDashboard({
   };
 
   const markReadyForPickup = async (request: RequestRecord) => {
+    if (!request.claiming_schedule_id) {
+      setError("Assign a claiming schedule before marking this request ready.");
+      return;
+    }
     setBusyId(request.id);
     clearFeedback();
     try {
@@ -760,61 +804,48 @@ export default function RegistrarDashboard({
 
   const submitReschedule = async () => {
     if (!rescheduleTarget) return;
-    if (
-      !rescheduleDate ||
-      !rescheduleTime.trim()
-    ) {
-      setError(
-        "Enter the new date and time.",
-      );
+    if (!rescheduleScheduleId) {
+      setError("Choose an available claiming schedule.");
       return;
     }
     setBusyId(rescheduleTarget.id);
     clearFeedback();
     try {
-      const currentStatus =
-        rescheduleTarget.status || "PENDING";
-      const currentCount =
-        Number(
-          rescheduleTarget.reschedule_count || 0,
-        );
-      await updateDoc(
-        doc(
-          db,
-          "document_requests",
-          rescheduleTarget.id,
-        ),
-        {
-          previous_requested_date:
-            rescheduleTarget.requested_date || null,
-          previous_requested_time:
-            rescheduleTarget.requested_time || null,
-          requested_date: rescheduleDate,
-          requested_time: rescheduleTime,
-          rescheduled_at:
-            serverTimestamp(),
-          reschedule_count:
-            currentCount + 1,
-          status: currentStatus,
-          updated_at:
-            serverTimestamp(),
-        },
+      const assignedSchedule = schedules.find((schedule) => schedule.id === rescheduleScheduleId);
+      if (!assignedSchedule) throw new Error("The selected schedule is no longer available.");
+      const isReschedule = Boolean(rescheduleTarget.claiming_schedule_id && rescheduleTarget.claiming_schedule_id !== rescheduleScheduleId);
+      await assignRequestClaimingSchedule(
+        rescheduleTarget.id,
+        rescheduleTarget.request_id,
+        rescheduleScheduleId,
+        { id: registrarId, name: registrarName },
       );
       await notify({
         audience: studentAudience(rescheduleTarget.student_id),
         type: "RESCHEDULED",
-        title: "Document request rescheduled",
-        message: `Your document request ${rescheduleTarget.request_id} has a new claiming schedule: ${rescheduleDate} (${rescheduleTime}).`,
+        title: isReschedule ? "Document request rescheduled" : "Claiming schedule assigned",
+        message: `Your document request ${rescheduleTarget.request_id} has a claiming schedule: ${assignedSchedule.claimDate} (${assignedSchedule.period || assignedSchedule.timeSlot}).`,
         kind: "DOCUMENT",
         relatedId: rescheduleTarget.request_id,
       });
       setNotice(
-        `${rescheduleTarget.request_id} was rescheduled successfully.`,
+        `${rescheduleTarget.request_id} was assigned to ${assignedSchedule.claimDate} (${assignedSchedule.period || assignedSchedule.timeSlot}).`,
       );
+      setSelected((current) => current?.id === rescheduleTarget.id
+        ? {
+            ...current,
+            requested_date: assignedSchedule.claimDate,
+            requested_time: assignedSchedule.period || assignedSchedule.timeSlot,
+            claiming_schedule_id: rescheduleScheduleId,
+            ...(isReschedule ? {
+              previous_requested_date: current.requested_date || undefined,
+              previous_requested_time: current.requested_time || undefined,
+              reschedule_count: Number(current.reschedule_count || 0) + 1,
+            } : {}),
+          }
+        : current);
       setRescheduleTarget(null);
-      setRescheduleDate("");
-      setRescheduleTime("");
-      setSelected(null);
+      setRescheduleScheduleId("");
     } catch (rescheduleError) {
       setError(
         `Could not reschedule request: ${
@@ -1090,7 +1121,6 @@ export default function RegistrarDashboard({
     status?: Status,
   ) => {
     setSearch("");
-    setTopSearch("");
     setStatusFilter(status || "ALL");
     setActivePage("requests");
     setSelected(null);
@@ -1141,8 +1171,8 @@ export default function RegistrarDashboard({
         "Request ID",
         "Student ID",
         "Requested Document/s",
-        "Requested Date",
-        "Requested Time",
+        "Pickup Date",
+        "Pickup Period",
         "Status",
         "Amount",
       ],
@@ -1246,41 +1276,42 @@ export default function RegistrarDashboard({
           )
         )}
         {status === "PROCESSING" && (
-          <button
-            className="rd-action-button"
-            disabled={busyId === request.id}
-            onClick={() => markReadyForPickup(request)}
-          >
-            Mark Ready for Claiming
-          </button>
+          <>
+            <button
+              className="rd-action-button secondary"
+              disabled={busyId === request.id}
+              onClick={() => {
+                setRescheduleTarget(request);
+                setRescheduleScheduleId(request.claiming_schedule_id || "");
+                clearFeedback();
+              }}
+            >
+              {request.claiming_schedule_id ? "Change Pickup Schedule" : "Set Pickup Schedule"}
+            </button>
+            {request.claiming_schedule_id ? (
+              <button
+                className="rd-action-button"
+                disabled={busyId === request.id}
+                onClick={() => markReadyForPickup(request)}
+              >
+                Mark Ready for Claiming
+              </button>
+            ) : <span className="rd-muted">Assign a pickup schedule before marking ready.</span>}
+          </>
         )}
         {status === "READY_FOR_PICKUP" && (
-          <span className="rd-muted">
-            Awaiting student pickup. Verify the claim code under Claiming &amp; Release.
-          </span>
-        )}
-        {!TERMINAL_STATUSES.includes(
-          status,
-        ) && (
-          <button
-            className="rd-action-button secondary"
-            disabled={busyId === request.id}
-            onClick={() => {
-              clearFeedback();
-              setRescheduleTarget(
-                request,
-              );
-              setRescheduleDate(
-                request.requested_date ||
-                  "",
-              );
-              setRescheduleTime(
-                String(request.requested_time || "").toUpperCase().includes("PM") ? "PM" : "AM",
-              );
-            }}
-          >
-            Reschedule
-          </button>
+          <>
+            <span className="rd-muted">Awaiting student pickup. Verify the claim code under Claiming &amp; Release.</span>
+            <button
+              className="rd-action-button secondary"
+              disabled={busyId === request.id}
+              onClick={() => {
+                setRescheduleTarget(request);
+                setRescheduleScheduleId(request.claiming_schedule_id || "");
+                clearFeedback();
+              }}
+            >Change Pickup Schedule</button>
+          </>
         )}
         {!TERMINAL_STATUSES.includes(
           status,
@@ -1325,7 +1356,7 @@ export default function RegistrarDashboard({
             <th>Request ID</th>
             <th>Student ID</th>
             <th>Documents</th>
-            <th>Date</th>
+            <th>Date / Pickup</th>
             <th>Status</th>
             <th>Pay</th>
             {queueAction && <th>Action</th>}
@@ -1362,10 +1393,9 @@ export default function RegistrarDashboard({
                 </div>
               </td>
               <td>
-                {request.requested_date ||
-                  dateOnly(
-                    request.created_at,
-                  )}
+                {request.claiming_schedule_id
+                  ? `${request.requested_date || "—"}${request.requested_time ? ` · ${request.requested_time}` : ""}`
+                  : dateOnly(request.submitted_at || request.created_at)}
               </td>
               <td>
                 <span
@@ -1395,19 +1425,23 @@ export default function RegistrarDashboard({
                   <button
                     type="button"
                     className="rd-action-button"
-                    aria-label={queueAction === "start" ? "Start Processing" : "Mark Ready for Claiming"}
-                    title={queueAction === "start" ? "Start Processing" : "Mark Ready for Claiming"}
+                    aria-label={queueAction === "start" ? "Start Processing" : request.claiming_schedule_id ? "Mark Ready for Claiming" : "Assign Pickup Schedule"}
+                    title={queueAction === "start" ? "Start Processing" : request.claiming_schedule_id ? "Mark Ready for Claiming" : "Assign Pickup Schedule"}
                     disabled={busyId === request.id}
                     onClick={(event) => {
                       event.stopPropagation();
                       if (queueAction === "start") {
                         void startProcessing(request);
+                      } else if (!request.claiming_schedule_id) {
+                        setRescheduleTarget(request);
+                        setRescheduleScheduleId("");
+                        clearFeedback();
                       } else {
                         void markReadyForPickup(request);
                       }
                     }}
                   >
-                    {queueAction === "start" ? "Start" : "Ready"}
+                    {queueAction === "start" ? "Start" : request.claiming_schedule_id ? "Ready" : "Schedule"}
                   </button>
                 </td>
               )}
@@ -1613,14 +1647,16 @@ export default function RegistrarDashboard({
         "Document Requests",
         "Review and process student document requests.",
       )}
-      <div className="rd-toolbar">
-        <input
-          value={search}
-          onChange={(event) =>
-            setSearch(event.target.value)
-          }
-          placeholder="Search request ID, student ID, or document"
-        />
+      <div className="rd-toolbar rd-request-toolbar">
+        <div className="rd-search-control request-search-control">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search request ID, student ID, or document"
+            aria-label="Search document requests"
+          />
+          {search && <button type="button" className="rd-search-clear" onClick={clearRequestSearch} aria-label="Clear request search">×</button>}
+        </div>
         <select
           value={statusFilter}
           onChange={(event) =>
@@ -1646,6 +1682,33 @@ export default function RegistrarDashboard({
       </div>
       <div className="rd-request-workspace">
         <div className="rd-request-worklists">
+      {search.trim() && filteredRequests.length > 1 && (
+        <div className="rd-detail-section request-queue-card rd-search-results-card">
+          <div className="rd-search-results-heading">
+            <h3>Search Results</h3>
+            <span>{filteredRequests.length} matching requests</span>
+          </div>
+          {requestTable(filteredRequests)}
+        </div>
+      )}
+      {search.trim() && filteredRequests.length === 0 && (
+        <div className="rd-detail-section request-queue-card rd-search-results-card rd-search-empty">
+          <h3>Search Results</h3>
+          <p>No requests match “{search.trim()}”. Clear the search to show all requests.</p>
+        </div>
+      )}
+      <div className="rd-detail-section request-queue-card new-requests-card">
+        <div className="rd-search-results-heading">
+          <h3>New Requests</h3>
+          <span>{newRequestsQueue.length} awaiting review</span>
+        </div>
+        <p className="rd-muted">New requests from students appear here first. Review and approve or decline each request.</p>
+        {newRequestsQueue.length > 0 ? (
+          <div className="rd-request-list">{requestTable(newRequestsQueue)}</div>
+        ) : (
+          <div className="rd-empty">No new requests are waiting for review.</div>
+        )}
+      </div>
       <div className="rd-detail-section request-queue-card">
         <h3>Awaiting Payment</h3>
         <p className="rd-muted">
@@ -1706,12 +1769,12 @@ export default function RegistrarDashboard({
         <h3>All Document Requests</h3>
         <div className="rd-request-list">
           {requestTable(
-            filteredRequests,
+            statusFilteredRequests,
           )}
         </div>
       </div>
         </div>
-        <div className="rd-detail-panel" aria-live="polite">
+        <div key={selected?.id || "request-details-empty"} className={`rd-detail-panel ${selected ? "has-selected-request" : ""}`} aria-live="polite">
           {selected ? (
             <>
               <div className="rd-detail-header">
@@ -1746,8 +1809,8 @@ export default function RegistrarDashboard({
                   <div className="rd-detail-grid">
                     <div><span>Student ID</span><strong>{selected.student_id || "—"}</strong></div>
                     <div><span>Request Method</span><strong>{selected.request_method || "—"}</strong></div>
-                    <div><span>Requested Date</span><strong>{selected.requested_date || dateOnly(selected.created_at)}</strong></div>
-                    <div><span>Requested Time</span><strong>{selected.requested_time || "—"}</strong></div>
+                    <div><span>Date Submitted</span><strong>{dateOnly(selected.submitted_at || selected.created_at)}</strong></div>
+                    {selected.claiming_schedule_id && <div><span>Pickup Schedule</span><strong>{selected.requested_date || "—"} · {selected.requested_time || "—"}</strong></div>}
                     <div><span>Number of Copies</span><strong>{selected.number_of_copies ?? "—"}</strong></div>
                   </div>
                   {(selected.payment_stub_code || selected.payment_confirmed_at) && (
@@ -1810,8 +1873,8 @@ export default function RegistrarDashboard({
                   <section className="rd-detail-section rd-detail-card rd-reschedule-card">
                     <h3>Rescheduling Information</h3>
                     <div className="rd-detail-grid">
-                      <div><span>Previous Date</span><strong>{selected.previous_requested_date || "—"}</strong></div>
-                      <div><span>Previous Time</span><strong>{selected.previous_requested_time || "—"}</strong></div>
+                      <div><span>Previous Pickup Date</span><strong>{selected.previous_requested_date || "—"}</strong></div>
+                      <div><span>Previous Pickup Period</span><strong>{selected.previous_requested_time || "—"}</strong></div>
                       <div><span>Reschedule Count</span><strong>{selected.reschedule_count ?? 0}</strong></div>
                       <div><span>Rescheduled At</span><strong>{selected.rescheduled_at ? dateText(selected.rescheduled_at) : "—"}</strong></div>
                     </div>
@@ -1970,7 +2033,7 @@ export default function RegistrarDashboard({
                 </div>
                 <div>
                   <span>
-                    Requested Date
+                    Pickup Date
                   </span>
                   <strong>
                     {claimResult.requested_date ||
@@ -1979,7 +2042,7 @@ export default function RegistrarDashboard({
                 </div>
                 <div>
                   <span>
-                    Requested Time
+                    Pickup Period
                   </span>
                   <strong>
                     {claimResult.requested_time ||
@@ -2188,7 +2251,7 @@ export default function RegistrarDashboard({
     <section className="registrar-page">
       {heading(
         "Rescheduling",
-        "Update the requested claiming date and time for active requests.",
+        "Assign or change a Registrar-managed pickup slot for requests being processed or ready for pickup.",
       )}
       <div className="rd-panel">
         <div className="rd-toolbar">
@@ -2226,10 +2289,7 @@ export default function RegistrarDashboard({
           {filteredRequests
             .filter(
               (request) =>
-                !TERMINAL_STATUSES.includes(
-                  request.status ||
-                    "PENDING",
-                ),
+                ["PROCESSING", "READY_FOR_PICKUP"].includes(request.status || ""),
             )
             .map((request) => (
               <div
@@ -2245,7 +2305,7 @@ export default function RegistrarDashboard({
                     {request.student_id}
                   </span>
                   <span>
-                    Current schedule:{" "}
+                    Current pickup schedule:{" "}
                     {request.requested_date ||
                       "—"}{" "}
                     {request.requested_time ||
@@ -2271,14 +2331,7 @@ export default function RegistrarDashboard({
                     setRescheduleTarget(
                       request,
                     );
-                    setRescheduleDate(
-                      request.requested_date ||
-                        "",
-                    );
-                    setRescheduleTime(
-                      request.requested_time ||
-                        "",
-                    );
+                    setRescheduleScheduleId(request.claiming_schedule_id || "");
                     clearFeedback();
                   }}
                 >
@@ -2286,16 +2339,9 @@ export default function RegistrarDashboard({
                 </button>
               </div>
             ))}
-          {filteredRequests.filter(
-            (request) =>
-              !TERMINAL_STATUSES.includes(
-                request.status ||
-                  "PENDING",
-              ),
-          ).length === 0 && (
+          {filteredRequests.filter((request) => ["PROCESSING", "READY_FOR_PICKUP"].includes(request.status || "")).length === 0 && (
             <div className="rd-empty">
-              No active requests available
-              for rescheduling.
+              No requests are currently being processed or awaiting pickup.
             </div>
           )}
         </div>
@@ -2531,45 +2577,9 @@ export default function RegistrarDashboard({
       </div>
     </section>
   );
-  const renderMessages = () => (
-    <section className="registrar-page">
-      {heading(
-        "Messages",
-        "Messaging is managed through the shared CampuServe messaging feature.",
-      )}
-      <div className="messages-integration">
-        <div>
-          <h3>
-            Shared Messaging
-          </h3>
-          <p>
-            The Registrar dashboard is ready
-            to connect to the shared Messages
-            module maintained by the assigned
-            team member.
-          </p>
-          <p>
-            No separate Registrar messaging
-            database or duplicate messaging
-            workflow is created here.
-          </p>
-        </div>
-        <button
-          className="primary-button"
-          onClick={() =>
-            setNotice(
-              "Open the shared Messages module from the CampuServe navigation when it is connected.",
-            )
-          }
-        >
-          Messages
-        </button>
-      </div>
-    </section>
-  );
   const renderSettings = () => (
     <section className="registrar-page">
-      {heading("Settings", "Registrar account and workflow information.")}
+      {heading("Settings", "Registrar account information.")}
       <div className="registrar-settings-grid">
         <section className="registrar-settings-card">
           <div className="registrar-settings-heading">
@@ -2610,34 +2620,6 @@ export default function RegistrarDashboard({
           </div>
         </section>
 
-        <section className="registrar-settings-card">
-          <div className="registrar-settings-heading">
-            <h2>Workflow settings</h2>
-            <p>These rules keep Registrar requests consistent.</p>
-          </div>
-          <div className="registrar-settings-rows">
-            <div className="settings-row">
-              <span>Processing order</span>
-              <strong>Automatic FIFO</strong>
-            </div>
-            <div className="settings-row">
-              <span>Payment requirement</span>
-              <strong>Cashier confirmation before processing</strong>
-            </div>
-            <div className="settings-row">
-              <span>Claiming date authority</span>
-              <strong>Registrar and General Office</strong>
-            </div>
-            <div className="settings-row">
-              <span>Request visibility</span>
-              <strong>{registrarAssignmentLabel}</strong>
-            </div>
-          </div>
-          <p className="registrar-settings-note">
-            Account access and college assignments are managed by the Admin.
-          </p>
-        </section>
-
         <section className="registrar-settings-card registrar-session-card">
           <div className="registrar-settings-heading">
             <h2>Account session</h2>
@@ -2666,8 +2648,6 @@ export default function RegistrarDashboard({
         return renderHistory();
       case "reports":
         return renderReports();
-      case "messages":
-        return renderMessages();
       case "settings":
         return renderSettings();
       default:
@@ -2805,20 +2785,6 @@ export default function RegistrarDashboard({
           </button>
           <button
             className={
-              activePage === "messages"
-                ? "nav-item active"
-                : "nav-item"
-            }
-            onClick={() =>
-              changePage("messages")
-            }
-          >
-            <span>
-              Messages
-            </span>
-          </button>
-          <button
-            className={
               activePage === "settings"
                 ? "nav-item active"
                 : "nav-item"
@@ -2878,24 +2844,25 @@ export default function RegistrarDashboard({
           <div className="registrar-topbar-actions">
             <div className="registrar-top-search">
               <input
-                value={topSearch}
+                value={search}
                 onChange={(event) =>
                   openSearch(
                     event.target.value,
                   )
                 }
                 placeholder="Search requests..."
+                aria-label="Search document requests"
               />
+              {search && <button type="button" className="top-search-clear" onClick={clearRequestSearch} aria-label="Clear request search">×</button>}
             </div>
             <div className="registrar-notification-wrap">
               <button
                 className="registrar-icon-button"
-                onClick={() =>
-                  setNotificationsOpen(
-                    (current) =>
-                      !current,
-                  )
-                }
+                onClick={() => {
+                  setNotificationsOpen((current) => !current);
+                  setNewRequestToast(null);
+                  if (requestToastTimerRef.current) clearTimeout(requestToastTimerRef.current);
+                }}
                 aria-label="Notifications"
                 title="Notifications"
               >
@@ -2944,6 +2911,8 @@ export default function RegistrarDashboard({
                             setActivePage(
                               "requests",
                             );
+                            setStatusFilter("ALL");
+                            setSearch("");
                             setNotificationsOpen(
                               false,
                             );
@@ -2966,19 +2935,43 @@ export default function RegistrarDashboard({
                   )}
                 </div>
               )}
+              {newRequestToast && (
+                <div className="registrar-request-toast" role="status" aria-live="polite">
+                  <div className="registrar-request-toast-mark" aria-hidden="true">!</div>
+                  <div className="registrar-request-toast-copy">
+                    <strong>
+                      {newRequestToast.count} new request{newRequestToast.count === 1 ? "" : "s"} {newRequestToast.type === "login" ? "waiting for review" : "received"}
+                    </strong>
+                    <span>Open Document Requests to review {newRequestToast.count === 1 ? "it" : "them"}.</span>
+                    <button
+                      type="button"
+                      className="registrar-request-toast-link"
+                      onClick={() => {
+                        setActivePage("requests");
+                        setStatusFilter("PENDING");
+                        setSearch("");
+                        setSelected(null);
+                        setNotificationsOpen(false);
+                        setNewRequestToast(null);
+                        if (requestToastTimerRef.current) clearTimeout(requestToastTimerRef.current);
+                        if (window.matchMedia("(max-width: 900px)").matches) setMenuOpen(false);
+                      }}
+                    >
+                      View new requests <span aria-hidden="true">→</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="registrar-request-toast-close"
+                    onClick={() => {
+                      setNewRequestToast(null);
+                      if (requestToastTimerRef.current) clearTimeout(requestToastTimerRef.current);
+                    }}
+                    aria-label="Dismiss new request notification"
+                  >×</button>
+                </div>
+              )}
             </div>
-            <button
-              className="registrar-icon-button"
-              onClick={() =>
-                changePage("messages")
-              }
-              aria-label="Messages"
-              title="Messages"
-            >
-              <span className="topbar-icon">
-                <MessageIcon />
-              </span>
-            </button>
           </div>
         </header>
         {error && (
@@ -3045,12 +3038,9 @@ export default function RegistrarDashboard({
                 </strong>
               </div>
               <div>
-                <span>Requested Schedule</span>
+                <span>Date Submitted</span>
                 <strong>
-                  {approveTarget.requested_date ||
-                    "—"}{" "}
-                  {approveTarget.requested_time ||
-                    ""}
+                  {dateOnly(approveTarget.submitted_at || approveTarget.created_at)}
                 </strong>
               </div>
               <div>
@@ -3064,11 +3054,7 @@ export default function RegistrarDashboard({
             </div>
             <p>
               Review the request information
-              before approving it. Once
-              approved, the request will move
-              to the processing stage and the
-              Registrar can start preparing the
-              requested document/s.
+              before approving it. After approval, the student pays the Cashier. Registrar Staff can start processing after payment is confirmed.
             </p>
             <div className="rd-modal-actions">
               <button
@@ -3242,7 +3228,7 @@ export default function RegistrarDashboard({
             <div className="rd-modal-header">
               <div>
                 <span>
-                  RESCHEDULE REQUEST
+                  {rescheduleTarget.claiming_schedule_id ? "CHANGE PICKUP SCHEDULE" : "ASSIGN PICKUP SCHEDULE"}
                 </span>
                 <h2>
                   {rescheduleTarget.request_id}
@@ -3259,37 +3245,19 @@ export default function RegistrarDashboard({
                 ×
               </button>
             </div>
-            <p>
-              Select the new claiming date and AM/PM period.
-            </p>
+            <p>Choose one of the claiming dates and periods created by Registrar Staff. One available place will be reserved for this request.</p>
             <div className="modal-form-grid">
-              <label>
-                <span>
-                  New Date
-                </span>
-                <input
-                  type="date"
-                  value={rescheduleDate}
-                  onChange={(event) =>
-                    setRescheduleDate(
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                <span>
-                  New Claiming Period
-                </span>
-                <select
-                  value={rescheduleTime}
-                  onChange={(event) =>
-                    setRescheduleTime(event.target.value)
-                  }
-                >
-                  <option value="">Choose period</option>
-                  <option value="AM">Morning (AM)</option>
-                  <option value="PM">Afternoon (PM)</option>
+              <label className="rd-schedule-choice-label">
+                <span>Student pickup date and period</span>
+                <select value={rescheduleScheduleId} onChange={(event) => setRescheduleScheduleId(event.target.value)}>
+                  <option value="">Choose a schedule</option>
+                  {schedules
+                    .filter((schedule) => Number(schedule.availableSlots ?? schedule.availableSlot ?? schedule.slotCapacity ?? 0) > 0 || schedule.id === rescheduleTarget.claiming_schedule_id)
+                    .map((schedule) => (
+                      <option key={schedule.id} value={schedule.id}>
+                        {schedule.claimDate} · {schedule.period || schedule.timeSlot} · {Number(schedule.availableSlots ?? schedule.availableSlot ?? schedule.slotCapacity ?? 0)} available
+                      </option>
+                    ))}
                 </select>
               </label>
             </div>
@@ -3314,7 +3282,7 @@ export default function RegistrarDashboard({
                   submitReschedule
                 }
               >
-                Confirm Reschedule
+                  Save Pickup Schedule
               </button>
             </div>
           </div>
@@ -3323,5 +3291,3 @@ export default function RegistrarDashboard({
     </div>
   );
 }
-
-
