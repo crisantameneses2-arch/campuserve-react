@@ -40,7 +40,6 @@ type PaymentRecord = {
   total_amount?: number;
   totalAmount?: number;
 
-  payment_status?: string;
   status?: string;
 };
 
@@ -72,7 +71,7 @@ function CashierDashboard({ account }: CashierDashboardProps) {
   const [message, setMessage] = useState("");
 
   const isPaid = (payment: PaymentRecord) =>
-    payment.payment_status?.toUpperCase() === "PAID";
+    payment.status?.toUpperCase() === "PAID";
 
   // Load actual payment records from Firestore.
   const loadPayments = async () => {
@@ -115,7 +114,7 @@ function CashierDashboard({ account }: CashierDashboardProps) {
       setItemReservations(
         reservations.filter(
           (item) =>
-            item.status?.toLowerCase() === "approved" && !isPaid(item)
+            item.status?.toLowerCase() === "pending" && !isPaid(item)
         )
       );
 
@@ -161,7 +160,7 @@ function CashierDashboard({ account }: CashierDashboardProps) {
         const currentData = paymentSnapshot.data();
 
         // Do not generate another code if payment was already confirmed.
-        if (currentData.payment_status?.toUpperCase() === "PAID") {
+        if (currentData.status?.toUpperCase() === "PAID") {
           return {
             alreadyPaid: true,
             claimingCode:
@@ -172,7 +171,7 @@ function CashierDashboard({ account }: CashierDashboardProps) {
         }
 
         const updates: Record<string, any> = {
-          payment_status: "PAID",
+          status: "PAID",
           payment_confirmed_at: serverTimestamp(),
           payment_confirmed_by: account.firebaseUid || "",
         };
@@ -358,7 +357,7 @@ function CashierDashboard({ account }: CashierDashboardProps) {
                     })}
                   </td>
 
-                  <td>{payment.payment_status || "UNPAID"}</td>
+                  <td>{payment.status || "UNPAID"}</td>
 
                   {activeTab === "history" && (
                     <td>{getClaimingCode(payment) || "Not available"}</td>

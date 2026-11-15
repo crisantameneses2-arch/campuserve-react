@@ -486,139 +486,139 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     // APPROVE RESERVATION
     // =========================
 
-   /*  const approveReservation = async (
-        reservationId: string
-    ) => {
-
-        try {
-
-            // Find the reservation
-            const reservation =
-                reservations.find(
-                    (item) =>
-                        item.id === reservationId
-                );
-
-            if (!reservation) {
-                console.error(
-                    "Reservation not found."
-                );
-                return;
-            }
-
-
-            // Prevent adding reserved quantity twice
-            if (
-                reservation.status.toLowerCase() !==
-                "pending"
-            ) {
-                console.error(
-                    "This reservation has already been processed."
-                );
-                return;
-            }
-
-
-            // =========================
-            // UPDATE INVENTORY RESERVED QUANTITY
-            // =========================
-
-            for (
-                const reservedItem of
-                reservation.items
-            ) {
-
-                if (!reservedItem.inventoryId) {
-                    continue;
-                }
-
-
-                const inventoryItem =
-                    inventory.find(
-                        (item) =>
-                            item.id ===
-                            reservedItem.inventoryId
-                    );
-
-
-                if (!inventoryItem) {
-                    console.error(
-                        `Inventory item not found: ${reservedItem.inventoryId}`
-                    );
-                    continue;
-                }
-
-
-                const currentReserved =
-                    Number(
-                        inventoryItem.reservedQuantity ||
-                        0
-                    );
-
-
-                const quantityToReserve =
-                    Number(
-                        reservedItem.quantity ||
-                        0
-                    );
-
-
-                const newReservedQuantity =
-                    currentReserved +
-                    quantityToReserve;
-
-
-                // Update the inventory document
-                await updateDoc(
-                    doc(
-                        db,
-                        "inventory",
-                        reservedItem.inventoryId
-                    ),
-                    {
-                        reservedQuantity:
-                            newReservedQuantity,
-                    }
-                );
-
-            }
-
-
-
-
-
-            // =========================
-            // UPDATE RESERVATION
-            // =========================
-
-            await updateDoc(
-                doc(
-                    db,
-                    "itemReservations",
-                    reservationId
-                ),
-                {
-                    status: "Approved",
-                }
-            );
-
-
-            // Reload both
-            // reservation and inventory data
-            await loadReservations();
-            await loadInventory();
-
-
-        } catch (error) {
-
-            console.error(
-                "Error approving reservation:",
-                error
-            );
-
-        }
-    };
- */
+    /*  const approveReservation = async (
+         reservationId: string
+     ) => {
+ 
+         try {
+ 
+             // Find the reservation
+             const reservation =
+                 reservations.find(
+                     (item) =>
+                         item.id === reservationId
+                 );
+ 
+             if (!reservation) {
+                 console.error(
+                     "Reservation not found."
+                 );
+                 return;
+             }
+ 
+ 
+             // Prevent adding reserved quantity twice
+             if (
+                 reservation.status.toLowerCase() !==
+                 "pending"
+             ) {
+                 console.error(
+                     "This reservation has already been processed."
+                 );
+                 return;
+             }
+ 
+ 
+             // =========================
+             // UPDATE INVENTORY RESERVED QUANTITY
+             // =========================
+ 
+             for (
+                 const reservedItem of
+                 reservation.items
+             ) {
+ 
+                 if (!reservedItem.inventoryId) {
+                     continue;
+                 }
+ 
+ 
+                 const inventoryItem =
+                     inventory.find(
+                         (item) =>
+                             item.id ===
+                             reservedItem.inventoryId
+                     );
+ 
+ 
+                 if (!inventoryItem) {
+                     console.error(
+                         `Inventory item not found: ${reservedItem.inventoryId}`
+                     );
+                     continue;
+                 }
+ 
+ 
+                 const currentReserved =
+                     Number(
+                         inventoryItem.reservedQuantity ||
+                         0
+                     );
+ 
+ 
+                 const quantityToReserve =
+                     Number(
+                         reservedItem.quantity ||
+                         0
+                     );
+ 
+ 
+                 const newReservedQuantity =
+                     currentReserved +
+                     quantityToReserve;
+ 
+ 
+                 // Update the inventory document
+                 await updateDoc(
+                     doc(
+                         db,
+                         "inventory",
+                         reservedItem.inventoryId
+                     ),
+                     {
+                         reservedQuantity:
+                             newReservedQuantity,
+                     }
+                 );
+ 
+             }
+ 
+ 
+ 
+ 
+ 
+             // =========================
+             // UPDATE RESERVATION
+             // =========================
+ 
+             await updateDoc(
+                 doc(
+                     db,
+                     "itemReservations",
+                     reservationId
+                 ),
+                 {
+                     status: "Approved",
+                 }
+             );
+ 
+ 
+             // Reload both
+             // reservation and inventory data
+             await loadReservations();
+             await loadInventory();
+ 
+ 
+         } catch (error) {
+ 
+             console.error(
+                 "Error approving reservation:",
+                 error
+             );
+ 
+         }
+     };
+  */
 
     // =========================
     // UPDATE PICKUP DATE
@@ -700,22 +700,22 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     // GENERATE 8-CHAR ALPHANUMERIC PAYMENT CODE
     // =========================
 
-  /*   const generatePaymentCode = (length = 8): string => {
-
-        // Excludes 0, 1, I, O to avoid ambiguity
-        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-        const randomValues = new Uint32Array(length);
-        crypto.getRandomValues(randomValues);
-
-        let code = "";
-
-        for (let i = 0; i < length; i++) {
-            code += chars[randomValues[i] % chars.length];
-        }
-
-        return code;
-    }; */
+    /*   const generatePaymentCode = (length = 8): string => {
+  
+          // Excludes 0, 1, I, O to avoid ambiguity
+          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  
+          const randomValues = new Uint32Array(length);
+          crypto.getRandomValues(randomValues);
+  
+          let code = "";
+  
+          for (let i = 0; i < length; i++) {
+              code += chars[randomValues[i] % chars.length];
+          }
+  
+          return code;
+      }; */
 
     // =========================
     // UPDATE STATUS TO PENDING
@@ -754,77 +754,77 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     // SEND PAYMENT CODE
     // =========================
 
-   /*  const sendPaymentCode = async (
-        reservationId: string
-    ) => {
-
-        try {
-
-            const code = generatePaymentCode(8);
-
-            await updateDoc(
-                doc(
-                    db,
-                    "itemReservations",
-                    reservationId
-                ),
-                {
-                    paymentCode: code,
-                }
-            );
-
-            alert(
-                `Payment code sent: ${code}`
-            );
-
-            await loadReservations();
-
-        } catch (error) {
-
-            console.error(
-                "Error sending payment code:",
-                error
-            );
-
-            alert(
-                "Failed to send payment code."
-            );
-        }
-    }; */
+    /*  const sendPaymentCode = async (
+         reservationId: string
+     ) => {
+ 
+         try {
+ 
+             const code = generatePaymentCode(8);
+ 
+             await updateDoc(
+                 doc(
+                     db,
+                     "itemReservations",
+                     reservationId
+                 ),
+                 {
+                     paymentCode: code,
+                 }
+             );
+ 
+             alert(
+                 `Payment code sent: ${code}`
+             );
+ 
+             await loadReservations();
+ 
+         } catch (error) {
+ 
+             console.error(
+                 "Error sending payment code:",
+                 error
+             );
+ 
+             alert(
+                 "Failed to send payment code."
+             );
+         }
+     }; */
     // =========================
     // UPDATE PICKUP TIME
     // =========================
 
-  /*   const updatePickupTime = async (
-        reservationId: string,
-        newPickupTime: string
-    ) => {
-
-        try {
-
-            await updateDoc(
-                doc(
-                    db,
-                    "itemReservations",
-                    reservationId
-                ),
-                {
-                    pickupTime: newPickupTime,
-                }
-            );
-
-
-            await loadReservations();
-
-        } catch (error) {
-
-            console.error(
-                "Error updating pickup time:",
-                error
-            );
-
-        }
-    }; */
+    /*   const updatePickupTime = async (
+          reservationId: string,
+          newPickupTime: string
+      ) => {
+  
+          try {
+  
+              await updateDoc(
+                  doc(
+                      db,
+                      "itemReservations",
+                      reservationId
+                  ),
+                  {
+                      pickupTime: newPickupTime,
+                  }
+              );
+  
+  
+              await loadReservations();
+  
+          } catch (error) {
+  
+              console.error(
+                  "Error updating pickup time:",
+                  error
+              );
+  
+          }
+      }; */
 
 
     // =========================
@@ -850,19 +850,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 return;
             }
 
-            if (
-                reservation.status.toLowerCase() !==
-                "approved"
-            ) {
-                console.error(
-                    "Only approved reservations can be claimed."
-                );
-                return;
-            }
-            if (reservation.payment_status !== "PAID") {
-                alert("Payment must be confirmed by the Cashier before this item can be claimed.");
-                return;
-            }
 
             if (!reservation.claimStubId) {
                 alert("No claiming code found. Please ask the Cashier to confirm payment.");
@@ -911,12 +898,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 const currentReservedQuantity =
                     Number(inventoryItem.reservedQuantity || 0);
 
-                if (currentReservedQuantity < quantityBought) {
-                    console.error(
-                        `Reserved quantity is not enough for ${claimedItem.itemName}.`
-                    );
-                    continue;
-                }
+                
 
                 // Deduct from the stock source actually used.
                 const currentOnlineStock =
@@ -1036,7 +1018,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                     reservationId
                 ),
                 {
-                    status: "Claimed",
+                    status: "approved",
                 }
             );
 
@@ -1096,7 +1078,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             quantity: 1,
             size: "",
             subtotal: 0,
-            purchaseType: "Online",
+            purchaseType: "Walk",
         });
     };
 
@@ -1129,6 +1111,42 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             };
 
         });
+    };
+
+    const claimReservation = async (
+        reservationId: string
+    ) => {
+        try {
+            const reservation = reservations.find(
+                (item) => item.id === reservationId
+            );
+
+            if (!reservation) {
+                alert("Reservation not found.");
+                return;
+            }
+
+            if (reservation.status?.toLowerCase() !== "approved") {
+                alert("Only approved reservations can be marked as claimed.");
+                return;
+            }
+
+            await updateDoc(
+                doc(db, "itemReservations", reservationId),
+                {
+                    status: "claimed",
+                    claimedAt: serverTimestamp(),
+                }
+            );
+
+            await loadReservations();
+
+            alert("Reservation successfully marked as claimed!");
+
+        } catch (error) {
+            console.error("Error claiming reservation:", error);
+            alert("Failed to update reservation status.");
+        }
     };
 
 
@@ -1222,7 +1240,8 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     ),
 
                                 purchaseType:
-                                    item.purchaseType || "Online",
+                                    item.purchaseType || "Online"
+                                    
                             })
                         ),
 
@@ -1247,7 +1266,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 pickupDate: "",
                 pickupTime:
                     "8:00AM - 10:00AM",
-                status: "Unsettled",
+                status: "Unpaid",
                 totalAmount: 0,
                 items: [],
             });
@@ -1296,7 +1315,8 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             (reservation) =>
                 reservation.status.toLowerCase() ===
                 "pending" ||
-                reservation.status.toLowerCase() === "paid"
+                reservation.status.toLowerCase() === "paid" ||
+                reservation.status.toLowerCase() === "approved"
         );
 
 
@@ -3047,70 +3067,47 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                                         {/* ACTION */}
 
+
+
                                                         <td>
+                                                            <div style={{ display: "flex", gap: "8px" }}>
 
-                                                            <div
-                                                                style={{
-                                                                    display: "flex",
-                                                                    gap: "8px",
-                                                                }}
-                                                            >
+                                                                {reservation.status?.toLowerCase() === "approved" ? (
+                                                                    <button
+                                                                        onClick={() => claimReservation(reservation.id)}
+                                                                    >
+                                                                        Complete
+                                                                    </button>
+                                                                ) : reservation.status?.toLowerCase() === "claimed" ? (
+                                                                    <button disabled>
+                                                                        Claimed
+                                                                    </button>
+                                                                ) : (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => completeReservation(reservation.id)}
+                                                                            disabled={!reservation.claimStubId.trim()}
+                                                                        >
+                                                                            Approve
+                                                                        </button>
 
-                                                                <button
-                                                                    onClick={() =>
-                                                                        completeReservation(
-                                                                            reservation.id
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        reservation.status.toLowerCase() ===
-                                                                        "pending"
-                                                                    }
-                                                                    style={{
-                                                                        opacity:
-                                                                            reservation.status.toLowerCase() ===
-                                                                                "pending"
-                                                                                ? 0.5
-                                                                                : 1,
-                                                                        cursor:
-                                                                            reservation.status.toLowerCase() ===
-                                                                                "pending"
-                                                                                ? "not-allowed"
-                                                                                : "pointer",
-                                                                    }}
-                                                                >
-                                                                    Complete
-                                                                </button>
-
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setSelectedReservationForCancel(reservation);
-                                                                        setCancellationReason("");
-                                                                        setShowCancelModal(true);
-                                                                    }}
-                                                                    disabled={
-                                                                        reservation.status.toLowerCase() ===
-                                                                        "pending"
-                                                                    }
-                                                                    style={{
-                                                                        opacity:
-                                                                            reservation.status.toLowerCase() ===
-                                                                                "pending"
-                                                                                ? 0.5
-                                                                                : 1,
-                                                                        cursor:
-                                                                            reservation.status.toLowerCase() ===
-                                                                                "pending"
-                                                                                ? "not-allowed"
-                                                                                : "pointer",
-                                                                    }}
-                                                                >
-                                                                    Cancel
-                                                                </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setSelectedReservationForCancel(reservation);
+                                                                                setCancellationReason("");
+                                                                                setShowCancelModal(true);
+                                                                            }}
+                                                                            disabled={!reservation.claimStubId.trim()}
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                    </>
+                                                                )}
 
                                                             </div>
-
                                                         </td>
+
+
 
                                                     </tr>
 
