@@ -1078,7 +1078,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             quantity: 1,
             size: "",
             subtotal: 0,
-            purchaseType: "Walk",
+            purchaseType: "Walk-in",
         });
     };
 
