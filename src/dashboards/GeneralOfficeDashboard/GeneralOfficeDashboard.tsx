@@ -700,7 +700,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     // GENERATE 8-CHAR ALPHANUMERIC PAYMENT CODE
     // =========================
 
-    const generatePaymentCode = (length = 8): string => {
+  /*   const generatePaymentCode = (length = 8): string => {
 
         // Excludes 0, 1, I, O to avoid ambiguity
         const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -715,7 +715,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         }
 
         return code;
-    };
+    }; */
 
     // =========================
     // UPDATE STATUS TO PENDING
