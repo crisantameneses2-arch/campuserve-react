@@ -486,7 +486,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     // APPROVE RESERVATION
     // =========================
 
-    const approveReservation = async (
+   /*  const approveReservation = async (
         reservationId: string
     ) => {
 
@@ -618,7 +618,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
         }
     };
-
+ */
 
     // =========================
     // UPDATE PICKUP DATE
@@ -754,7 +754,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     // SEND PAYMENT CODE
     // =========================
 
-    const sendPaymentCode = async (
+   /*  const sendPaymentCode = async (
         reservationId: string
     ) => {
 
@@ -790,12 +790,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 "Failed to send payment code."
             );
         }
-    };
+    }; */
     // =========================
     // UPDATE PICKUP TIME
     // =========================
 
-    const updatePickupTime = async (
+  /*   const updatePickupTime = async (
         reservationId: string,
         newPickupTime: string
     ) => {
@@ -824,7 +824,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             );
 
         }
-    };
+    }; */
 
 
     // =========================
