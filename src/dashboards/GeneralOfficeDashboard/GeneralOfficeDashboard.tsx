@@ -584,7 +584,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             }
 
 
-            
+
 
 
             // =========================
@@ -592,15 +592,15 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             // =========================
 
             await updateDoc(
-    doc(
-        db,
-        "itemReservations",
-        reservationId
-    ),
-    {
-        status: "Approved",
-    }
-);
+                doc(
+                    db,
+                    "itemReservations",
+                    reservationId
+                ),
+                {
+                    status: "Approved",
+                }
+            );
 
 
             // Reload both
@@ -717,6 +717,38 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         return code;
     };
 
+    // =========================
+    // UPDATE STATUS TO PENDING
+    // =========================
+
+    const updateStatusToPending = async (
+        reservationId: string
+    ) => {
+
+        try {
+
+            await updateDoc(
+                doc(
+                    db,
+                    "itemReservations",
+                    reservationId
+                ),
+                {
+                    status: "Pending",
+                }
+            );
+
+            await loadReservations();
+
+        } catch (error) {
+
+            console.error(
+                "Error updating status:",
+                error
+            );
+
+        }
+    };
 
     // =========================
     // SEND PAYMENT CODE
@@ -828,14 +860,14 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 return;
             }
             if (reservation.payment_status !== "PAID") {
-    alert("Payment must be confirmed by the Cashier before this item can be claimed.");
-    return;
-}
+                alert("Payment must be confirmed by the Cashier before this item can be claimed.");
+                return;
+            }
 
-if (!reservation.claimStubId) {
-    alert("No claiming code found. Please ask the Cashier to confirm payment.");
-    return;
-}
+            if (!reservation.claimStubId) {
+                alert("No claiming code found. Please ask the Cashier to confirm payment.");
+                return;
+            }
 
             // =========================
             // UPDATE INVENTORY BY PURCHASE TYPE
@@ -1254,8 +1286,8 @@ if (!reservation.claimStubId) {
     const pendingReservations =
         reservations.filter(
             (reservation) =>
-                reservation.status.toLowerCase() === "pending" ||
-                reservation.status.toLowerCase() === "unsettled"
+                reservation.status.toLowerCase() === "unpaid"
+
         );
 
 
@@ -1263,7 +1295,8 @@ if (!reservation.claimStubId) {
         reservations.filter(
             (reservation) =>
                 reservation.status.toLowerCase() ===
-                "approved"
+                "pending" ||
+                reservation.status.toLowerCase() === "paid"
         );
 
 
@@ -2459,6 +2492,10 @@ if (!reservation.claimStubId) {
                                                 </th>
 
                                                 <th>
+                                                    Mobile
+                                                </th>
+
+                                                <th>
                                                     Items
                                                 </th>
 
@@ -2466,7 +2503,9 @@ if (!reservation.claimStubId) {
                                                 <th>
                                                     Total
                                                 </th>
-
+                                                <th>
+                                                    Purchase Type
+                                                </th>
                                                 <th>
                                                     Status
                                                 </th>
@@ -2474,9 +2513,7 @@ if (!reservation.claimStubId) {
                                                 <th>
                                                     Action
                                                 </th>
-                                                <th>
-                                                    Payment Code
-                                                </th>
+
 
                                             </tr>
 
@@ -2532,6 +2569,12 @@ if (!reservation.claimStubId) {
 
                                                         </td>
 
+                                                        <td>
+                                                            {
+                                                                reservation.mobileNumber
+                                                            }
+                                                        </td>
+
 
                                                         <td>
 
@@ -2585,6 +2628,7 @@ if (!reservation.claimStubId) {
 
 
 
+
                                                         <td>
 
                                                             <strong>
@@ -2593,7 +2637,24 @@ if (!reservation.claimStubId) {
                                                             </strong>
 
                                                         </td>
+                                                        <td>
 
+                                                            {reservation.items.map(
+                                                                (item, index) => (
+
+                                                                    <div
+                                                                        key={index}
+                                                                        style={{
+                                                                            marginBottom: "6px",
+                                                                        }}
+                                                                    >
+                                                                        {item.purchaseType}
+                                                                    </div>
+
+                                                                )
+                                                            )}
+
+                                                        </td>
 
                                                         <td>
 
@@ -2610,57 +2671,39 @@ if (!reservation.claimStubId) {
 
                                                         <td>
 
-                                                            {reservation.status.toLowerCase() === "unsettled" ? (
 
+
+                                                            <div
+                                                                style={{
+                                                                    display: "flex",
+                                                                    gap: "8px",
+                                                                }}
+                                                            >
                                                                 <button
                                                                     onClick={() =>
-                                                                        sendPaymentCode(reservation.id)
+                                                                        updateStatusToPending(reservation.id)
                                                                     }
-                                                                    disabled={!!reservation.paymentCode}
                                                                 >
-                                                                    {reservation.paymentCode
-                                                                        ? "Code Sent"
-                                                                        : "Send Code"}
+                                                                    Accept
                                                                 </button>
 
-
-                                                            ) : (
-
-                                                                <div
-                                                                    style={{
-                                                                        display: "flex",
-                                                                        gap: "8px",
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedReservationForCancel(
+                                                                            reservation
+                                                                        );
+                                                                        setCancellationReason("");
+                                                                        setShowCancelModal(true);
                                                                     }}
                                                                 >
-                                                                    <button
-                                                                        onClick={() =>
-                                                                            approveReservation(
-                                                                                reservation.id
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        Approve
-                                                                    </button>
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
 
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setSelectedReservationForCancel(
-                                                                                reservation
-                                                                            );
-                                                                            setCancellationReason("");
-                                                                            setShowCancelModal(true);
-                                                                        }}
-                                                                    >
-                                                                        Cancel
-                                                                    </button>
-                                                                </div>
 
-                                                            )}
 
                                                         </td>
-                                                        <td>
-                                                            {reservation.paymentCode || "—"}
-                                                        </td>
+
 
                                                     </tr>
 
@@ -2940,48 +2983,24 @@ if (!reservation.claimStubId) {
                                                                 value={
                                                                     reservation.pickupDate
                                                                 }
+                                                                disabled={!reservation.claimStubId.trim()}
                                                                 onChange={(e) =>
                                                                     updatePickupDate(
                                                                         reservation.id,
                                                                         e.target.value
                                                                     )
                                                                 }
+                                                                style={{
+                                                                    opacity: reservation.claimStubId.trim()
+                                                                        ? 1
+                                                                        : 0.5,
+                                                                    cursor: reservation.claimStubId.trim()
+                                                                        ? "pointer"
+                                                                        : "not-allowed",
+                                                                }}
                                                             />
 
                                                             <br />
-
-
-                                                            {/* PICKUP TIME */}
-
-                                                            <select
-                                                                value={
-                                                                    reservation.pickupTime
-                                                                }
-                                                                onChange={(e) =>
-                                                                    updatePickupTime(
-                                                                        reservation.id,
-                                                                        e.target.value
-                                                                    )
-                                                                }
-                                                            >
-
-                                                                <option value="8:00AM - 10:00AM">
-                                                                    8:00AM - 10:00AM
-                                                                </option>
-
-                                                                <option value="10:00AM - 12:00PM">
-                                                                    10:00AM - 12:00PM
-                                                                </option>
-
-                                                                <option value="1:00PM - 3:00PM">
-                                                                    1:00PM - 3:00PM
-                                                                </option>
-
-                                                                <option value="3:00PM - 5:00PM">
-                                                                    3:00PM - 5:00PM
-                                                                </option>
-
-                                                            </select>
 
                                                         </td>
 
@@ -3029,7 +3048,13 @@ if (!reservation.claimStubId) {
                                                         {/* ACTION */}
 
                                                         <td>
-                                                            <div style={{ display: "flex", gap: "8px" }}>
+
+                                                            <div
+                                                                style={{
+                                                                    display: "flex",
+                                                                    gap: "8px",
+                                                                }}
+                                                            >
 
                                                                 <button
                                                                     onClick={() =>
@@ -3037,18 +3062,52 @@ if (!reservation.claimStubId) {
                                                                             reservation.id
                                                                         )
                                                                     }
+                                                                    disabled={
+                                                                        reservation.status.toLowerCase() ===
+                                                                        "pending"
+                                                                    }
+                                                                    style={{
+                                                                        opacity:
+                                                                            reservation.status.toLowerCase() ===
+                                                                                "pending"
+                                                                                ? 0.5
+                                                                                : 1,
+                                                                        cursor:
+                                                                            reservation.status.toLowerCase() ===
+                                                                                "pending"
+                                                                                ? "not-allowed"
+                                                                                : "pointer",
+                                                                    }}
                                                                 >
                                                                     Complete
                                                                 </button>
+
                                                                 <button
                                                                     onClick={() => {
                                                                         setSelectedReservationForCancel(reservation);
                                                                         setCancellationReason("");
                                                                         setShowCancelModal(true);
                                                                     }}
+                                                                    disabled={
+                                                                        reservation.status.toLowerCase() ===
+                                                                        "pending"
+                                                                    }
+                                                                    style={{
+                                                                        opacity:
+                                                                            reservation.status.toLowerCase() ===
+                                                                                "pending"
+                                                                                ? 0.5
+                                                                                : 1,
+                                                                        cursor:
+                                                                            reservation.status.toLowerCase() ===
+                                                                                "pending"
+                                                                                ? "not-allowed"
+                                                                                : "pointer",
+                                                                    }}
                                                                 >
                                                                     Cancel
                                                                 </button>
+
                                                             </div>
 
                                                         </td>
@@ -4168,6 +4227,9 @@ if (!reservation.claimStubId) {
                                                 Amount
                                             </th>
 
+
+
+
                                             <th>
                                                 Pickup Date
                                             </th>
@@ -4252,6 +4314,7 @@ if (!reservation.claimStubId) {
 
                                                             </td>
 
+
                                                             <td>
                                                                 {
                                                                     reservation.pickupDate
@@ -4330,7 +4393,7 @@ if (!reservation.claimStubId) {
                                         style={{ padding: "8px" }}
                                     >
                                         <option value="All">All</option>
-                                        <option value="Unsettled">Unsettled</option>
+                                        <option value="Unpaid">Unpaid</option>
                                         <option value="Pending">Pending</option>
                                         <option value="Approved">Approved</option>
                                         <option value="Claimed">Claimed</option>
@@ -4900,7 +4963,7 @@ if (!reservation.claimStubId) {
                                             marginTop: "6px",
                                         }}
                                     >
-                                        <option value="Unsettled">Unsettled</option>
+                                        <option value="Unpaid">Unpaid</option>
                                         <option value="Pending">
                                             Pending
                                         </option>
