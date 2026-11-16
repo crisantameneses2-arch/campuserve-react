@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   onSnapshot,
-  orderBy,
+/*   orderBy, */
   query,
   where,
 } from "firebase/firestore";
@@ -66,7 +66,7 @@ type StudentTransaction = {
   claimCode: string;
   createdAt: unknown;
 };
-type InventoryItem = {
+/* type InventoryItem = {
   id: string;
   itemName: string;
   size?: string;
@@ -74,7 +74,7 @@ type InventoryItem = {
   totalStock?: number;
   status?: string;
 };
-
+ */
 const ACTIVE_STATUSES = [
   "PENDING",
   "APPROVED",
@@ -337,11 +337,11 @@ export default function StudentDashboard({
   /* =========================================
      LIVE INVENTORY
   ========================================= */
-
+/* 
   const [inventory, setInventory] =
-    useState<InventoryItem[]>([]);
-
-  /* const [inventoryLoading, setInventoryLoading] =
+    useState<InventoryItem[]>([]); */
+/* 
+  const [inventoryLoading, setInventoryLoading] =
     useState(true);
 
   useEffect(() => {
@@ -369,8 +369,8 @@ export default function StudentDashboard({
       }
     );
   }, []);
- */
-/*   const liveStocks = useMemo(
+
+  const liveStocks = useMemo(
     () =>
       inventory
         .filter(
