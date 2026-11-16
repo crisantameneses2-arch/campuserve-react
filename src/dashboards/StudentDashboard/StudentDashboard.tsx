@@ -341,7 +341,7 @@ export default function StudentDashboard({
   const [inventory, setInventory] =
     useState<InventoryItem[]>([]);
 
-  const [inventoryLoading, setInventoryLoading] =
+  /* const [inventoryLoading, setInventoryLoading] =
     useState(true);
 
   useEffect(() => {
@@ -369,8 +369,8 @@ export default function StudentDashboard({
       }
     );
   }, []);
-
-  const liveStocks = useMemo(
+ */
+/*   const liveStocks = useMemo(
     () =>
       inventory
         .filter(
@@ -378,7 +378,7 @@ export default function StudentDashboard({
         )
         .slice(0, 4),
     [inventory]
-  );
+  ); */
 
   /* =========================================
      NOTIFICATION CLICK
