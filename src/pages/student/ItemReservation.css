@@ -1,132 +1,643 @@
+
+/* =========================================
+   CAMPUSERVE - ITEM RESERVATION
+   Modern responsive design
+========================================= */
+
+:root {
+  --reservation-primary: #1f4f8f;
+  --reservation-primary-dark: #173b6b;
+  --reservation-primary-light: #edf4fc;
+  --reservation-text: #202b3c;
+  --reservation-muted: #718096;
+  --reservation-border: #e2e8f0;
+  --reservation-background: #f5f7fb;
+  --reservation-white: #ffffff;
+  --reservation-success: #16834a;
+  --reservation-danger: #dc4545;
+  --reservation-radius: 14px;
+  --reservation-shadow: 0 5px 20px rgba(25, 45, 75, 0.06);
+}
+
+/* =========================================
+   GENERAL PAGE
+========================================= */
+
+.reservation-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 32px 5%;
+  box-sizing: border-box;
+  background: var(--reservation-background);
+  color: var(--reservation-text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.reservation-page *,
+.reservation-page *::before,
+.reservation-page *::after {
+  box-sizing: border-box;
+}
+
+.reservation-page button,
+.reservation-page input {
+  font: inherit;
+}
+
+/* =========================================
+   MAIN HEADER
+========================================= */
+
+.reservation-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.reservation-header h1 {
+  margin: 0;
+  color: var(--reservation-text);
+  font-size: 29px;
+  font-weight: 750;
+  letter-spacing: -0.6px;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 17px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 9px;
+  background: var(--reservation-white);
+  color: var(--reservation-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.back-button:hover {
+  border-color: var(--reservation-primary);
+  color: var(--reservation-primary);
+  transform: translateY(-1px);
+}
+
+/* =========================================
+   RESERVATION REMINDER
+========================================= */
+
+.reservation-reminder {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 30px;
+  padding: 27px 30px;
+  border-radius: 16px;
+  background: linear-gradient(
+    120deg,
+    #1f4f8f,
+    #2d68ae
+  );
+  color: white;
+  box-shadow: 0 8px 20px rgba(31, 79, 143, 0.15);
+}
+
+.reservation-reminder h2 {
+  margin: 0 0 10px;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.reservation-reminder p {
+  max-width: 700px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* =========================================
+   CATEGORY FILTERS
+========================================= */
+
+.reservation-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.reservation-filter {
+  min-height: 40px;
+  padding: 10px 19px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 30px;
+  background: white;
+  color: #596579;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reservation-filter:hover {
+  border-color: var(--reservation-primary);
+  color: var(--reservation-primary);
+}
+
+.reservation-filter.active {
+  border-color: var(--reservation-primary);
+  background: var(--reservation-primary);
+  color: white;
+  box-shadow: 0 4px 10px rgba(31, 79, 143, 0.16);
+}
+
+/* =========================================
+   ITEM GRID
+========================================= */
+
+.reservation-items {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.reservation-items > p {
+  grid-column: 1 / -1;
+  padding: 55px 20px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  background: white;
+  color: var(--reservation-muted);
+  text-align: center;
+  font-size: 14px;
+}
+
+/* =========================================
+   ITEM CARD
+========================================= */
+
+.reservation-item-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 22px;
+  min-width: 0;
+  padding: 23px;
+  border: 1px solid var(--reservation-border);
+  border-radius: var(--reservation-radius);
+  background: white;
+  box-shadow: var(--reservation-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reservation-item-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(25, 45, 75, 0.1);
+}
+
+.reservation-item-info {
+  min-width: 0;
+}
+
+.item-category {
+  display: inline-block;
+  margin-bottom: 13px;
+  padding: 6px 11px;
+  border-radius: 20px;
+  background: var(--reservation-primary-light);
+  color: var(--reservation-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reservation-item-info h2 {
+  margin: 0 0 15px;
+  color: var(--reservation-text);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.reservation-item-info p {
+  margin: 0;
+  color: var(--reservation-muted);
+  font-size: 13px;
+}
+
+.reservation-item-info p strong {
+  color: var(--reservation-success);
+  font-size: 15px;
+}
+
+.go-reservation-button {
+  width: 100%;
+  min-height: 43px;
+  padding: 11px 16px;
+  border: none;
+  border-radius: 9px;
+  background: var(--reservation-primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.go-reservation-button:hover {
+  background: var(--reservation-primary-dark);
+  transform: translateY(-1px);
+}
+
+/* =========================================
+   ITEM SELECTION PAGE
+========================================= */
+
 .item-selection-page {
-  padding-top: 10px;
+  width: 100%;
+  max-width: 1050px;
+  margin: 0 auto;
+  padding-top: 5px;
 }
 
 .item-selection-header {
-  margin-top: 24px;
-  margin-bottom: 24px;
+  margin: 27px 0;
+  padding: 27px 30px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 15px;
+  background: white;
+  box-shadow: var(--reservation-shadow);
 }
 
 .item-selection-header span {
-  font-size: 13px;
-  color: #777;
+  display: inline-block;
+  margin-bottom: 9px;
+  color: var(--reservation-primary);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
 }
 
 .item-selection-header h1 {
-  margin: 6px 0;
-  font-size: 26px;
+  margin: 0 0 8px;
+  color: var(--reservation-text);
+  font-size: 28px;
+  font-weight: 750;
 }
 
 .item-selection-header p {
   margin: 0;
-  color: #777;
+  color: var(--reservation-muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
+
+/* =========================================
+   SIZE OPTIONS
+========================================= */
 
 .size-list {
   display: grid;
-  grid-template-columns:
-    repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .size-option {
-  border: 1px solid #ddd;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 125px;
+  padding: 20px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 13px;
   background: white;
-  border-radius: 12px;
-  padding: 16px;
   text-align: left;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.size-option:hover {
-  border-color: #1f4f8f;
+.size-option:hover:not(:disabled) {
+  border-color: var(--reservation-primary);
+  background: #f9fbff;
+  transform: translateY(-2px);
 }
 
 .size-option.selected {
-  border: 2px solid #1f4f8f;
+  border: 2px solid var(--reservation-primary);
+  background: var(--reservation-primary-light);
+}
+
+.size-name {
+  color: var(--reservation-text);
+  font-size: 19px;
+  font-weight: 750;
+}
+
+.size-price {
+  margin-top: 12px;
+  color: var(--reservation-primary);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.size-stock {
+  margin-top: 8px;
+  color: var(--reservation-success);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .size-option:disabled {
   opacity: 0.45;
+  background: #f1f3f5;
   cursor: not-allowed;
 }
 
-.size-name {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.size-price {
-  margin-top: 8px;
-  font-size: 16px;
-}
-
-.size-stock {
-  margin-top: 5px;
-  font-size: 13px;
-  color: #777;
-}
+/* =========================================
+   QUANTITY SECTION
+========================================= */
 
 .quantity-section {
+  max-width: 500px;
   margin-top: 28px;
-  padding: 20px;
-  border-radius: 14px;
-  background: #f7f7f7;
+  padding: 25px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 15px;
+  background: white;
+  box-shadow: var(--reservation-shadow);
 }
 
 .quantity-section h3 {
-  margin-top: 0;
+  margin: 0 0 19px;
+  color: var(--reservation-text);
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .quantity-controls {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 17px;
 }
 
 .quantity-controls button {
-  width: 38px;
-  height: 38px;
-  border: none;
-  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 9px;
   background: white;
+  color: var(--reservation-primary);
+  font-size: 23px;
   cursor: pointer;
-  font-size: 20px;
+  transition: 0.2s ease;
+}
+
+.quantity-controls button:hover:not(:disabled) {
+  border-color: var(--reservation-primary);
+  background: var(--reservation-primary-light);
+}
+
+.quantity-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .quantity-controls span {
-  font-size: 20px;
-  font-weight: 600;
+  min-width: 30px;
+  color: var(--reservation-text);
+  text-align: center;
+  font-size: 21px;
+  font-weight: 750;
+}
+
+.quantity-section > p {
+  margin: 12px 0 0;
+  color: var(--reservation-muted);
+  font-size: 12px;
 }
 
 .add-reservation-button {
   width: 100%;
-  margin-top: 18px;
-  padding: 13px;
-
+  min-height: 46px;
+  margin-top: 23px;
+  padding: 13px 18px;
   border: none;
-  border-radius: 8px;
-
-  background: #1f4f8f;
+  border-radius: 9px;
+  background: var(--reservation-primary);
   color: white;
-
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
-  font-size: 15px;
+  transition: 0.2s ease;
 }
 
-@media (max-width: 700px) {
-  .size-list {
-    grid-template-columns:
-      repeat(2, 1fr);
-  }
+.add-reservation-button:hover {
+  background: var(--reservation-primary-dark);
 }
+
+/* =========================================
+   CHECKOUT PAGE
+========================================= */
+
+.reservation-checkout {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 30px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 17px;
+  background: white;
+  box-shadow: var(--reservation-shadow);
+}
+
+.checkout-header {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  margin-bottom: 26px;
+}
+
+.checkout-header h1 {
+  margin: 0;
+  color: var(--reservation-text);
+  font-size: 25px;
+  font-weight: 750;
+}
+
+/* =========================================
+   CHECKOUT ITEM SUMMARY
+========================================= */
+
+.checkout-items {
+  padding: 20px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 12px;
+  background: #f9fbfe;
+}
+
+.checkout-items-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 13px;
+  color: var(--reservation-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.checkout-items-header button {
+  padding: 6px 11px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 7px;
+  background: white;
+  color: var(--reservation-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.checkout-items-header button:hover {
+  background: var(--reservation-primary-light);
+}
+
+.checkout-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--reservation-border);
+  color: var(--reservation-text);
+  font-size: 13px;
+}
+
+.checkout-item strong {
+  font-weight: 600;
+}
+
+.checkout-item span {
+  color: var(--reservation-primary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.checkout-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 18px;
+  color: var(--reservation-text);
+  font-size: 20px;
+  font-weight: 750;
+}
+
+/* =========================================
+   STUDENT INFORMATION
+========================================= */
+
+.checkout-section {
+  margin-top: 28px;
+}
+
+.checkout-section h3 {
+  margin: 0 0 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--reservation-border);
+  color: var(--reservation-text);
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.7px;
+}
+
+.student-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 17px;
+}
+
+.student-field label {
+  color: #46546a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.student-field input {
+  width: 100%;
+  min-height: 45px;
+  padding: 11px 13px;
+  border: 1px solid #d8e0eb;
+  border-radius: 8px;
+  outline: none;
+  background: white;
+  color: var(--reservation-text);
+  font-size: 13px;
+  transition: 0.2s ease;
+}
+
+.student-field input::placeholder {
+  color: #a0aaba;
+}
+
+.student-field input:focus {
+  border-color: var(--reservation-primary);
+  box-shadow: 0 0 0 3px rgba(31, 79, 143, 0.09);
+}
+
+.student-field input[readonly] {
+  background: #f3f6fa;
+  color: #68768a;
+  cursor: default;
+}
+
+/* =========================================
+   RESERVE BUTTON
+========================================= */
+
+.reserve-final-button {
+  display: block;
+  width: 100%;
+  min-height: 49px;
+  margin: 27px auto 0;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 9px;
+  background: var(--reservation-primary);
+  color: white;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.reserve-final-button:hover:not(:disabled) {
+  background: var(--reservation-primary-dark);
+  transform: translateY(-1px);
+}
+
+.reserve-final-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   CART PREVIEW - IF USED
+========================================= */
 
 .reservation-cart-preview {
   margin: 24px 0;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  background: #fff;
+  padding: 22px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 13px;
+  background: white;
 }
 
 .reservation-cart-preview h2 {
@@ -137,8 +648,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 15px;
   padding: 14px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--reservation-border);
 }
 
 .cart-preview-item p {
@@ -150,11 +662,12 @@
   justify-content: space-between;
   padding-top: 16px;
   font-size: 18px;
+  font-weight: 700;
 }
 
-/* =========================
-   CART PAGE
-   ========================= */
+/* =========================================
+   CART PAGE - IF USED
+========================================= */
 
 .cart-page {
   width: 100%;
@@ -175,7 +688,7 @@
 
 .cart-header p {
   margin: 0;
-  color: #666;
+  color: var(--reservation-muted);
 }
 
 .cart-items {
@@ -189,12 +702,10 @@
   justify-content: space-between;
   align-items: center;
   gap: 24px;
-
   padding: 22px;
-
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 12px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 13px;
+  background: white;
 }
 
 .cart-item-info {
@@ -204,8 +715,9 @@
 .cart-item-category {
   display: inline-block;
   margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--reservation-primary);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .cart-item-info h2 {
@@ -214,6 +726,7 @@
 
 .cart-item-info p {
   margin: 4px 0;
+  color: var(--reservation-muted);
 }
 
 .cart-item-right {
@@ -224,7 +737,9 @@
 .cart-item-price {
   display: block;
   margin-bottom: 14px;
+  color: var(--reservation-primary);
   font-size: 20px;
+  font-weight: 700;
 }
 
 .cart-item-actions {
@@ -235,18 +750,19 @@
 
 .cart-item-actions button {
   padding: 8px 14px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid var(--reservation-border);
+  border-radius: 7px;
+  background: white;
   cursor: pointer;
 }
 
 .cart-item-actions button:hover {
-  background: #f3f3f3;
+  background: #f3f6fa;
 }
 
 .remove-cart-button {
-  border-color: #d9534f !important;
+  border-color: #e5a5a5 !important;
+  color: var(--reservation-danger);
 }
 
 .remove-cart-button:hover {
@@ -256,19 +772,16 @@
 .cart-summary {
   margin-top: 28px;
   padding: 24px;
-
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 12px;
+  border: 1px solid var(--reservation-border);
+  border-radius: 13px;
+  background: white;
 }
 
 .cart-summary-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   margin-bottom: 20px;
-
   font-size: 20px;
 }
 
@@ -276,321 +789,185 @@
   font-size: 24px;
 }
 
-.continue-cart-button {
+.continue-cart-button,
+.continue-shopping-button {
   width: 100%;
-  padding: 14px 20px;
-
+  min-height: 45px;
+  padding: 12px 20px;
   border: none;
   border-radius: 8px;
-
-  background: #222;
-  color: #fff;
-
-  font-size: 16px;
-  font-weight: 600;
-
+  background: var(--reservation-primary);
+  color: white;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.continue-cart-button:hover {
-  opacity: 0.9;
+.continue-cart-button:hover,
+.continue-shopping-button:hover {
+  background: var(--reservation-primary-dark);
 }
 
 .empty-cart {
   padding: 50px 20px;
-  text-align: center;
-
-  border: 1px dashed #ccc;
+  border: 1px dashed var(--reservation-border);
   border-radius: 12px;
+  background: white;
+  text-align: center;
 }
 
 .empty-cart h2 {
   margin-top: 0;
 }
 
-.continue-shopping-button {
-  padding: 12px 20px;
+/* =========================================
+   RESPONSIVE TABLET
+========================================= */
 
-  border: none;
-  border-radius: 8px;
+@media (max-width: 900px) {
+  .reservation-items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-  background: #222;
-  color: #fff;
+  .size-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-  cursor: pointer;
+  .reservation-page {
+    padding: 25px 4%;
+  }
 }
 
 /* =========================================
-   RESERVATION CHECKOUT
-   ========================================= */
-
-.reservation-checkout {
-  width: 100%;
-  max-width: 520px;
-  margin: 0 auto;
-  padding-bottom: 30px;
-}
-
-/* HEADER */
-
-.checkout-header {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-
-  margin-bottom: 18px;
-}
-
-.checkout-header h1 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-}
-
-/* =========================================
-   RESERVATION SUMMARY
-   ========================================= */
-
-.checkout-items {
-  padding: 10px 0 0;
-
-  border-top: 1px solid #aaa;
-  border-bottom: 1px solid #aaa;
-}
-
-.checkout-items-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  margin-bottom: 8px;
-
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.checkout-items-header button {
-  border: none;
-  background: none;
-
-  padding: 0;
-
-  color: #555;
-
-  font-size: 12px;
-  text-decoration: underline;
-
-  cursor: pointer;
-}
-
-.checkout-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  padding: 5px 0;
-
-  font-size: 12px;
-}
-
-.checkout-item strong {
-  font-weight: 500;
-}
-
-.checkout-item span {
-  white-space: nowrap;
-}
-
-.checkout-total {
-  display: flex;
-  justify-content: flex-end;
-
-  padding: 8px 0 10px;
-
-  font-size: 20px;
-}
-
-/* =========================================
-   STUDENT + PICKUP SECTIONS
-   ========================================= */
-
-.checkout-section {
-  margin-top: 18px;
-}
-
-.checkout-section h3 {
-  margin: 0 0 10px;
-
-  padding-bottom: 5px;
-
-  border-bottom: 1px solid #aaa;
-
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-}
-
-/* =========================================
-   STUDENT FIELDS
-   ========================================= */
-
-.student-field {
-  display: flex;
-  flex-direction: column;
-
-  margin-bottom: 9px;
-}
-
-.student-field label,
-.pickup-field label {
-  margin-bottom: 3px;
-
-  font-size: 10px;
-  color: #555;
-}
-
-.student-field input {
-  width: 100%;
-  box-sizing: border-box;
-
-  padding: 5px 7px;
-
-  border: none;
-  border-bottom: 1px solid #bbb;
-
-  background: transparent;
-
-  font-size: 11px;
-
-  outline: none;
-}
-
-.student-field input:focus {
-  border-bottom: 1px solid #555;
-}
-
-/* =========================================
-   PICKUP DATE
-   ========================================= */
-
-.pickup-field {
-  margin-bottom: 13px;
-}
-
-.date-input-wrapper {
-  position: relative;
-}
-
-.date-input-wrapper input {
-  width: 100%;
-  box-sizing: border-box;
-
-  padding: 7px 8px;
-
-  border: 1px solid #888;
-  border-radius: 0;
-
-  background: #fff;
-
-  font-size: 10px;
-
-  outline: none;
-}
-
-.pickup-field small {
-  display: block;
-
-  margin-top: 3px;
-
-  font-size: 9px;
-  color: #777;
-}
-
-/* =========================================
-   TIME WINDOWS
-   ========================================= */
-
-.time-window-grid {
-  display: grid;
-
-  grid-template-columns: 1fr 1fr;
-
-  gap: 5px;
-}
-
-.time-window {
-  min-height: 38px;
-
-  padding: 5px;
-
-  border: 1px solid #888;
-
-  background: #fff;
-
-  font-size: 9px;
-
-  cursor: pointer;
-}
-
-.time-window:hover {
-  background: #f5f5f5;
-}
-
-.time-window.selected {
-  border: 2px solid #333;
-
-  background: #eee;
-
-  font-weight: 600;
-}
-
-/* =========================================
-   RESERVE BUTTON
-   ========================================= */
-
-.reserve-final-button {
-  display: block;
-
-  width: 70%;
-
-  margin: 25px auto 0;
-
-  padding: 10px 20px;
-
-  border: 1px solid #555;
-  border-radius: 3px;
-
-  background: #fff;
-
-  font-size: 13px;
-
-  cursor: pointer;
-}
-
-.reserve-final-button:hover {
-  background: #f3f3f3;
-}
-
-/* =========================================
-   MOBILE
-   ========================================= */
+   RESPONSIVE MOBILE
+========================================= */
 
 @media (max-width: 600px) {
+  .reservation-page {
+    padding: 18px 15px;
+  }
+
+  .reservation-header {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .reservation-header h1 {
+    font-size: 22px;
+  }
+
+  .reservation-reminder {
+    padding: 21px;
+  }
+
+  .reservation-reminder h2 {
+    font-size: 18px;
+  }
+
+  .reservation-reminder p {
+    font-size: 12px;
+  }
+
+  .reservation-filters {
+    gap: 8px;
+  }
+
+  .reservation-filter {
+    padding: 9px 13px;
+    font-size: 12px;
+  }
+
+  .reservation-items {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .reservation-item-card {
+    padding: 19px;
+  }
+
+  .item-selection-header {
+    padding: 21px;
+  }
+
+  .item-selection-header h1 {
+    font-size: 23px;
+  }
+
+  .size-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .size-option {
+    min-height: 115px;
+    padding: 15px;
+  }
+
+  .size-name {
+    font-size: 16px;
+  }
+
+  .size-price {
+    font-size: 15px;
+  }
+
+  .quantity-section {
+    max-width: 100%;
+    padding: 20px;
+  }
 
   .reservation-checkout {
-    max-width: 100%;
+    padding: 19px;
+    border-radius: 13px;
+  }
+
+  .checkout-header {
+    gap: 11px;
   }
 
   .checkout-header h1 {
-    font-size: 20px;
+    font-size: 21px;
+  }
+
+  .checkout-items {
+    padding: 15px;
   }
 
   .checkout-item {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .checkout-total {
     font-size: 18px;
   }
 
+  .cart-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 17px;
+    padding: 17px;
+  }
+
+  .cart-item-right {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .cart-item-actions {
+    justify-content: flex-start;
+  }
+
+  .cart-header {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 360px) {
+  .size-list {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-header h1 {
+    font-size: 19px;
+  }
 }

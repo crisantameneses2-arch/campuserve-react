@@ -898,7 +898,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 const currentReservedQuantity =
                     Number(inventoryItem.reservedQuantity || 0);
 
-                
+
 
                 // Deduct from the stock source actually used.
                 const currentOnlineStock =
@@ -1241,7 +1241,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 purchaseType:
                                     item.purchaseType || "Online"
-                                    
+
                             })
                         ),
 
@@ -2856,6 +2856,10 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                 </th>
 
                                                 <th>
+                                                    Purchase Type
+                                                </th>
+
+                                                <th>
                                                     Status
                                                 </th>
 
@@ -3048,6 +3052,24 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                             </strong>
 
                                                         </td>
+                                                        <td>
+
+                                                            {reservation.items.map(
+                                                                (item, index) => (
+
+                                                                    <div
+                                                                        key={index}
+                                                                        style={{
+                                                                            marginBottom: "6px",
+                                                                        }}
+                                                                    >
+                                                                        {item.purchaseType}
+                                                                    </div>
+
+                                                                )
+                                                            )}
+
+                                                        </td>
 
 
                                                         {/* STATUS */}
@@ -3234,6 +3256,9 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                 <th>
                                                     Total
                                                 </th>
+                                                <th>
+                                                    Purchase Type
+                                                </th>
 
                                                 <th>
                                                     Status
@@ -3396,6 +3421,24 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                                         </td>
 
+                                                        <td>
+
+                                                            {reservation.items.map(
+                                                                (item, index) => (
+
+                                                                    <div
+                                                                        key={index}
+                                                                        style={{
+                                                                            marginBottom: "6px",
+                                                                        }}
+                                                                    >
+                                                                        {item.purchaseType}
+                                                                    </div>
+
+                                                                )
+                                                            )}
+
+                                                        </td>
 
                                                         {/* STATUS */}
 

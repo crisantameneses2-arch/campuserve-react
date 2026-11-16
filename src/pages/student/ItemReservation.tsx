@@ -252,14 +252,15 @@ export default function ItemReservation({
 
     try {
       setReserving(true);
+      // Generate reservation ID using Date.now()
+      const reservationId = `IR-${Date.now()}`;
 
-      // Create reservation document
+      // Use the generated reservation ID as the Firestore document ID
       const reservationRef = doc(
-        collection(db, "itemReservations")
+        db,
+        "itemReservations",
+        reservationId
       );
-
-      const reservationId = reservationRef.id;
-
       await runTransaction(
         db,
         async (transaction) => {
@@ -428,11 +429,11 @@ export default function ItemReservation({
                   (total, item) =>
                     total +
                     item.price *
-                      item.quantity,
+                    item.quantity,
                   0
                 ),
 
-              status: "Pending",
+              status: "Unpaid",
 
               createdAt:
                 serverTimestamp(),
@@ -731,7 +732,7 @@ export default function ItemReservation({
                   key={item.id}
                   className={
                     selectedSize ===
-                    item.size
+                      item.size
                       ? "size-option selected"
                       : "size-option"
                   }
@@ -767,7 +768,7 @@ export default function ItemReservation({
 
                   <div className="size-stock">
                     {item.availableOnline >
-                    0
+                      0
                       ? `${item.availableOnline} left`
                       : "Out of stock"}
                   </div>
@@ -896,7 +897,7 @@ export default function ItemReservation({
                                   Math.min(
                                     5,
                                     item.quantity +
-                                      quantity
+                                    quantity
                                   ),
                               };
                             }
@@ -991,7 +992,7 @@ export default function ItemReservation({
               type="button"
               className={
                 selectedCategory ===
-                category
+                  category
                   ? "reservation-filter active"
                   : "reservation-filter"
               }
@@ -1012,7 +1013,7 @@ export default function ItemReservation({
       <div className="reservation-items">
 
         {reservationItems.length ===
-        0 ? (
+          0 ? (
           <p>
             No items are available
             in this category.
