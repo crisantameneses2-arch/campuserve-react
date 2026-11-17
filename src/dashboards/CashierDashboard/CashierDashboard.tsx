@@ -6,6 +6,7 @@ import {
   doc,
   runTransaction,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -41,6 +42,10 @@ type PaymentRecord = {
   totalAmount?: number;
 
   status?: string;
+
+  created_at?: Timestamp | Date | null;
+  createdAt?: Timestamp | Date | null;
+  payment_confirmed_at?: Timestamp | Date | null;
 };
 
 const generateCode = (prefix: string) => {
@@ -56,7 +61,51 @@ const generateCode = (prefix: string) => {
 
   return `${prefix}-${Date.now()}-${suffix}`;
 };
+const getDateValue = (
+  date?: Timestamp | Date | null
+): number => {
+  if (!date) return 0;
 
+  if (date instanceof Timestamp) {
+    return date.toMillis();
+  }
+
+  if (date instanceof Date) {
+    return date.getTime();
+  }
+
+  return 0;
+};
+
+// Oldest created first
+const sortByCreatedAt = (
+  a: PaymentRecord,
+  b: PaymentRecord
+) => {
+  const dateA = getDateValue(a.created_at || a.createdAt);
+  const dateB = getDateValue(b.created_at || b.createdAt);
+
+  if (!dateA && !dateB) return 0;
+  if (!dateA) return 1;
+  if (!dateB) return -1;
+
+  return dateA - dateB;
+};
+
+// Newest payment first
+const sortByPaymentDate = (
+  a: PaymentRecord,
+  b: PaymentRecord
+) => {
+  const dateA = getDateValue(a.payment_confirmed_at);
+  const dateB = getDateValue(b.payment_confirmed_at);
+
+  if (!dateA && !dateB) return 0;
+  if (!dateA) return 1;
+  if (!dateB) return -1;
+
+  return dateB - dateA;
+};
 function CashierDashboard({ account }: CashierDashboardProps) {
   const [documentRequests, setDocumentRequests] = useState<PaymentRecord[]>([]);
   const [itemReservations, setItemReservations] = useState<PaymentRecord[]>([]);
@@ -102,27 +151,35 @@ function CashierDashboard({ account }: CashierDashboardProps) {
           }) as PaymentRecord
       );
 
-      // Approved and unpaid document requests.
+      // Oldest document request first
       setDocumentRequests(
-        documents.filter(
-          (item) =>
-            item.status?.toUpperCase() === "APPROVED" && !isPaid(item)
-        )
+        documents
+          .filter(
+            (item) =>
+              item.status?.toUpperCase() === "APPROVED" &&
+              !isPaid(item)
+          )
+          .sort(sortByCreatedAt)
       );
 
-      // Approved and unpaid item reservations.
+      // Oldest item reservation first
       setItemReservations(
-        reservations.filter(
-          (item) =>
-            item.status?.toLowerCase() === "pending" && !isPaid(item)
-        )
+        reservations
+          .filter(
+            (item) =>
+              item.status?.toLowerCase() === "pending" &&
+              !isPaid(item)
+          )
+          .sort(sortByCreatedAt)
       );
 
-      // All transactions with confirmed payments.
-      setPaymentHistory([
-        ...documents.filter(isPaid),
-        ...reservations.filter(isPaid),
-      ]);
+      // Newest confirmed payment first
+      setPaymentHistory(
+        [
+          ...documents.filter(isPaid),
+          ...reservations.filter(isPaid),
+        ].sort(sortByPaymentDate)
+      );
     } catch (error) {
       console.error("Error loading payments:", error);
       setMessage("Failed to load payment records. Please try again.");
@@ -198,8 +255,7 @@ function CashierDashboard({ account }: CashierDashboardProps) {
 
       if (result.alreadyPaid) {
         setMessage(
-          `This transaction is already paid. Claiming code: ${
-            result.claimingCode || "Not available"
+          `This transaction is already paid. Claiming code: ${result.claimingCode || "Not available"
           }`
         );
       } else {

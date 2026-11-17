@@ -23,11 +23,9 @@ type InventoryItem = {
     size: string;
     price: number;
     totalStock: number;
-    onlineStock: number;
-    walkInStock: number;
-    availableOnline: number;
-    availableWalkIn: number;
     reservedQuantity: number;
+    soldOnline: number;
+    soldWalkIn: number;
     status: string;
 };
 
@@ -61,6 +59,7 @@ type ItemReservation = {
     program: string;
     pickupDate: string;
     pickupTime: string;
+    claimedAt: any;
     status: string;
     totalAmount: number;
     cancellationReason?: string;
@@ -83,13 +82,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
     const [activePage, setActivePage] = useState("Dashboard");
 
-
     const [requestSearch, setRequestSearch] = useState("");
     const [reservationSearch, setReservationSearch] = useState("");
     const [claimingSearch, setClaimingSearch] = useState("");
 
     const [reportType, setReportType] =
         useState<"All" | "Online" | "Walk-in">("All");
+
     // =========================
     // INVENTORY STATE
     // =========================
@@ -100,7 +99,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     const [loadingInventory, setLoadingInventory] =
         useState(false);
 
-
     // =========================
     // RESERVATION STATE
     // =========================
@@ -110,7 +108,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
     const [loadingReservations, setLoadingReservations] =
         useState(false);
-
 
     // =========================
     // ADD REQUEST MODAL STATE
@@ -128,7 +125,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         program: "",
         pickupDate: "",
         pickupTime: "8:00AM - 10:00AM",
-        status: "Pending",
+        status: "Unpaid",
         totalAmount: 0,
         items: [] as ReservationItem[],
     });
@@ -142,6 +139,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         subtotal: 0,
         purchaseType: "Walk-in",
     });
+
     const [transactionFilter, setTransactionFilter] = useState("All");
     const [transactionSearch, setTransactionSearch] = useState("");
 
@@ -158,44 +156,21 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     const [editStock, setEditStock] = useState({
         price: 0,
         totalStock: 0,
-        onlineStock: 0,
-        walkInStock: 0,
         reservedQuantity: 0,
-        availableOnline: 0,
-        availableWalkIn: 0,
     });
 
-    const openEditStockModal = (
-        item: InventoryItem
-    ) => {
-
+    const openEditStockModal = (item: InventoryItem) => {
         setSelectedInventoryItem(item);
 
         setEditStock({
-            price:
-                Number(item.price || 0),
-
-            totalStock:
-                Number(item.totalStock || 0),
-
-            onlineStock:
-                Number(item.onlineStock || 0),
-
-            walkInStock:
-                Number(item.walkInStock || 0),
-
-            reservedQuantity:
-                Number(item.reservedQuantity || 0),
-
-            availableOnline:
-                Number(item.availableOnline || 0),
-
-            availableWalkIn:
-                Number(item.availableWalkIn || 0),
+            price: Number(item.price || 0),
+            totalStock: Number(item.totalStock || 0),
+            reservedQuantity: Number(item.reservedQuantity || 0),
         });
 
         setShowEditStockModal(true);
     };
+
     // =========================
     // SAVE EDITED STOCK
     // =========================
@@ -206,77 +181,42 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             return;
         }
 
-
         if (
             editStock.price < 0 ||
             editStock.totalStock < 0 ||
-            editStock.onlineStock < 0 ||
-            editStock.walkInStock < 0 ||
-            editStock.reservedQuantity < 0 ||
-            editStock.availableOnline < 0 ||
-            editStock.availableWalkIn < 0
+            editStock.reservedQuantity < 0
         ) {
-            alert(
-                "Stock values cannot be negative."
-            );
+            alert("Stock values cannot be negative.");
             return;
         }
 
+        if (editStock.reservedQuantity > editStock.totalStock) {
+            alert("Reserved quantity cannot be greater than total stock.");
+            return;
+        }
 
         try {
 
             await updateDoc(
-                doc(
-                    db,
-                    "inventory",
-                    selectedInventoryItem.id
-                ),
+                doc(db, "inventory", selectedInventoryItem.id),
                 {
-                    price:
-                        Number(editStock.price),
-
-                    totalStock:
-                        editStock.totalStock,
-
-                    onlineStock:
-                        editStock.onlineStock,
-
-                    walkInStock:
-                        editStock.walkInStock,
-
-                    reservedQuantity:
-                        editStock.reservedQuantity,
-
-                    availableOnline:
-                        editStock.availableOnline,
-
-                    availableWalkIn:
-                        editStock.availableWalkIn,
+                    price: Number(editStock.price),
+                    totalStock: Number(editStock.totalStock),
+                    reservedQuantity: Number(editStock.reservedQuantity),
                 }
             );
 
-
             setShowEditStockModal(false);
-
             setSelectedInventoryItem(null);
-
 
             await loadInventory();
 
-
         } catch (error) {
 
-            console.error(
-                "Error updating stock:",
-                error
-            );
-
-            alert(
-                "Failed to update stock."
-            );
+            console.error("Error updating stock:", error);
+            alert("Failed to update stock.");
         }
     };
-
 
     // =========================
     // LOAD INVENTORY
@@ -294,7 +234,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
     }, [activePage]);
 
-
     const loadInventory = async () => {
 
         setLoadingInventory(true);
@@ -306,31 +245,34 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             );
 
             const inventoryData: InventoryItem[] =
-                inventorySnapshot.docs.map((document) => ({
-                    id: document.id,
+                inventorySnapshot.docs.map((document) => {
 
-                    ...(document.data() as Omit<
-                        InventoryItem,
-                        "id"
-                    >),
-                }));
+                    const data = document.data() as any;
+
+                    return {
+                        id: document.id,
+                        itemName: data.itemName || "",
+                        size: data.size || "",
+                        price: Number(data.price) || 0,
+                        totalStock: Number(data.totalStock) || 0,
+                        reservedQuantity: Number(data.reservedQuantity) || 0,
+                        soldOnline: Number(data.soldOnline) || 0,
+                        soldWalkIn: Number(data.soldWalkIn) || 0,
+                        status: data.status || "In Stock",
+                    };
+                });
 
             setInventory(inventoryData);
 
         } catch (error) {
 
-            console.error(
-                "Error loading inventory:",
-                error
-            );
+            console.error("Error loading inventory:", error);
 
         } finally {
 
             setLoadingInventory(false);
-
         }
     };
-
 
     // =========================
     // LOAD RESERVATIONS
@@ -351,7 +293,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
     }, [activePage]);
 
-
     const loadReservations = async () => {
 
         setLoadingReservations(true);
@@ -362,12 +303,10 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 collection(db, "itemReservations")
             );
 
-
             const reservationData: ItemReservation[] =
                 reservationSnapshot.docs.map((document) => {
 
                     const data = document.data();
-
 
                     const items: ReservationItem[] =
                         Array.isArray(data.items)
@@ -395,10 +334,8 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     item.purchaseType === "Walk-in"
                                         ? "Walk-in"
                                         : "Online",
-
                             }))
                             : [];
-
 
                     return {
                         id: document.id,
@@ -430,6 +367,9 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                         pickupDate:
                             data.pickupDate || "",
 
+                        claimedAt:
+                            data.claimedAt || "",
+
                         pickupTime:
                             data.pickupTime || "",
 
@@ -442,13 +382,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                         createdAt:
                             data.createdAt || null,
 
-                        cancellationReason: data.cancellationReason || "",
+                        cancellationReason:
+                            data.cancellationReason || "",
 
                         items: items,
                     };
-
                 });
-
 
             reservationData.sort((a, b) => {
 
@@ -469,156 +408,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
         } catch (error) {
 
-            console.error(
-                "Error loading reservations:",
-                error
-            );
+            console.error("Error loading reservations:", error);
 
         } finally {
 
             setLoadingReservations(false);
-
         }
     };
-
-
-    // =========================
-    // APPROVE RESERVATION
-    // =========================
-
-    /*  const approveReservation = async (
-         reservationId: string
-     ) => {
- 
-         try {
- 
-             // Find the reservation
-             const reservation =
-                 reservations.find(
-                     (item) =>
-                         item.id === reservationId
-                 );
- 
-             if (!reservation) {
-                 console.error(
-                     "Reservation not found."
-                 );
-                 return;
-             }
- 
- 
-             // Prevent adding reserved quantity twice
-             if (
-                 reservation.status.toLowerCase() !==
-                 "pending"
-             ) {
-                 console.error(
-                     "This reservation has already been processed."
-                 );
-                 return;
-             }
- 
- 
-             // =========================
-             // UPDATE INVENTORY RESERVED QUANTITY
-             // =========================
- 
-             for (
-                 const reservedItem of
-                 reservation.items
-             ) {
- 
-                 if (!reservedItem.inventoryId) {
-                     continue;
-                 }
- 
- 
-                 const inventoryItem =
-                     inventory.find(
-                         (item) =>
-                             item.id ===
-                             reservedItem.inventoryId
-                     );
- 
- 
-                 if (!inventoryItem) {
-                     console.error(
-                         `Inventory item not found: ${reservedItem.inventoryId}`
-                     );
-                     continue;
-                 }
- 
- 
-                 const currentReserved =
-                     Number(
-                         inventoryItem.reservedQuantity ||
-                         0
-                     );
- 
- 
-                 const quantityToReserve =
-                     Number(
-                         reservedItem.quantity ||
-                         0
-                     );
- 
- 
-                 const newReservedQuantity =
-                     currentReserved +
-                     quantityToReserve;
- 
- 
-                 // Update the inventory document
-                 await updateDoc(
-                     doc(
-                         db,
-                         "inventory",
-                         reservedItem.inventoryId
-                     ),
-                     {
-                         reservedQuantity:
-                             newReservedQuantity,
-                     }
-                 );
- 
-             }
- 
- 
- 
- 
- 
-             // =========================
-             // UPDATE RESERVATION
-             // =========================
- 
-             await updateDoc(
-                 doc(
-                     db,
-                     "itemReservations",
-                     reservationId
-                 ),
-                 {
-                     status: "Approved",
-                 }
-             );
- 
- 
-             // Reload both
-             // reservation and inventory data
-             await loadReservations();
-             await loadInventory();
- 
- 
-         } catch (error) {
- 
-             console.error(
-                 "Error approving reservation:",
-                 error
-             );
- 
-         }
-     };
-  */
 
     // =========================
     // UPDATE PICKUP DATE
@@ -632,31 +428,26 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         try {
 
             await updateDoc(
-                doc(
-                    db,
-                    "itemReservations",
-                    reservationId
-                ),
+                doc(db, "itemReservations", reservationId),
                 {
                     pickupDate: newPickupDate,
                 }
             );
 
-
             await loadReservations();
 
         } catch (error) {
 
-            console.error(
-                "Error updating pickup date:",
-                error
-            );
-
+            console.error("Error updating pickup date:", error);
         }
     };
 
+    // =========================
+    // CANCEL RESERVATION
+    // =========================
 
     const cancelReservation = async () => {
+
         if (!selectedReservationForCancel) {
             return;
         }
@@ -667,341 +458,57 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         }
 
         try {
-            await updateDoc(
-                doc(
-                    db,
-                    "itemReservations",
-                    selectedReservationForCancel.id
-                ),
-                {
-                    status: "Cancelled",
-                    cancellationReason:
-                        cancellationReason.trim(),
-                }
-            );
 
-            alert("Reservation cancelled successfully.");
-
-            setShowCancelModal(false);
-            setSelectedReservationForCancel(null);
-            setCancellationReason("");
-
-            loadReservations();
-        } catch (error) {
-            console.error(
-                "Error cancelling reservation:",
-                error
-            );
-
-            alert("Failed to cancel reservation.");
-        }
-    };
-    // =========================
-    // GENERATE 8-CHAR ALPHANUMERIC PAYMENT CODE
-    // =========================
-
-    /*   const generatePaymentCode = (length = 8): string => {
-  
-          // Excludes 0, 1, I, O to avoid ambiguity
-          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  
-          const randomValues = new Uint32Array(length);
-          crypto.getRandomValues(randomValues);
-  
-          let code = "";
-  
-          for (let i = 0; i < length; i++) {
-              code += chars[randomValues[i] % chars.length];
-          }
-  
-          return code;
-      }; */
-
-    // =========================
-    // UPDATE STATUS TO PENDING
-    // =========================
-
-    const updateStatusToPending = async (
-        reservationId: string
-    ) => {
-
-        try {
-
-            await updateDoc(
-                doc(
-                    db,
-                    "itemReservations",
-                    reservationId
-                ),
-                {
-                    status: "Pending",
-                }
-            );
-
-            await loadReservations();
-
-        } catch (error) {
-
-            console.error(
-                "Error updating status:",
-                error
-            );
-
-        }
-    };
-
-    // =========================
-    // SEND PAYMENT CODE
-    // =========================
-
-    /*  const sendPaymentCode = async (
-         reservationId: string
-     ) => {
- 
-         try {
- 
-             const code = generatePaymentCode(8);
- 
-             await updateDoc(
-                 doc(
-                     db,
-                     "itemReservations",
-                     reservationId
-                 ),
-                 {
-                     paymentCode: code,
-                 }
-             );
- 
-             alert(
-                 `Payment code sent: ${code}`
-             );
- 
-             await loadReservations();
- 
-         } catch (error) {
- 
-             console.error(
-                 "Error sending payment code:",
-                 error
-             );
- 
-             alert(
-                 "Failed to send payment code."
-             );
-         }
-     }; */
-    // =========================
-    // UPDATE PICKUP TIME
-    // =========================
-
-    /*   const updatePickupTime = async (
-          reservationId: string,
-          newPickupTime: string
-      ) => {
-  
-          try {
-  
-              await updateDoc(
-                  doc(
-                      db,
-                      "itemReservations",
-                      reservationId
-                  ),
-                  {
-                      pickupTime: newPickupTime,
-                  }
-              );
-  
-  
-              await loadReservations();
-  
-          } catch (error) {
-  
-              console.error(
-                  "Error updating pickup time:",
-                  error
-              );
-  
-          }
-      }; */
-
-
-    // =========================
-    // COMPLETE / CLAIM RESERVATION
-    // =========================
-
-    const completeReservation = async (
-        reservationId: string
-    ) => {
-
-        try {
-
-            const reservation =
-                reservations.find(
-                    (item) =>
-                        item.id === reservationId
-                );
-
-            if (!reservation) {
-                console.error(
-                    "Reservation not found."
-                );
-                return;
-            }
-
-
-            if (!reservation.claimStubId) {
-                alert("No claiming code found. Please ask the Cashier to confirm payment.");
-                return;
-            }
+            const wasApproved =
+                selectedReservationForCancel.status?.toLowerCase() ===
+                "approved";
 
             // =========================
-            // UPDATE INVENTORY BY PURCHASE TYPE
+            // ROLLBACK STOCK IF IT WAS
+            // ALREADY APPROVED (STOCK
+            // WAS DEDUCTED AT APPROVE)
             // =========================
 
-            for (const claimedItem of reservation.items) {
+            if (wasApproved) {
 
-                if (!claimedItem.inventoryId) {
-                    continue;
-                }
+                for (const item of selectedReservationForCancel.items) {
 
-                const inventoryItem =
-                    inventory.find(
-                        (item) =>
-                            item.id ===
-                            claimedItem.inventoryId
+                    if (!item.inventoryId) {
+                        continue;
+                    }
+
+                    const inventoryItem = inventory.find(
+                        (inventoryEntry) =>
+                            inventoryEntry.id === item.inventoryId
                     );
 
-                if (!inventoryItem) {
-                    console.error(
-                        `Inventory item not found: ${claimedItem.inventoryId}`
-                    );
-                    continue;
-                }
-
-                const quantityBought =
-                    Number(claimedItem.quantity || 0);
-
-                if (quantityBought <= 0) {
-                    continue;
-                }
-
-                const purchaseType =
-                    claimedItem.purchaseType === "Walk-in"
-                        ? "Walk-in"
-                        : "Online";
-
-                const currentTotalStock =
-                    Number(inventoryItem.totalStock || 0);
-
-                const currentReservedQuantity =
-                    Number(inventoryItem.reservedQuantity || 0);
-
-
-
-                // Deduct from the stock source actually used.
-                const currentOnlineStock =
-                    Number(inventoryItem.onlineStock || 0);
-
-                const currentWalkInStock =
-                    Number(inventoryItem.walkInStock || 0);
-
-                const currentAvailableOnline =
-                    Number(inventoryItem.availableOnline || 0);
-
-                const currentAvailableWalkIn =
-                    Number(inventoryItem.availableWalkIn || 0);
-
-                if (purchaseType === "Online") {
-
-                    if (currentAvailableOnline < quantityBought) {
+                    if (!inventoryItem) {
                         console.error(
-                            `Not enough online stock for ${claimedItem.itemName}.`
+                            `Inventory item not found: ${item.inventoryId}`
                         );
                         continue;
                     }
 
-                    await updateDoc(
-                        doc(
-                            db,
-                            "inventory",
-                            claimedItem.inventoryId
-                        ),
-                        {
-                            totalStock:
-                                Math.max(
-                                    0,
-                                    currentTotalStock -
-                                    quantityBought
-                                ),
+                    const quantity =
+                        Number(item.quantity || 0);
 
-                            onlineStock:
-                                Math.max(
-                                    0,
-                                    currentOnlineStock -
-                                    quantityBought
-                                ),
-
-                            availableOnline:
-                                Math.max(
-                                    0,
-                                    currentAvailableOnline -
-                                    quantityBought
-                                ),
-
-                            reservedQuantity:
-                                Math.max(
-                                    0,
-                                    currentReservedQuantity -
-                                    quantityBought
-                                ),
-                        }
-                    );
-
-                } else {
-
-                    if (currentAvailableWalkIn < quantityBought) {
-                        console.error(
-                            `Not enough walk-in stock for ${claimedItem.itemName}.`
-                        );
+                    if (quantity <= 0) {
                         continue;
                     }
 
+                    /*  const purchaseType =
+                         item.purchaseType === "Walk-in"
+                             ? "Walk-in"
+                             : "Online";
+  */
                     await updateDoc(
-                        doc(
-                            db,
-                            "inventory",
-                            claimedItem.inventoryId
-                        ),
+                        doc(db, "inventory", item.inventoryId),
                         {
-                            totalStock:
-                                Math.max(
-                                    0,
-                                    currentTotalStock -
-                                    quantityBought
-                                ),
-
-                            walkInStock:
-                                Math.max(
-                                    0,
-                                    currentWalkInStock -
-                                    quantityBought
-                                ),
-
-                            availableWalkIn:
-                                Math.max(
-                                    0,
-                                    currentAvailableWalkIn -
-                                    quantityBought
-                                ),
-
-                            reservedQuantity:
-                                Math.max(
-                                    0,
-                                    currentReservedQuantity -
-                                    quantityBought
-                                ),
+                            reservedQuantity: Math.max(
+                                0,
+                                Number(inventoryItem.reservedQuantity || 0) -
+                                quantity
+                            ),
                         }
                     );
                 }
@@ -1015,8 +522,236 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 doc(
                     db,
                     "itemReservations",
-                    reservationId
+                    selectedReservationForCancel.id
                 ),
+                {
+                    status: "Cancelled",
+                    cancellationReason:
+                        cancellationReason.trim(),
+                }
+            );
+
+            alert(
+                wasApproved
+                    ? "Reservation cancelled successfully. Stock has been restored."
+                    : "Reservation cancelled successfully."
+            );
+
+            setShowCancelModal(false);
+            setSelectedReservationForCancel(null);
+            setCancellationReason("");
+
+            await loadReservations();
+            await loadInventory();
+
+        } catch (error) {
+
+            console.error("Error cancelling reservation:", error);
+            alert("Failed to cancel reservation.");
+        }
+    };
+
+    // =========================
+    // UPDATE STATUS TO PENDING
+    // =========================
+
+    const updateStatusToPending = async (
+        reservationId: string
+    ) => {
+
+        try {
+
+            await updateDoc(
+                doc(db, "itemReservations", reservationId),
+                {
+                    status: "Pending",
+                }
+            );
+
+            await loadReservations();
+
+        } catch (error) {
+
+            console.error("Error updating status:", error);
+        }
+    };
+
+    // =========================
+    // COMPLETE / APPROVE
+    // RESERVATION
+    // =========================
+    //
+    // THIS IS THE ONLY PLACE
+    // STOCK GETS DEDUCTED.
+    //
+    // Semantics:
+    //  totalStock       = physical units currently on hand
+    //  reservedQuantity = units set aside for approved
+    //                     reservations awaiting pickup
+    //  soldOnline / soldWalkIn = cumulative approved sales
+    //
+    //  available for new reservations =
+    //      totalStock - reservedQuantity
+    //
+    // =========================
+
+    const completeReservation = async (
+        reservationId: string
+    ) => {
+
+        try {
+
+            const reservation =
+                reservations.find(
+                    (item) => item.id === reservationId
+                );
+
+            if (!reservation) {
+                alert("Reservation not found.");
+                return;
+            }
+
+            if (!reservation.claimStubId) {
+                alert(
+                    "No claiming code found. Please ask the Cashier to confirm payment."
+                );
+                return;
+            }
+
+            if (
+                reservation.status?.toLowerCase() ===
+                "approved"
+            ) {
+                alert("This reservation is already approved.");
+                return;
+            }
+
+            // =========================
+            // PRE-CHECK: MAKE SURE
+            // EVERY ITEM HAS ENOUGH
+            // STOCK BEFORE WRITING
+            // ANYTHING (NO PARTIAL
+            // DEDUCTIONS)
+            // =========================
+
+            for (const reservedItem of reservation.items) {
+
+                if (!reservedItem.inventoryId) {
+                    continue;
+                }
+
+                const inventoryItem =
+                    inventory.find(
+                        (item) =>
+                            item.id === reservedItem.inventoryId
+                    );
+
+                if (!inventoryItem) {
+                    alert(
+                        `Inventory item not found: ${reservedItem.itemName}`
+                    );
+                    return;
+                }
+
+                const quantity =
+                    Number(reservedItem.quantity || 0);
+
+                if (quantity <= 0) {
+                    continue;
+                }
+
+                const available =
+                    Number(inventoryItem.totalStock || 0) -
+                    Number(inventoryItem.reservedQuantity || 0);
+
+                if (available < quantity) {
+                    alert(
+                        `Not enough stock for ${reservedItem.itemName}.\n\n` +
+                        `Available: ${available}\n` +
+                        `Requested: ${quantity}`
+                    );
+                    return;
+                }
+            }
+
+            // =========================
+            // CONFIRM RELEASE DATE
+            // =========================
+
+            const confirmCompletion = window.confirm(
+                "Before completing this reservation, please confirm:\n\n" +
+                "Has the claiming/release date already been set correctly?\n\n" +
+                "Click OK to proceed or Cancel to review the date."
+            );
+
+            if (!confirmCompletion) {
+                return;
+            }
+
+            // =========================
+            // DEDUCT STOCK + ADD TO
+            // RESERVED / SOLD COUNTERS
+            // =========================
+
+            for (const claimedItem of reservation.items) {
+
+                if (!claimedItem.inventoryId) {
+                    continue;
+                }
+
+                const inventoryItem =
+                    inventory.find(
+                        (item) =>
+                            item.id === claimedItem.inventoryId
+                    );
+
+                if (!inventoryItem) {
+                    continue;
+                }
+
+                const quantityBought =
+                    Number(claimedItem.quantity || 0);
+
+                if (quantityBought <= 0) {
+                    continue;
+                }
+
+                /* const purchaseType =
+                    claimedItem.purchaseType === "Walk-in"
+                        ? "Walk-in"
+                        : "Online";
+
+                const currentTotalStock =
+                    Number(inventoryItem.totalStock || 0);
+
+               
+                const currentSoldOnline =
+                    Number(inventoryItem.soldOnline || 0);
+
+                const currentSoldWalkIn =
+                    Number(inventoryItem.soldWalkIn || 0);
+ */
+                const currentReservedQuantity =
+                    Number(inventoryItem.reservedQuantity || 0);
+
+                await updateDoc(
+                    doc(db, "inventory", claimedItem.inventoryId),
+                    {
+                        // Do not deduct totalStock yet.
+                        // Only set aside the requested quantity.
+                        reservedQuantity:
+                            currentReservedQuantity + quantityBought,
+                    }
+
+                );
+            }
+
+            // =========================
+            // UPDATE RESERVATION
+            // =========================
+
+            await updateDoc(
+                doc(db, "itemReservations", reservationId),
                 {
                     status: "approved",
                 }
@@ -1024,16 +759,18 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
             await loadReservations();
             await loadInventory();
-
+            alert(
+                "Reservation approved. Stock has been reserved successfully."
+            );
         } catch (error) {
 
             console.error(
                 "Error completing reservation:",
                 error
             );
+            alert("Failed to approve reservation.");
         }
     };
-
 
     // =========================
     // ADD REQUEST ITEM
@@ -1052,6 +789,29 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             return;
         }
 
+        // =========================
+        // CHECK AVAILABLE STOCK
+        // =========================
+
+        const inventoryItem = inventory.find(
+            (item) => item.id === newRequestItem.inventoryId
+        );
+
+        if (inventoryItem) {
+
+            const available =
+                Number(inventoryItem.totalStock || 0) -
+                Number(inventoryItem.reservedQuantity || 0);
+
+            if (newRequestItem.quantity > available) {
+                alert(
+                    `Not enough stock for ${inventoryItem.itemName}.\n\n` +
+                    `Available: ${available}`
+                );
+                return;
+            }
+        }
+
         const subtotal =
             Number(newRequestItem.price || 0) *
             Number(newRequestItem.quantity || 0);
@@ -1067,8 +827,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         setNewRequest((previous) => ({
             ...previous,
             items: [...previous.items, itemToAdd],
-            totalAmount:
-                previous.totalAmount + subtotal,
+            totalAmount: previous.totalAmount + subtotal,
         }));
 
         setNewRequestItem({
@@ -1081,7 +840,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             purchaseType: "Walk-in",
         });
     };
-
 
     // =========================
     // REMOVE REQUEST ITEM
@@ -1105,13 +863,20 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 items: updatedItems,
                 totalAmount:
                     previous.totalAmount -
-                    Number(
-                        itemToRemove?.subtotal || 0
-                    ),
+                    Number(itemToRemove?.subtotal || 0),
             };
-
         });
     };
+
+    // =========================
+    // CLAIM RESERVATION
+    // =========================
+    //
+    // STATUS and reserveditem deduction
+    // STOCK WAS ALREADY
+    // DEDUCTED AT APPROVE.
+    //
+    // =========================
 
     const claimReservation = async (
         reservationId: string
@@ -1126,11 +891,69 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 return;
             }
 
-            if (reservation.status?.toLowerCase() !== "approved") {
-                alert("Only approved reservations can be marked as claimed.");
+            if (
+                reservation.status?.toLowerCase() !== "approved"
+            ) {
+                alert(
+                    "Only approved reservations can be marked as claimed."
+                );
                 return;
             }
 
+            // Remove claimed quantities from reservedQuantity
+            for (const item of reservation.items) {
+                if (!item.inventoryId) continue;
+
+                const quantity = Number(item.quantity || 0);
+
+                if (quantity <= 0) continue;
+
+                const inventoryItem = inventory.find(
+                    (inv) => inv.id === item.inventoryId
+                );
+
+                if (!inventoryItem) {
+                    throw new Error(
+                        `Inventory item not found: ${item.itemName}`
+                    );
+                }
+
+                const currentReservedQuantity = Number(
+                    inventoryItem.reservedQuantity || 0
+                );
+
+                if (currentReservedQuantity < quantity) {
+                    throw new Error(
+                        `Invalid reserved quantity for ${item.itemName}.`
+                    );
+                }
+
+                await updateDoc(
+                    doc(db, "inventory", item.inventoryId),
+                    {
+                        // Deduct the physical stock upon claiming.
+                        totalStock:
+                            Number(inventoryItem.totalStock || 0) - quantity,
+
+                        // Release the reserved quantity.
+                        reservedQuantity:
+                            currentReservedQuantity - quantity,
+
+                        // Record completed sales upon claiming.
+                        soldOnline:
+                            item.purchaseType === "Online"
+                                ? Number(inventoryItem.soldOnline || 0) + quantity
+                                : Number(inventoryItem.soldOnline || 0),
+
+                        soldWalkIn:
+                            item.purchaseType === "Walk-in"
+                                ? Number(inventoryItem.soldWalkIn || 0) + quantity
+                                : Number(inventoryItem.soldWalkIn || 0),
+                    }
+                );
+            }
+
+            // Update reservation status
             await updateDoc(
                 doc(db, "itemReservations", reservationId),
                 {
@@ -1140,12 +963,15 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             );
 
             await loadReservations();
+            await loadInventory();
 
-            alert("Reservation successfully marked as claimed!");
+            alert(
+                "Reservation successfully claimed! Reserved quantities have been updated."
+            );
 
         } catch (error) {
             console.error("Error claiming reservation:", error);
-            alert("Failed to update reservation status.");
+            alert("Failed to update reservation.");
         }
     };
 
@@ -1180,8 +1006,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             await addDoc(
                 collection(db, "itemReservations"),
                 {
-                    reservationId:
-                        reservationId,
+                    reservationId: reservationId,
 
                     claimStubId:
                         newRequest.claimStubId.trim(),
@@ -1205,54 +1030,28 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                         newRequest.pickupTime,
 
                     status:
-                        newRequest.status || "Pending",
+                        newRequest.status || "Unpaid",
 
                     totalAmount:
-                        Number(
-                            newRequest.totalAmount || 0
-                        ),
+                        Number(newRequest.totalAmount || 0),
 
                     items:
-                        newRequest.items.map(
-                            (item) => ({
-                                inventoryId:
-                                    item.inventoryId,
+                        newRequest.items.map((item) => ({
+                            inventoryId: item.inventoryId,
+                            itemName: item.itemName,
+                            price: Number(item.price || 0),
+                            quantity: Number(item.quantity || 0),
+                            size: item.size,
+                            subtotal: Number(item.subtotal || 0),
+                            purchaseType:
+                                item.purchaseType || "Online",
+                        })),
 
-                                itemName:
-                                    item.itemName,
-
-                                price:
-                                    Number(
-                                        item.price || 0
-                                    ),
-
-                                quantity:
-                                    Number(
-                                        item.quantity || 0
-                                    ),
-
-                                size:
-                                    item.size,
-
-                                subtotal:
-                                    Number(
-                                        item.subtotal || 0
-                                    ),
-
-                                purchaseType:
-                                    item.purchaseType || "Online"
-
-                            })
-                        ),
-
-                    createdAt:
-                        serverTimestamp(),
+                    createdAt: serverTimestamp(),
                 }
             );
 
-            alert(
-                "New request added successfully."
-            );
+            alert("New request added successfully.");
 
             setShowAddRequestModal(false);
 
@@ -1264,8 +1063,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 mobileNumber: "",
                 program: "",
                 pickupDate: "",
-                pickupTime:
-                    "8:00AM - 10:00AM",
+                pickupTime: "8:00AM - 10:00AM",
                 status: "Unpaid",
                 totalAmount: 0,
                 items: [],
@@ -1285,18 +1083,10 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
         } catch (error) {
 
-            console.error(
-                "Error adding new request:",
-                error
-            );
-
-            alert(
-                "Failed to add request. Please try again."
-            );
-
+            console.error("Error adding new request:", error);
+            alert("Failed to add request. Please try again.");
         }
     };
-
 
     // =========================
     // COUNT RESERVATIONS
@@ -1306,9 +1096,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         reservations.filter(
             (reservation) =>
                 reservation.status.toLowerCase() === "unpaid"
-
         );
-
 
     const approvedReservations =
         reservations.filter(
@@ -1319,22 +1107,16 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 reservation.status.toLowerCase() === "approved"
         );
 
-
     const claimedReservations =
         reservations.filter(
             (reservation) =>
-                reservation.status.toLowerCase() ===
-                "claimed"
+                reservation.status.toLowerCase() === "claimed"
         );
-
 
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [selectedReservationForCancel, setSelectedReservationForCancel] =
         useState<ItemReservation | null>(null);
     const [cancellationReason, setCancellationReason] = useState("");
-    // =========================
-    // REPORTS DATA
-    // =========================
 
     // =========================
     // REPORT FILTER HELPERS
@@ -1432,61 +1214,37 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     // =========================
     // REPORT INVENTORY
     // =========================
+    //
+    // AVAILABLE IS ALWAYS
+    // DERIVED, NEVER STORED:
+    //
+    //  available = totalStock - reservedQuantity
+    //
+    // =========================
 
-    const getAvailable = (item: InventoryItem) => {
-
-        if (reportType === "Online") {
-            return Number(item.availableOnline || 0);
-        }
-
-        if (reportType === "Walk-in") {
-            return Number(item.availableWalkIn || 0);
-        }
-
-        return (
-            Number(item.availableOnline || 0) +
-            Number(item.availableWalkIn || 0)
+    const getAvailable = (item: InventoryItem) =>
+        Math.max(
+            0,
+            Number(item.totalStock || 0) -
+            Number(item.reservedQuantity || 0)
         );
-    };
 
-    const totalStock = inventory.reduce((total, item) => {
-
-        if (reportType === "Online") {
-            return total + Number(item.onlineStock || 0);
-        }
-
-        if (reportType === "Walk-in") {
-            return total + Number(item.walkInStock || 0);
-        }
-
-        return total + Number(item.totalStock || 0);
-
-    }, 0);
+    const totalStock = inventory.reduce(
+        (total, item) =>
+            total + Number(item.totalStock || 0),
+        0
+    );
 
     const totalAvailableStock = inventory.reduce(
         (total, item) => total + getAvailable(item),
         0
     );
 
-    // Online / Walk-in reserved is worked out from approved
-    // reservations because inventory stores one combined number.
-    const totalReservedStock =
-        reportType === "All"
-            ? inventory.reduce(
-                (total, item) =>
-                    total + Number(item.reservedQuantity || 0),
-                0
-            )
-            : approvedReservations.reduce(
-                (total, reservation) =>
-                    total +
-                    getReportItems(reservation).reduce(
-                        (sum, item) =>
-                            sum + Number(item.quantity || 0),
-                        0
-                    ),
-                0
-            );
+    const totalReservedStock = inventory.reduce(
+        (total, item) =>
+            total + Number(item.reservedQuantity || 0),
+        0
+    );
 
     const lowStockItems = inventory.filter(
         (item) => getAvailable(item) <= 5
@@ -1557,9 +1315,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
         matchesReservationSearch(reservation, requestSearch)
     );
 
-
-
-
     const filteredApproved = approvedReservations.filter((reservation) =>
         matchesReservationSearch(reservation, reservationSearch)
     );
@@ -1567,6 +1322,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     const filteredClaimed = claimedReservations.filter((reservation) =>
         matchesReservationSearch(reservation, claimingSearch)
     );
+
     const filteredTransactions = reservations.filter((reservation) => {
 
         const matchesStatus =
@@ -1590,7 +1346,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
         <div className="general-office-dashboard">
 
-
             {/* ========================= */}
             {/* SIDEBAR */}
             {/* ========================= */}
@@ -1601,109 +1356,59 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                     ☰
                 </div>
 
-
                 <nav className="go-navigation">
 
-
-                    {/* DASHBOARD */}
-
                     <button
-                        className={`go-nav-item ${activePage === "Dashboard"
-                            ? "active"
-                            : ""
-                            }`}
-                        onClick={() =>
-                            setActivePage("Dashboard")
-                        }
+                        className={`go-nav-item ${activePage === "Dashboard" ? "active" : ""}`}
+                        onClick={() => setActivePage("Dashboard")}
                     >
                         <span>📊</span>
                         Dashboard
                     </button>
 
-
-                    {/* INVENTORY */}
-
                     <button
-                        className={`go-nav-item ${activePage === "Inventory"
-                            ? "active"
-                            : ""
-                            }`}
-                        onClick={() =>
-                            setActivePage("Inventory")
-                        }
+                        className={`go-nav-item ${activePage === "Inventory" ? "active" : ""}`}
+                        onClick={() => setActivePage("Inventory")}
                     >
                         <span>📦</span>
                         Inventory
                     </button>
 
-
-                    {/* REQUESTS */}
-
                     <button
-                        className={`go-nav-item ${activePage === "Requests"
-                            ? "active"
-                            : ""
-                            }`}
-                        onClick={() =>
-                            setActivePage("Requests")
-                        }
+                        className={`go-nav-item ${activePage === "Requests" ? "active" : ""}`}
+                        onClick={() => setActivePage("Requests")}
                     >
                         <span>📋</span>
                         Requests
                     </button>
 
-
-                    {/* RESERVATIONS */}
-
                     <button
-                        className={`go-nav-item ${activePage === "Reservations"
-                            ? "active"
-                            : ""
-                            }`}
-                        onClick={() =>
-                            setActivePage("Reservations")
-                        }
+                        className={`go-nav-item ${activePage === "Reservations" ? "active" : ""}`}
+                        onClick={() => setActivePage("Reservations")}
                     >
                         <span>📝</span>
                         Reservations
                     </button>
 
-
-                    {/* CLAIMING */}
-
                     <button
-                        className={`go-nav-item ${activePage === "Claiming"
-                            ? "active"
-                            : ""
-                            }`}
-                        onClick={() =>
-                            setActivePage("Claiming")
-                        }
+                        className={`go-nav-item ${activePage === "Claiming" ? "active" : ""}`}
+                        onClick={() => setActivePage("Claiming")}
                     >
                         <span>📦</span>
                         Claimed Items
                     </button>
 
-                    {/* TRANSACTIONS */}
-
                     <button
-                        className={`go-nav-item ${activePage === "Transactions" ? "active" : ""
-                            }`}
+                        className={`go-nav-item ${activePage === "Transactions" ? "active" : ""}`}
                         onClick={() => setActivePage("Transactions")}
                     >
                         <span>💳</span>
                         Transactions
                     </button>
-                    {/* REPORTS */}
 
                     <button
-                        className={`go-nav-item ${activePage === "Reports"
-                            ? "active"
-                            : ""
-                            }`}
-                        onClick={() =>
-                            setActivePage("Reports")
-                        }
+                        className={`go-nav-item ${activePage === "Reports" ? "active" : ""}`}
+                        onClick={() => setActivePage("Reports")}
                     >
                         <span>📊</span>
                         Reports
@@ -1713,13 +1418,11 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
             </aside>
 
-
             {/* ========================= */}
             {/* MAIN CONTENT */}
             {/* ========================= */}
 
             <main className="go-main">
-
 
                 {/* ========================= */}
                 {/* HEADER */}
@@ -1742,7 +1445,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                         </p>
                     </div>
 
-
                     <div className="go-header-actions">
 
                         <button className="go-header-button">
@@ -1761,7 +1463,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                 </header>
 
-
                 {/* ========================= */}
                 {/* DASHBOARD PAGE */}
                 {/* ========================= */}
@@ -1770,22 +1471,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                     <section className="go-content">
 
-
-                        {/* SUMMARY CARDS */}
-
                         <div className="go-summary">
-
-
-                            {/* PENDING RESERVATIONS */}
 
                             <div
                                 className="go-summary-card"
-                                onClick={() =>
-                                    setActivePage("Requests")
-                                }
-                                style={{
-                                    cursor: "pointer",
-                                }}
+                                onClick={() => setActivePage("Requests")}
+                                style={{ cursor: "pointer" }}
                             >
 
                                 <div className="go-card-icon purple">
@@ -1793,36 +1484,17 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </div>
 
                                 <div>
-
-                                    <p>
-                                        Pending Reservations
-                                    </p>
-
-                                    <h2>
-                                        {pendingReservations.length}
-                                    </h2>
-
-                                    <span>
-                                        Needs review
-                                    </span>
-
+                                    <p>Pending Reservations</p>
+                                    <h2>{pendingReservations.length}</h2>
+                                    <span>Needs review</span>
                                 </div>
 
                             </div>
 
-
-                            {/* APPROVED RESERVATIONS */}
-
                             <div
                                 className="go-summary-card"
-                                onClick={() =>
-                                    setActivePage(
-                                        "Reservations"
-                                    )
-                                }
-                                style={{
-                                    cursor: "pointer",
-                                }}
+                                onClick={() => setActivePage("Reservations")}
+                                style={{ cursor: "pointer" }}
                             >
 
                                 <div className="go-card-icon green">
@@ -1830,34 +1502,17 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </div>
 
                                 <div>
-
-                                    <p>
-                                        Approved Reservations
-                                    </p>
-
-                                    <h2>
-                                        {approvedReservations.length}
-                                    </h2>
-
-                                    <span>
-                                        Ready for processing
-                                    </span>
-
+                                    <p>Approved Reservations</p>
+                                    <h2>{approvedReservations.length}</h2>
+                                    <span>Ready for processing</span>
                                 </div>
 
                             </div>
 
-
-                            {/* CLAIMED ITEMS */}
-
                             <div
                                 className="go-summary-card"
-                                onClick={() =>
-                                    setActivePage("Claiming")
-                                }
-                                style={{
-                                    cursor: "pointer",
-                                }}
+                                onClick={() => setActivePage("Claiming")}
+                                style={{ cursor: "pointer" }}
                             >
 
                                 <div className="go-card-icon blue">
@@ -1865,43 +1520,22 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </div>
 
                                 <div>
-
-                                    <p>
-                                        Claimed Items
-                                    </p>
-
-                                    <h2>
-                                        {claimedReservations.length}
-                                    </h2>
-
-                                    <span>
-                                        Completed reservations
-                                    </span>
-
+                                    <p>Claimed Items</p>
+                                    <h2>{claimedReservations.length}</h2>
+                                    <span>Completed reservations</span>
                                 </div>
 
                             </div>
 
                         </div>
 
-
-                        {/* MAIN GRID */}
-
                         <div className="go-dashboard-grid">
-
-
-                            {/* RECENT RESERVATIONS */}
 
                             <section className="go-panel reservations-panel">
 
-
                                 <button
                                     className="go-action-card"
-                                    onClick={() =>
-                                        setActivePage(
-                                            "Reservations"
-                                        )
-                                    }
+                                    onClick={() => setActivePage("Reservations")}
                                 >
 
                                     <span className="go-action-icon">
@@ -1909,25 +1543,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     </span>
 
                                     <div>
-
-                                        <h3>
-                                            Reservations
-                                        </h3>
-
-                                        <p>
-                                            Review reservations
-                                        </p>
-
+                                        <h3>Reservations</h3>
+                                        <p>Review reservations</p>
                                     </div>
 
-                                    <span className="go-arrow">
-                                        →
-                                    </span>
+                                    <span className="go-arrow">→</span>
 
                                 </button>
-
-
-                                {/* SHOW REAL RESERVATIONS */}
 
                                 {loadingReservations ? (
 
@@ -1949,73 +1571,48 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                             <div
                                                 className="go-reservation"
-                                                key={
-                                                    reservation.id
-                                                }
+                                                key={reservation.id}
                                             >
 
                                                 <div className="go-user-icon">
                                                     👤
                                                 </div>
 
-
                                                 <div className="go-reservation-info">
 
                                                     <h3>
-                                                        {
-                                                            reservation.fullName
-                                                        }
+                                                        {reservation.fullName}
                                                     </h3>
 
                                                     <p>
-
-                                                        {
-                                                            reservation.items
-                                                                .map(
-                                                                    (
-                                                                        item
-                                                                    ) =>
-                                                                        item.itemName
-                                                                )
-                                                                .join(
-                                                                    ", "
-                                                                )
-                                                        }
-
+                                                        {reservation.items
+                                                            .map(
+                                                                (item) =>
+                                                                    item.itemName
+                                                            )
+                                                            .join(", ")}
                                                     </p>
 
                                                 </div>
 
-
                                                 <span
                                                     className={`status ${reservation.status.toLowerCase()}`}
                                                 >
-                                                    {
-                                                        reservation.status
-                                                    }
+                                                    {reservation.status}
                                                 </span>
 
                                             </div>
 
                                         ))
-
                                 )}
 
                             </section>
 
-
-                            {/* INVENTORY STATUS */}
-
                             <section className="go-panel inventory-panel">
-
 
                                 <button
                                     className="go-action-card"
-                                    onClick={() =>
-                                        setActivePage(
-                                            "Inventory"
-                                        )
-                                    }
+                                    onClick={() => setActivePage("Inventory")}
                                 >
 
                                     <span className="go-action-icon">
@@ -2023,152 +1620,83 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     </span>
 
                                     <div>
-
-                                        <h3>
-                                            Inventory
-                                        </h3>
-
-                                        <p>
-                                            Manage item stock
-                                        </p>
-
+                                        <h3>Inventory</h3>
+                                        <p>Manage item stock</p>
                                     </div>
 
-                                    <span className="go-arrow">
-                                        →
-                                    </span>
+                                    <span className="go-arrow">→</span>
 
                                 </button>
 
-
                                 <div className="inventory-item">
 
                                     <div className="inventory-info">
-
-                                        <h3>
-                                            PE Uniform
-                                        </h3>
-
-                                        <p>
-                                            870 total stock
-                                        </p>
-
+                                        <h3>PE Uniform</h3>
+                                        <p>870 total stock</p>
                                     </div>
-
 
                                     <div className="stock-bar">
-
                                         <div
                                             className="stock-progress"
-                                            style={{
-                                                width: "78%",
-                                            }}
+                                            style={{ width: "78%" }}
                                         ></div>
-
                                     </div>
 
-                                    <span>
-                                        78%
-                                    </span>
+                                    <span>78%</span>
 
                                 </div>
 
-
                                 <div className="inventory-item">
 
                                     <div className="inventory-info">
-
-                                        <h3>
-                                            School Uniform
-                                        </h3>
-
-                                        <p>
-                                            2,300 total stock
-                                        </p>
-
+                                        <h3>School Uniform</h3>
+                                        <p>2,300 total stock</p>
                                     </div>
-
 
                                     <div className="stock-bar">
-
                                         <div
                                             className="stock-progress"
-                                            style={{
-                                                width: "84%",
-                                            }}
+                                            style={{ width: "84%" }}
                                         ></div>
-
                                     </div>
 
-                                    <span>
-                                        84%
-                                    </span>
+                                    <span>84%</span>
 
                                 </div>
 
-
                                 <div className="inventory-item">
 
                                     <div className="inventory-info">
-
-                                        <h3>
-                                            ROTC Uniform
-                                        </h3>
-
-                                        <p>
-                                            1,250 total stock
-                                        </p>
-
+                                        <h3>ROTC Uniform</h3>
+                                        <p>1,250 total stock</p>
                                     </div>
-
 
                                     <div className="stock-bar">
-
                                         <div
                                             className="stock-progress"
-                                            style={{
-                                                width: "70%",
-                                            }}
+                                            style={{ width: "70%" }}
                                         ></div>
-
                                     </div>
 
-                                    <span>
-                                        70%
-                                    </span>
+                                    <span>70%</span>
 
                                 </div>
 
-
                                 <div className="inventory-item">
 
                                     <div className="inventory-info">
-
-                                        <h3>
-                                            ID Lace
-                                        </h3>
-
-                                        <p>
-                                            600 total stock
-                                        </p>
-
+                                        <h3>ID Lace</h3>
+                                        <p>600 total stock</p>
                                     </div>
-
 
                                     <div className="stock-bar">
-
                                         <div
                                             className="stock-progress"
-                                            style={{
-                                                width: "60%",
-                                            }}
+                                            style={{ width: "60%" }}
                                         ></div>
-
                                     </div>
 
-                                    <span>
-                                        60%
-                                    </span>
+                                    <span>60%</span>
 
                                 </div>
 
@@ -2180,7 +1708,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                 )}
 
-
                 {/* ========================= */}
                 {/* INVENTORY PAGE */}
                 {/* ========================= */}
@@ -2191,23 +1718,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         <section className="go-panel inventory-page">
 
-
-                            {/* INVENTORY HEADER */}
-
                             <div className="inventory-page-header">
 
                                 <div>
-
-                                    <h2>
-                                        Inventory
-                                    </h2>
-
-                                    <p>
-                                        View and manage available items.
-                                    </p>
-
+                                    <h2>Inventory</h2>
+                                    <p>View and manage available items.</p>
                                 </div>
-
 
                                 <button
                                     className="inventory-refresh-button"
@@ -2217,9 +1733,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </button>
 
                             </div>
-
-
-                            {/* LOADING */}
 
                             {loadingInventory ? (
 
@@ -2243,163 +1756,96 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                             <tr>
 
-                                                <th>
-                                                    Item
-                                                </th>
-
-                                                <th>
-                                                    Size
-                                                </th>
-
-                                                <th>
-                                                    Price
-                                                </th>
-
-                                                <th>
-                                                    Total Stock
-                                                </th>
-
-                                                <th>
-                                                    Online
-                                                </th>
-
-                                                <th>
-                                                    Walk-in
-                                                </th>
-
-                                                <th>
-                                                    Reserved
-                                                </th>
-
-                                                <th>
-                                                    Available
-                                                </th>
-
-                                                <th>
-                                                    Status
-                                                </th>
-
-                                                <th>
-                                                    Action
-                                                </th>
+                                                <th>Item</th>
+                                                <th>Size</th>
+                                                <th>Price</th>
+                                                <th>Total Stock</th>
+                                                <th>Reserved</th>
+                                                <th>Available</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
 
                                             </tr>
 
                                         </thead>
 
-
                                         <tbody>
 
-                                            {inventory.map(
-                                                (item) => {
+                                            {inventory.map((item) => {
 
-                                                    const totalAvailable =
-                                                        item.availableOnline +
-                                                        item.availableWalkIn;
+                                                const available =
+                                                    getAvailable(item);
 
-                                                    return (
+                                                return (
 
-                                                        <tr
-                                                            key={
-                                                                item.id
-                                                            }
-                                                        >
+                                                    <tr key={item.id}>
 
-                                                            <td>
+                                                        <td>
 
-                                                                <strong>
-                                                                    {
-                                                                        item.itemName
-                                                                    }
-                                                                </strong>
+                                                            <strong>
+                                                                {item.itemName}
+                                                            </strong>
 
-                                                            </td>
+                                                        </td>
 
+                                                        <td>
+                                                            {item.size}
+                                                        </td>
 
-                                                            <td>
-                                                                {
-                                                                    item.size
+                                                        <td>
+                                                            ₱
+                                                            {item.price.toLocaleString()}
+                                                        </td>
+
+                                                        <td>
+                                                            {item.totalStock}
+                                                        </td>
+
+                                                        <td>
+                                                            {item.reservedQuantity}
+                                                        </td>
+
+                                                        <td>
+                                                            <strong>
+                                                                {available}
+                                                            </strong>
+                                                        </td>
+
+                                                        <td>
+
+                                                            <span
+                                                                className={`inventory-status ${item.status
+                                                                    .toLowerCase()
+                                                                    .replace(
+                                                                        /\s+/g,
+                                                                        "-"
+                                                                    )
+                                                                    }`}
+                                                            >
+
+                                                                {item.status}
+
+                                                            </span>
+
+                                                        </td>
+
+                                                        <td>
+
+                                                            <button
+                                                                className="inventory-action-button"
+                                                                onClick={() =>
+                                                                    openEditStockModal(item)
                                                                 }
-                                                            </td>
+                                                            >
+                                                                Edit Stock
+                                                            </button>
 
+                                                        </td>
 
-                                                            <td>
-                                                                ₱
-                                                                {item.price.toLocaleString()}
-                                                            </td>
+                                                    </tr>
 
-
-                                                            <td>
-                                                                {
-                                                                    item.totalStock
-                                                                }
-                                                            </td>
-
-
-                                                            <td>
-                                                                {
-                                                                    item.availableOnline
-                                                                }
-                                                            </td>
-
-
-                                                            <td>
-                                                                {
-                                                                    item.availableWalkIn
-                                                                }
-                                                            </td>
-
-
-                                                            <td>
-                                                                {
-                                                                    item.reservedQuantity
-                                                                }
-                                                            </td>
-
-
-                                                            <td>
-                                                                {
-                                                                    totalAvailable
-                                                                }
-                                                            </td>
-
-
-                                                            <td>
-
-                                                                <span
-                                                                    className={`inventory-status ${item.status
-                                                                        .toLowerCase()
-                                                                        .replace(
-                                                                            /\s+/g,
-                                                                            "-"
-                                                                        )
-                                                                        }`}
-                                                                >
-
-                                                                    {
-                                                                        item.status
-                                                                    }
-
-                                                                </span>
-
-                                                            </td>
-                                                            <td>
-                                                                <button
-                                                                    className="inventory-action-button"
-                                                                    onClick={() =>
-                                                                        openEditStockModal(item)
-                                                                    }
-                                                                >
-                                                                    Edit Stock
-                                                                </button>
-                                                            </td>
-
-                                                        </tr>
-
-                                                    );
-
-                                                }
-                                            )}
+                                                );
+                                            })}
 
                                         </tbody>
 
@@ -2415,7 +1861,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                 )}
 
-
                 {/* ========================= */}
                 {/* REQUESTS PAGE */}
                 {/* ========================= */}
@@ -2426,21 +1871,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         <section className="go-panel inventory-page">
 
-
                             <div className="inventory-page-header">
 
                                 <div>
-
-                                    <h2>
-                                        Requests
-                                    </h2>
-
-                                    <p>
-                                        Review pending item reservations.
-                                    </p>
-
+                                    <h2>Requests</h2>
+                                    <p>Review pending item reservations.</p>
                                 </div>
-
 
                                 <div
                                     style={{
@@ -2448,7 +1884,9 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                         gap: "10px",
                                         alignItems: "center",
                                     }}
-                                > <input
+                                >
+
+                                    <input
                                         type="text"
                                         placeholder="Search name, ID, item..."
                                         value={requestSearch}
@@ -2458,9 +1896,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                     <button
                                         className="inventory-refresh-button"
-                                        onClick={() =>
-                                            setShowAddRequestModal(true)
-                                        }
+                                        onClick={() => setShowAddRequestModal(true)}
                                     >
                                         + Add Request
                                     </button>
@@ -2475,7 +1911,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </div>
 
                             </div>
-
 
                             {loadingReservations ? (
 
@@ -2499,236 +1934,171 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                             <tr>
 
-                                                <th>
-                                                    Reservation ID
-                                                </th>
-
-                                                <th>
-                                                    Student
-                                                </th>
-
-                                                <th>
-                                                    Program
-                                                </th>
-
-                                                <th>
-                                                    Mobile
-                                                </th>
-
-                                                <th>
-                                                    Items
-                                                </th>
-
-
-                                                <th>
-                                                    Total
-                                                </th>
-                                                <th>
-                                                    Purchase Type
-                                                </th>
-                                                <th>
-                                                    Status
-                                                </th>
-
-                                                <th>
-                                                    Action
-                                                </th>
-
+                                                <th>Reservation ID</th>
+                                                <th>Student</th>
+                                                <th>Program</th>
+                                                <th>Mobile</th>
+                                                <th>Items</th>
+                                                <th>Total</th>
+                                                <th>Purchase Type</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
 
                                             </tr>
 
                                         </thead>
 
-
                                         <tbody>
 
-                                            {filteredPending.map(
-                                                (reservation) => (
+                                            {filteredPending.map((reservation) => (
 
-                                                    <tr
-                                                        key={
-                                                            reservation.id
-                                                        }
-                                                    >
+                                                <tr key={reservation.id}>
 
-                                                        <td>
+                                                    <td>
 
-                                                            <strong>
-                                                                {
-                                                                    reservation.reservationId
-                                                                }
-                                                            </strong>
+                                                        <strong>
+                                                            {reservation.reservationId}
+                                                        </strong>
 
-                                                        </td>
+                                                    </td>
 
+                                                    <td>
 
-                                                        <td>
+                                                        <strong>
+                                                            {reservation.fullName}
+                                                        </strong>
 
-                                                            <strong>
-                                                                {
-                                                                    reservation.fullName
-                                                                }
-                                                            </strong>
+                                                        <br />
 
-                                                            <br />
+                                                        <small>
+                                                            {reservation.studentId}
+                                                        </small>
 
-                                                            <small>
-                                                                {
-                                                                    reservation.studentId
-                                                                }
-                                                            </small>
+                                                    </td>
 
-                                                        </td>
+                                                    <td>
+                                                        {reservation.program.toUpperCase()}
+                                                    </td>
 
+                                                    <td>
+                                                        {reservation.mobileNumber}
+                                                    </td>
 
-                                                        <td>
+                                                    <td>
 
-                                                            {
-                                                                reservation.program.toUpperCase()
-                                                            }
+                                                        {reservation.items.map(
+                                                            (item, index) => (
 
-                                                        </td>
-
-                                                        <td>
-                                                            {
-                                                                reservation.mobileNumber
-                                                            }
-                                                        </td>
-
-
-                                                        <td>
-
-                                                            {reservation.items.map(
-                                                                (
-                                                                    item,
-                                                                    index
-                                                                ) => (
-
-                                                                    <div
-                                                                        key={
-                                                                            index
-                                                                        }
-                                                                        style={{
-                                                                            marginBottom:
-                                                                                "6px",
-                                                                        }}
-                                                                    >
-
-                                                                        <strong>
-                                                                            {
-                                                                                item.itemName
-                                                                            }
-                                                                        </strong>
-
-                                                                        <br />
-
-                                                                        <small>
-
-                                                                            Size:{" "}
-                                                                            {
-                                                                                item.size
-                                                                            }
-
-                                                                            {" | "}
-
-                                                                            Qty:{" "}
-                                                                            {
-                                                                                item.quantity
-                                                                            }
-
-                                                                        </small>
-
-                                                                    </div>
-
-                                                                )
-                                                            )}
-
-                                                        </td>
-
-
-
-
-
-                                                        <td>
-
-                                                            <strong>
-                                                                ₱
-                                                                {reservation.totalAmount.toLocaleString()}
-                                                            </strong>
-
-                                                        </td>
-                                                        <td>
-
-                                                            {reservation.items.map(
-                                                                (item, index) => (
-
-                                                                    <div
-                                                                        key={index}
-                                                                        style={{
-                                                                            marginBottom: "6px",
-                                                                        }}
-                                                                    >
-                                                                        {item.purchaseType}
-                                                                    </div>
-
-                                                                )
-                                                            )}
-
-                                                        </td>
-
-                                                        <td>
-
-                                                            <span
-                                                                className={`status ${reservation.status.toLowerCase()}`}
-                                                            >
-                                                                {
-                                                                    reservation.status
-                                                                }
-                                                            </span>
-
-                                                        </td>
-
-
-                                                        <td>
-
-
-
-                                                            <div
-                                                                style={{
-                                                                    display: "flex",
-                                                                    gap: "8px",
-                                                                }}
-                                                            >
-                                                                <button
-                                                                    onClick={() =>
-                                                                        updateStatusToPending(reservation.id)
-                                                                    }
-                                                                >
-                                                                    Accept
-                                                                </button>
-
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setSelectedReservationForCancel(
-                                                                            reservation
-                                                                        );
-                                                                        setCancellationReason("");
-                                                                        setShowCancelModal(true);
+                                                                <div
+                                                                    key={index}
+                                                                    style={{
+                                                                        marginBottom:
+                                                                            "6px",
                                                                     }}
                                                                 >
-                                                                    Cancel
-                                                                </button>
-                                                            </div>
 
+                                                                    <strong>
+                                                                        {item.itemName}
+                                                                    </strong>
 
+                                                                    <br />
 
-                                                        </td>
+                                                                    <small>
 
+                                                                        Size:{" "}
+                                                                        {item.size}
 
-                                                    </tr>
+                                                                        {" | "}
 
-                                                )
-                                            )}
+                                                                        Qty:{" "}
+                                                                        {item.quantity}
+
+                                                                    </small>
+
+                                                                </div>
+
+                                                            )
+                                                        )}
+
+                                                    </td>
+
+                                                    <td>
+
+                                                        <strong>
+                                                            ₱
+                                                            {reservation.totalAmount.toLocaleString()}
+                                                        </strong>
+
+                                                    </td>
+
+                                                    <td>
+
+                                                        {reservation.items.map(
+                                                            (item, index) => (
+
+                                                                <div
+                                                                    key={index}
+                                                                    style={{
+                                                                        marginBottom:
+                                                                            "6px",
+                                                                    }}
+                                                                >
+                                                                    {item.purchaseType}
+                                                                </div>
+
+                                                            )
+                                                        )}
+
+                                                    </td>
+
+                                                    <td>
+
+                                                        <span
+                                                            className={`status ${reservation.status.toLowerCase()}`}
+                                                        >
+                                                            {reservation.status}
+                                                        </span>
+
+                                                    </td>
+
+                                                    <td>
+
+                                                        <div
+                                                            style={{
+                                                                display: "flex",
+                                                                gap: "8px",
+                                                            }}
+                                                        >
+
+                                                            <button
+                                                                onClick={() =>
+                                                                    updateStatusToPending(
+                                                                        reservation.id
+                                                                    )
+                                                                }
+                                                            >
+                                                                Accept
+                                                            </button>
+
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedReservationForCancel(
+                                                                        reservation
+                                                                    );
+                                                                    setCancellationReason("");
+                                                                    setShowCancelModal(true);
+                                                                }}
+                                                            >
+                                                                Cancel
+                                                            </button>
+
+                                                        </div>
+
+                                                    </td>
+
+                                                </tr>
+
+                                            ))}
 
                                         </tbody>
 
@@ -2744,7 +2114,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                 )}
 
-
                 {/* ========================= */}
                 {/* RESERVATIONS PAGE */}
                 {/* ========================= */}
@@ -2755,23 +2124,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         <section className="go-panel inventory-page">
 
-
-                            {/* HEADER */}
-
                             <div className="inventory-page-header">
 
                                 <div>
-
-                                    <h2>
-                                        Reservations
-                                    </h2>
-
-                                    <p>
-                                        View and manage item reservations.
-                                    </p>
-
+                                    <h2>Reservations</h2>
+                                    <p>View and manage item reservations.</p>
                                 </div>
-
 
                                 <div
                                     style={{
@@ -2780,6 +2138,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                         alignItems: "center",
                                     }}
                                 >
+
                                     <input
                                         type="text"
                                         placeholder="Search name, ID, stub, item..."
@@ -2794,12 +2153,10 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     >
                                         ↻ Refresh
                                     </button>
+
                                 </div>
 
                             </div>
-
-
-                            {/* LOADING */}
 
                             {loadingReservations ? (
 
@@ -2823,318 +2180,250 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                             <tr>
 
-                                                <th>
-                                                    Reservation ID
-                                                </th>
-
-                                                <th>
-                                                    Student
-                                                </th>
-
-                                                <th>
-                                                    Mobile
-                                                </th>
-
-                                                <th>
-                                                    Program
-                                                </th>
-
-                                                <th>
-                                                    Items
-                                                </th>
-
-                                                <th>
-                                                    Pickup
-                                                </th>
-
-                                                <th>
-                                                    Claim Stub ID
-                                                </th>
-
-                                                <th>
-                                                    Total
-                                                </th>
-
-                                                <th>
-                                                    Purchase Type
-                                                </th>
-
-                                                <th>
-                                                    Status
-                                                </th>
-
-                                                <th>
-                                                    Action
-                                                </th>
+                                                <th>Reservation ID</th>
+                                                <th>Student</th>
+                                                <th>Mobile</th>
+                                                <th>Program</th>
+                                                <th>Items</th>
+                                                <th>Pickup</th>
+                                                <th>Claim Stub ID</th>
+                                                <th>Total</th>
+                                                <th>Purchase Type</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
 
                                             </tr>
 
                                         </thead>
 
-
                                         <tbody>
 
+                                            {filteredApproved.map((reservation) => (
 
-                                            {filteredApproved.map(
-                                                (reservation) => (
+                                                <tr key={reservation.id}>
 
-                                                    <tr
-                                                        key={
-                                                            reservation.id
-                                                        }
-                                                    >
+                                                    <td>
 
-                                                        {/* RESERVATION ID */}
+                                                        <strong>
+                                                            {reservation.reservationId}
+                                                        </strong>
 
-                                                        <td>
+                                                    </td>
 
-                                                            <strong>
-                                                                {
-                                                                    reservation.reservationId
-                                                                }
-                                                            </strong>
+                                                    <td>
 
-                                                        </td>
+                                                        <strong>
+                                                            {reservation.fullName}
+                                                        </strong>
 
+                                                        <br />
 
-                                                        {/* STUDENT */}
+                                                        <small>
+                                                            ID:{" "}
+                                                            {reservation.studentId}
+                                                        </small>
 
-                                                        <td>
+                                                    </td>
 
-                                                            <strong>
-                                                                {
-                                                                    reservation.fullName
-                                                                }
-                                                            </strong>
+                                                    <td>
+                                                        {reservation.mobileNumber}
+                                                    </td>
 
-                                                            <br />
+                                                    <td>
+                                                        {reservation.program.toUpperCase()}
+                                                    </td>
 
-                                                            <small>
-                                                                ID:{" "}
-                                                                {
-                                                                    reservation.studentId
-                                                                }
-                                                            </small>
+                                                    <td>
 
-                                                        </td>
+                                                        {reservation.items.map(
+                                                            (item, index) => (
 
+                                                                <div
+                                                                    key={index}
+                                                                    style={{
+                                                                        marginBottom:
+                                                                            "8px",
+                                                                    }}
+                                                                >
 
-                                                        {/* MOBILE */}
+                                                                    <strong>
+                                                                        {item.itemName}
+                                                                    </strong>
 
-                                                        <td>
-                                                            {
-                                                                reservation.mobileNumber
+                                                                    <br />
+
+                                                                    <small>
+
+                                                                        Size:{" "}
+                                                                        {item.size}
+
+                                                                        {" | "}
+
+                                                                        Qty:{" "}
+                                                                        {item.quantity}
+
+                                                                        {" | "}
+
+                                                                        ₱
+                                                                        {item.subtotal.toLocaleString()}
+
+                                                                    </small>
+
+                                                                </div>
+
+                                                            )
+                                                        )}
+
+                                                    </td>
+
+                                                    <td>
+
+                                                        <input
+                                                            type="date"
+                                                            value={
+                                                                reservation.pickupDate
                                                             }
-                                                        </td>
-
-
-                                                        {/* PROGRAM */}
-
-                                                        <td>
-
-                                                            {
-                                                                reservation.program.toUpperCase()
+                                                            disabled={
+                                                                !reservation.claimStubId.trim()
                                                             }
-
-                                                        </td>
-
-
-                                                        {/* ITEMS */}
-
-                                                        <td>
-
-                                                            {reservation.items.map(
-                                                                (
-                                                                    item,
-                                                                    index
-                                                                ) => (
-
-                                                                    <div
-                                                                        key={
-                                                                            index
-                                                                        }
-                                                                        style={{
-                                                                            marginBottom:
-                                                                                "8px",
-                                                                        }}
-                                                                    >
-
-                                                                        <strong>
-                                                                            {
-                                                                                item.itemName
-                                                                            }
-                                                                        </strong>
-
-                                                                        <br />
-
-                                                                        <small>
-
-                                                                            Size:{" "}
-                                                                            {
-                                                                                item.size
-                                                                            }
-
-                                                                            {" | "}
-
-                                                                            Qty:{" "}
-                                                                            {
-                                                                                item.quantity
-                                                                            }
-
-                                                                            {" | "}
-
-                                                                            ₱
-                                                                            {item.subtotal.toLocaleString()}
-
-                                                                        </small>
-
-                                                                    </div>
-
+                                                            onChange={(e) =>
+                                                                updatePickupDate(
+                                                                    reservation.id,
+                                                                    e.target.value
                                                                 )
-                                                            )}
-
-                                                        </td>
-
-
-                                                        {/* PICKUP */}
-
-                                                        <td>
-
-                                                            {/* PICKUP DATE */}
-
-                                                            <input
-                                                                type="date"
-                                                                value={
-                                                                    reservation.pickupDate
-                                                                }
-                                                                disabled={!reservation.claimStubId.trim()}
-                                                                onChange={(e) =>
-                                                                    updatePickupDate(
-                                                                        reservation.id,
-                                                                        e.target.value
-                                                                    )
-                                                                }
-                                                                style={{
-                                                                    opacity: reservation.claimStubId.trim()
+                                                            }
+                                                            style={{
+                                                                opacity:
+                                                                    reservation.claimStubId.trim()
                                                                         ? 1
                                                                         : 0.5,
-                                                                    cursor: reservation.claimStubId.trim()
+                                                                cursor:
+                                                                    reservation.claimStubId.trim()
                                                                         ? "pointer"
                                                                         : "not-allowed",
-                                                                }}
-                                                            />
+                                                            }}
+                                                        />
 
-                                                            <br />
+                                                    </td>
 
-                                                        </td>
+                                                    <td>
 
+                                                        <strong>
+                                                            {reservation.claimStubId}
+                                                        </strong>
 
-                                                        {/* CLAIM STUB ID */}
+                                                    </td>
 
-                                                        <td>
+                                                    <td>
 
-                                                            <strong>
-                                                                {
-                                                                    reservation.claimStubId
-                                                                }
-                                                            </strong>
+                                                        <strong>
+                                                            ₱
+                                                            {reservation.totalAmount.toLocaleString()}
+                                                        </strong>
 
-                                                        </td>
+                                                    </td>
 
+                                                    <td>
 
-                                                        {/* TOTAL */}
+                                                        {reservation.items.map(
+                                                            (item, index) => (
 
-                                                        <td>
+                                                                <div
+                                                                    key={index}
+                                                                    style={{
+                                                                        marginBottom:
+                                                                            "6px",
+                                                                    }}
+                                                                >
+                                                                    {item.purchaseType}
+                                                                </div>
 
-                                                            <strong>
-                                                                ₱
-                                                                {reservation.totalAmount.toLocaleString()}
-                                                            </strong>
+                                                            )
+                                                        )}
 
-                                                        </td>
-                                                        <td>
+                                                    </td>
 
-                                                            {reservation.items.map(
-                                                                (item, index) => (
+                                                    <td>
 
-                                                                    <div
-                                                                        key={index}
-                                                                        style={{
-                                                                            marginBottom: "6px",
-                                                                        }}
+                                                        <span
+                                                            className={`status ${reservation.status.toLowerCase()}`}
+                                                        >
+                                                            {reservation.status}
+                                                        </span>
+
+                                                    </td>
+
+                                                    <td>
+
+                                                        <div
+                                                            style={{
+                                                                display: "flex",
+                                                                gap: "8px",
+                                                            }}
+                                                        >
+
+                                                            {reservation.status?.toLowerCase() ===
+                                                                "approved" ? (
+
+                                                                <button
+                                                                    onClick={() =>
+                                                                        claimReservation(
+                                                                            reservation.id
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Complete
+                                                                </button>
+
+                                                            ) : reservation.status?.toLowerCase() ===
+                                                                "claimed" ? (
+
+                                                                <button disabled>
+                                                                    Claimed
+                                                                </button>
+
+                                                            ) : (
+
+                                                                <>
+
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            completeReservation(
+                                                                                reservation.id
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            !reservation.claimStubId.trim()
+                                                                        }
                                                                     >
-                                                                        {item.purchaseType}
-                                                                    </div>
+                                                                        Approve
+                                                                    </button>
 
-                                                                )
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSelectedReservationForCancel(
+                                                                                reservation
+                                                                            );
+                                                                            setCancellationReason("");
+                                                                            setShowCancelModal(true);
+                                                                        }}
+                                                                        disabled={
+                                                                            !reservation.claimStubId.trim()
+                                                                        }
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+
+                                                                </>
                                                             )}
 
-                                                        </td>
+                                                        </div>
 
+                                                    </td>
 
-                                                        {/* STATUS */}
+                                                </tr>
 
-                                                        <td>
-
-                                                            <span
-                                                                className={`status ${reservation.status.toLowerCase()}`}
-                                                            >
-                                                                {
-                                                                    reservation.status
-                                                                }
-                                                            </span>
-
-                                                        </td>
-
-
-                                                        {/* ACTION */}
-
-
-
-                                                        <td>
-                                                            <div style={{ display: "flex", gap: "8px" }}>
-
-                                                                {reservation.status?.toLowerCase() === "approved" ? (
-                                                                    <button
-                                                                        onClick={() => claimReservation(reservation.id)}
-                                                                    >
-                                                                        Complete
-                                                                    </button>
-                                                                ) : reservation.status?.toLowerCase() === "claimed" ? (
-                                                                    <button disabled>
-                                                                        Claimed
-                                                                    </button>
-                                                                ) : (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => completeReservation(reservation.id)}
-                                                                            disabled={!reservation.claimStubId.trim()}
-                                                                        >
-                                                                            Approve
-                                                                        </button>
-
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                setSelectedReservationForCancel(reservation);
-                                                                                setCancellationReason("");
-                                                                                setShowCancelModal(true);
-                                                                            }}
-                                                                            disabled={!reservation.claimStubId.trim()}
-                                                                        >
-                                                                            Cancel
-                                                                        </button>
-                                                                    </>
-                                                                )}
-
-                                                            </div>
-                                                        </td>
-
-
-
-                                                    </tr>
-
-                                                )
-                                            )}
+                                            ))}
 
                                         </tbody>
 
@@ -3150,7 +2439,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                 )}
 
-
                 {/* ========================= */}
                 {/* CLAIMED ITEMS PAGE */}
                 {/* ========================= */}
@@ -3161,23 +2449,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         <section className="go-panel inventory-page">
 
-
-                            {/* HEADER */}
-
                             <div className="inventory-page-header">
 
                                 <div>
-
-                                    <h2>
-                                        Claimed Items
-                                    </h2>
-
-                                    <p>
-                                        View completed item reservations.
-                                    </p>
-
+                                    <h2>Claimed Items</h2>
+                                    <p>View completed item reservations.</p>
                                 </div>
-
 
                                 <div
                                     style={{
@@ -3186,6 +2463,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                         alignItems: "center",
                                     }}
                                 >
+
                                     <input
                                         type="text"
                                         placeholder="Search name, ID, stub, item..."
@@ -3200,12 +2478,10 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     >
                                         ↻ Refresh
                                     </button>
+
                                 </div>
 
                             </div>
-
-
-                            {/* LOADING */}
 
                             {loadingReservations ? (
 
@@ -3229,235 +2505,164 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                             <tr>
 
-                                                <th>
-                                                    Reservation ID
-                                                </th>
-
-                                                <th>
-                                                    Claim Stub ID
-                                                </th>
-
-                                                <th>
-                                                    Student
-                                                </th>
-
-                                                <th>
-                                                    Program
-                                                </th>
-
-                                                <th>
-                                                    Items
-                                                </th>
-
-                                                <th>
-                                                    Pickup Date
-                                                </th>
-
-                                                <th>
-                                                    Total
-                                                </th>
-                                                <th>
-                                                    Purchase Type
-                                                </th>
-
-                                                <th>
-                                                    Status
-                                                </th>
+                                                <th>Reservation ID</th>
+                                                <th>Claim Stub ID</th>
+                                                <th>Student</th>
+                                                <th>Program</th>
+                                                <th>Items</th>
+                                                <th>Pickup Date</th>
+                                                <th>Claiming Date</th>
+                                                <th>Total</th>
+                                                <th>Purchase Type</th>
+                                                <th>Status</th>
 
                                             </tr>
 
                                         </thead>
 
-
                                         <tbody>
 
-                                            {filteredClaimed.map(
-                                                (reservation) => (
+                                            {filteredClaimed.map((reservation) => (
 
-                                                    <tr
-                                                        key={
-                                                            reservation.id
-                                                        }
-                                                    >
+                                                <tr key={reservation.id}>
 
-                                                        {/* RESERVATION ID */}
+                                                    <td>
 
-                                                        <td>
+                                                        <strong>
+                                                            {reservation.reservationId}
+                                                        </strong>
 
-                                                            <strong>
-                                                                {
-                                                                    reservation.reservationId
-                                                                }
-                                                            </strong>
+                                                    </td>
 
-                                                        </td>
+                                                    <td>
 
+                                                        <strong>
+                                                            {reservation.claimStubId}
+                                                        </strong>
 
-                                                        {/* CLAIM STUB ID */}
+                                                    </td>
 
-                                                        <td>
+                                                    <td>
 
-                                                            <strong>
-                                                                {
-                                                                    reservation.claimStubId
-                                                                }
-                                                            </strong>
+                                                        <strong>
+                                                            {reservation.fullName}
+                                                        </strong>
 
-                                                        </td>
+                                                        <br />
 
+                                                        <small>
+                                                            ID:{" "}
+                                                            {reservation.studentId}
+                                                        </small>
 
-                                                        {/* STUDENT */}
+                                                    </td>
 
-                                                        <td>
+                                                    <td>
+                                                        {reservation.program.toUpperCase()}
+                                                    </td>
 
-                                                            <strong>
-                                                                {
-                                                                    reservation.fullName
-                                                                }
-                                                            </strong>
+                                                    <td>
 
-                                                            <br />
+                                                        {reservation.items.map(
+                                                            (item, index) => (
 
-                                                            <small>
-                                                                ID:{" "}
-                                                                {
-                                                                    reservation.studentId
-                                                                }
-                                                            </small>
+                                                                <div
+                                                                    key={index}
+                                                                    style={{
+                                                                        marginBottom:
+                                                                            "8px",
+                                                                    }}
+                                                                >
 
-                                                        </td>
+                                                                    <strong>
+                                                                        {item.itemName}
+                                                                    </strong>
 
+                                                                    <br />
 
-                                                        {/* PROGRAM */}
+                                                                    <small>
 
-                                                        <td>
-                                                            {
-                                                                reservation.program.toUpperCase()
-                                                            }
-                                                        </td>
+                                                                        Size:{" "}
+                                                                        {item.size}
 
+                                                                        {" | "}
 
-                                                        {/* ITEMS */}
+                                                                        Qty:{" "}
+                                                                        {item.quantity}
 
-                                                        <td>
+                                                                    </small>
 
-                                                            {reservation.items.map(
-                                                                (
-                                                                    item,
-                                                                    index
-                                                                ) => (
+                                                                </div>
 
-                                                                    <div
-                                                                        key={
-                                                                            index
-                                                                        }
-                                                                        style={{
-                                                                            marginBottom:
-                                                                                "8px",
-                                                                        }}
-                                                                    >
+                                                            )
+                                                        )}
 
-                                                                        <strong>
-                                                                            {
-                                                                                item.itemName
-                                                                            }
-                                                                        </strong>
+                                                    </td>
 
-                                                                        <br />
+                                                    <td>
 
-                                                                        <small>
+                                                        <strong>
+                                                            {reservation.pickupDate}
+                                                        </strong>
 
-                                                                            Size:{" "}
-                                                                            {
-                                                                                item.size
-                                                                            }
+                                                    </td>
 
-                                                                            {" | "}
+                                                    <td>
 
-                                                                            Qty:{" "}
-                                                                            {
-                                                                                item.quantity
-                                                                            }
+                                                        <strong>
 
-                                                                        </small>
+                                                            {reservation.claimedAt
+                                                                ? reservation.claimedAt
+                                                                    .toDate()
+                                                                    .toLocaleString()
+                                                                : "Not yet claimed"}
 
-                                                                    </div>
+                                                        </strong>
 
-                                                                )
-                                                            )}
+                                                    </td>
 
-                                                        </td>
+                                                    <td>
 
+                                                        <strong>
+                                                            ₱
+                                                            {reservation.totalAmount.toLocaleString()}
+                                                        </strong>
 
-                                                        {/* PICKUP DATE */}
+                                                    </td>
 
-                                                        <td>
+                                                    <td>
 
-                                                            <strong>
-                                                                {
-                                                                    reservation.pickupDate
-                                                                }
-                                                            </strong>
+                                                        {reservation.items.map(
+                                                            (item, index) => (
 
-                                                            <br />
+                                                                <div
+                                                                    key={index}
+                                                                    style={{
+                                                                        marginBottom:
+                                                                            "6px",
+                                                                    }}
+                                                                >
+                                                                    {item.purchaseType}
+                                                                </div>
 
-                                                            <small>
-                                                                {
-                                                                    reservation.pickupTime
-                                                                }
-                                                            </small>
+                                                            )
+                                                        )}
 
-                                                        </td>
+                                                    </td>
 
+                                                    <td>
 
-                                                        {/* TOTAL */}
+                                                        <span
+                                                            className={`status ${reservation.status.toLowerCase()}`}
+                                                        >
+                                                            {reservation.status}
+                                                        </span>
 
-                                                        <td>
+                                                    </td>
 
-                                                            <strong>
-                                                                ₱
-                                                                {reservation.totalAmount.toLocaleString()}
-                                                            </strong>
+                                                </tr>
 
-                                                        </td>
-
-                                                        <td>
-
-                                                            {reservation.items.map(
-                                                                (item, index) => (
-
-                                                                    <div
-                                                                        key={index}
-                                                                        style={{
-                                                                            marginBottom: "6px",
-                                                                        }}
-                                                                    >
-                                                                        {item.purchaseType}
-                                                                    </div>
-
-                                                                )
-                                                            )}
-
-                                                        </td>
-
-                                                        {/* STATUS */}
-
-                                                        <td>
-
-                                                            <span
-                                                                className={`status ${reservation.status.toLowerCase()}`}
-                                                            >
-                                                                {
-                                                                    reservation.status
-                                                                }
-                                                            </span>
-
-                                                        </td>
-
-                                                    </tr>
-
-                                                )
-                                            )}
+                                            ))}
 
                                         </tbody>
 
@@ -3473,7 +2678,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                 )}
 
-
                 {/* ========================= */}
                 {/* REPORTS PAGE */}
                 {/* ========================= */}
@@ -3481,7 +2685,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 {activePage === "Reports" && (
 
                     <section className="go-content">
-                        {/* REPORT TYPE FILTER */}
 
                         <section className="go-panel">
 
@@ -3499,23 +2702,39 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     </p>
                                 </div>
 
-                                <div style={{ display: "flex", gap: "10px" }}>
-                                    {(["All", "Online", "Walk-in"] as const).map((type) => (
-                                        <button
-                                            key={type}
-                                            className="inventory-refresh-button"
-                                            onClick={() => setReportType(type)}
-                                            style={{
-                                                fontWeight: reportType === type ? 700 : 400,
-                                                outline:
-                                                    reportType === type
-                                                        ? "2px solid #4f46e5"
-                                                        : "none",
-                                            }}
-                                        >
-                                            {type === "All" ? "Combined" : type}
-                                        </button>
-                                    ))}
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                    }}
+                                >
+
+                                    {(["All", "Online", "Walk-in"] as const).map(
+                                        (type) => (
+
+                                            <button
+                                                key={type}
+                                                className="inventory-refresh-button"
+                                                onClick={() => setReportType(type)}
+                                                style={{
+                                                    fontWeight:
+                                                        reportType === type
+                                                            ? 700
+                                                            : 400,
+                                                    outline:
+                                                        reportType === type
+                                                            ? "2px solid #4f46e5"
+                                                            : "none",
+                                                }}
+                                            >
+                                                {type === "All"
+                                                    ? "Combined"
+                                                    : type}
+                                            </button>
+
+                                        )
+                                    )}
+
                                 </div>
 
                             </div>
@@ -3536,36 +2755,68 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                     <tbody>
 
-                                        {(["Online", "Walk-in", "All"] as const).map((type) => {
+                                        {(["Online", "Walk-in", "All"] as const).map(
+                                            (type) => {
 
-                                            const stats = getTypeStats(type);
+                                                const stats = getTypeStats(type);
 
-                                            return (
-                                                <tr key={type}>
-                                                    <td>
-                                                        <strong>
-                                                            {type === "All" ? "Combined" : type}
-                                                        </strong>
-                                                    </td>
-                                                    <td>{stats.transactions}</td>
-                                                    <td>{stats.quantity}</td>
-                                                    <td>
-                                                        ₱
-                                                        {stats.sales.toLocaleString(undefined, {
-                                                            minimumFractionDigits: 2,
-                                                            maximumFractionDigits: 2,
-                                                        })}
-                                                    </td>
-                                                    <td>
-                                                        ₱
-                                                        {stats.average.toLocaleString(undefined, {
-                                                            minimumFractionDigits: 2,
-                                                            maximumFractionDigits: 2,
-                                                        })}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                                                return (
+
+                                                    <tr key={type}>
+
+                                                        <td>
+
+                                                            <strong>
+                                                                {type === "All"
+                                                                    ? "Combined"
+                                                                    : type}
+                                                            </strong>
+
+                                                        </td>
+
+                                                        <td>
+                                                            {stats.transactions}
+                                                        </td>
+
+                                                        <td>
+                                                            {stats.quantity}
+                                                        </td>
+
+                                                        <td>
+
+                                                            ₱
+                                                            {stats.sales.toLocaleString(
+                                                                undefined,
+                                                                {
+                                                                    minimumFractionDigits:
+                                                                        2,
+                                                                    maximumFractionDigits:
+                                                                        2,
+                                                                }
+                                                            )}
+
+                                                        </td>
+
+                                                        <td>
+
+                                                            ₱
+                                                            {stats.average.toLocaleString(
+                                                                undefined,
+                                                                {
+                                                                    minimumFractionDigits:
+                                                                        2,
+                                                                    maximumFractionDigits:
+                                                                        2,
+                                                                }
+                                                            )}
+
+                                                        </td>
+
+                                                    </tr>
+
+                                                );
+                                            }
+                                        )}
 
                                     </tbody>
 
@@ -3575,12 +2826,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         </section>
 
-                        {/* REPORT SUMMARY */}
-
                         <div className="go-summary">
-
-
-                            {/* TOTAL SALES */}
 
                             <div className="go-summary-card">
 
@@ -3589,32 +2835,18 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </div>
 
                                 <div>
-
-                                    <p>
-                                        Total Sales
-                                    </p>
-
+                                    <p>Total Sales</p>
                                     <h2>
                                         ₱
-                                        {totalSales.toLocaleString(
-                                            undefined,
-                                            {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2,
-                                            }
-                                        )}
+                                        {totalSales.toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        })}
                                     </h2>
-
-                                    <span>
-                                        From claimed reservations
-                                    </span>
-
+                                    <span>From claimed reservations</span>
                                 </div>
 
                             </div>
-
-
-                            {/* ITEMS SOLD */}
 
                             <div className="go-summary-card">
 
@@ -3623,25 +2855,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </div>
 
                                 <div>
-
-                                    <p>
-                                        Items Sold
-                                    </p>
-
-                                    <h2>
-                                        {totalItemsSold}
-                                    </h2>
-
-                                    <span>
-                                        Successfully claimed
-                                    </span>
-
+                                    <p>Items Sold</p>
+                                    <h2>{totalItemsSold}</h2>
+                                    <span>Successfully claimed</span>
                                 </div>
 
                             </div>
-
-
-                            {/* TOTAL RESERVATIONS */}
 
                             <div className="go-summary-card">
 
@@ -3650,25 +2869,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </div>
 
                                 <div>
-
-                                    <p>
-                                        Total Reservations
-                                    </p>
-
-                                    <h2>
-                                        {reportAllReservations.length}
-                                    </h2>
-
-                                    <span>
-                                        All reservations
-                                    </span>
-
+                                    <p>Total Reservations</p>
+                                    <h2>{reportAllReservations.length}</h2>
+                                    <span>All reservations</span>
                                 </div>
 
                             </div>
-
-
-                            {/* LOW STOCK */}
 
                             <div className="go-summary-card">
 
@@ -3677,52 +2883,30 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </div>
 
                                 <div>
-
-                                    <p>
-                                        Low Stock
-                                    </p>
-
-                                    <h2>
-                                        {lowStockItems.length}
-                                    </h2>
-
-                                    <span>
-                                        Needs attention
-                                    </span>
-
+                                    <p>Low Stock</p>
+                                    <h2>{lowStockItems.length}</h2>
+                                    <span>Needs attention</span>
                                 </div>
 
                             </div>
 
                         </div>
 
-
-                        {/* ========================= */}
-                        {/* INVENTORY OVERVIEW */}
-                        {/* ========================= */}
-
                         <section className="go-panel">
 
                             <div className="inventory-page-header">
 
                                 <div>
-
-                                    <h2>
-                                        Inventory Overview
-                                    </h2>
-
+                                    <h2>Inventory Overview</h2>
                                     <p>
-                                        Current stock condition
-                                        and availability.
+                                        Current stock condition and
+                                        availability.
                                     </p>
-
                                 </div>
 
                             </div>
 
-
                             <div className="go-summary">
-
 
                                 <div className="go-summary-card">
 
@@ -3731,23 +2915,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     </div>
 
                                     <div>
-
-                                        <p>
-                                            Total Stock
-                                        </p>
-
-                                        <h2>
-                                            {totalStock}
-                                        </h2>
-
-                                        <span>
-                                            All inventory
-                                        </span>
-
+                                        <p>Total Stock</p>
+                                        <h2>{totalStock}</h2>
+                                        <span>All inventory</span>
                                     </div>
 
                                 </div>
-
 
                                 <div className="go-summary-card">
 
@@ -3756,23 +2929,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     </div>
 
                                     <div>
-
-                                        <p>
-                                            Available Stock
-                                        </p>
-
-                                        <h2>
-                                            {totalAvailableStock}
-                                        </h2>
-
-                                        <span>
-                                            Online + Walk-in
-                                        </span>
-
+                                        <p>Available Stock</p>
+                                        <h2>{totalAvailableStock}</h2>
+                                        <span>After reservations</span>
                                     </div>
 
                                 </div>
-
 
                                 <div className="go-summary-card">
 
@@ -3781,23 +2943,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     </div>
 
                                     <div>
-
-                                        <p>
-                                            Reserved Stock
-                                        </p>
-
-                                        <h2>
-                                            {totalReservedStock}
-                                        </h2>
-
-                                        <span>
-                                            Currently reserved
-                                        </span>
-
+                                        <p>Reserved Stock</p>
+                                        <h2>{totalReservedStock}</h2>
+                                        <span>Currently reserved</span>
                                     </div>
 
                                 </div>
-
 
                                 <div className="go-summary-card">
 
@@ -3806,11 +2957,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     </div>
 
                                     <div>
-
-                                        <p>
-                                            Average Transaction
-                                        </p>
-
+                                        <p>Average Transaction</p>
                                         <h2>
                                             ₱
                                             {averageTransaction.toLocaleString(
@@ -3821,11 +2968,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                 }
                                             )}
                                         </h2>
-
-                                        <span>
-                                            Per claimed reservation
-                                        </span>
-
+                                        <span>Per claimed reservation</span>
                                     </div>
 
                                 </div>
@@ -3834,103 +2977,50 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         </section>
 
-
-                        {/* ========================= */}
-                        {/* RESERVATION STATUS */}
-                        {/* ========================= */}
-
                         <section className="go-panel">
 
                             <div className="inventory-page-header">
 
                                 <div>
-
-                                    <h2>
-                                        Reservation Status
-                                    </h2>
-
+                                    <h2>Reservation Status</h2>
                                     <p>
-                                        Overview of reservation
-                                        processing.
+                                        Overview of reservation processing.
                                     </p>
-
                                 </div>
 
                             </div>
-
 
                             <div className="inventory-table-container">
 
                                 <table className="inventory-table">
 
                                     <thead>
-
                                         <tr>
-
-                                            <th>
-                                                Status
-                                            </th>
-
-                                            <th>
-                                                Number of Reservations
-                                            </th>
-
+                                            <th>Status</th>
+                                            <th>Number of Reservations</th>
                                         </tr>
-
                                     </thead>
-
 
                                     <tbody>
 
                                         <tr>
-
-                                            <td>
-                                                Pending
-                                            </td>
-
-                                            <td>
-                                                {reportPending.length}
-                                            </td>
-
+                                            <td>Pending</td>
+                                            <td>{reportPending.length}</td>
                                         </tr>
 
-
                                         <tr>
-
-                                            <td>
-                                                Approved
-                                            </td>
-
-                                            <td>
-                                                {reportApproved.length}
-                                            </td>
-
+                                            <td>Approved</td>
+                                            <td>{reportApproved.length}</td>
                                         </tr>
 
-
                                         <tr>
-
-                                            <td>
-                                                Claimed
-                                            </td>
-
-                                            <td>
-                                                {reportClaimed.length}
-                                            </td>
-
+                                            <td>Claimed</td>
+                                            <td>{reportClaimed.length}</td>
                                         </tr>
 
-
                                         <tr>
-
-                                            <td>
-                                                Cancelled
-                                            </td>
-
-                                            <td>
-                                                {reportCancelled.length}
-                                            </td>
-
+                                            <td>Cancelled</td>
+                                            <td>{reportCancelled.length}</td>
                                         </tr>
 
                                     </tbody>
@@ -3941,59 +3031,32 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         </section>
 
-
-                        {/* ========================= */}
-                        {/* TOP ITEMS */}
-                        {/* ========================= */}
-
                         <section className="go-panel">
 
                             <div className="inventory-page-header">
 
                                 <div>
-
-                                    <h2>
-                                        Top Items
-                                    </h2>
-
+                                    <h2>Top Items</h2>
                                     <p>
-                                        Most sold items based
-                                        on completed reservations.
+                                        Most sold items based on completed
+                                        reservations.
                                     </p>
-
                                 </div>
 
                             </div>
-
 
                             <div className="inventory-table-container">
 
                                 <table className="inventory-table">
 
                                     <thead>
-
                                         <tr>
-
-                                            <th>
-                                                Rank
-                                            </th>
-
-                                            <th>
-                                                Item
-                                            </th>
-
-                                            <th>
-                                                Quantity Sold
-                                            </th>
-
-                                            <th>
-                                                Sales
-                                            </th>
-
+                                            <th>Rank</th>
+                                            <th>Item</th>
+                                            <th>Quantity Sold</th>
+                                            <th>Sales</th>
                                         </tr>
-
                                     </thead>
-
 
                                     <tbody>
 
@@ -4004,8 +3067,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                 <td
                                                     colSpan={4}
                                                     style={{
-                                                        textAlign:
-                                                            "center",
+                                                        textAlign: "center",
                                                     }}
                                                 >
                                                     No sales data yet.
@@ -4015,55 +3077,38 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                         ) : (
 
-                                            topItems.map(
-                                                (
-                                                    item,
-                                                    index
-                                                ) => (
+                                            topItems.map((item, index) => (
 
-                                                    <tr
-                                                        key={
-                                                            item.itemName
-                                                        }
-                                                    >
+                                                <tr key={item.itemName}>
 
-                                                        <td>
-                                                            {index + 1}
-                                                        </td>
+                                                    <td>{index + 1}</td>
 
-                                                        <td>
+                                                    <td>
+                                                        <strong>
+                                                            {item.itemName}
+                                                        </strong>
+                                                    </td>
 
-                                                            <strong>
-                                                                {
-                                                                    item.itemName
-                                                                }
-                                                            </strong>
+                                                    <td>{item.quantity}</td>
 
-                                                        </td>
+                                                    <td>
 
-                                                        <td>
+                                                        ₱
+                                                        {item.sales.toLocaleString(
+                                                            undefined,
                                                             {
-                                                                item.quantity
+                                                                minimumFractionDigits:
+                                                                    2,
+                                                                maximumFractionDigits:
+                                                                    2,
                                                             }
-                                                        </td>
+                                                        )}
 
-                                                        <td>
+                                                    </td>
 
-                                                            ₱
-                                                            {item.sales.toLocaleString(
-                                                                undefined,
-                                                                {
-                                                                    minimumFractionDigits: 2,
-                                                                    maximumFractionDigits: 2,
-                                                                }
-                                                            )}
+                                                </tr>
 
-                                                        </td>
-
-                                                    </tr>
-
-                                                )
-                                            )
+                                            ))
 
                                         )}
 
@@ -4075,63 +3120,33 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         </section>
 
-
-                        {/* ========================= */}
-                        {/* LOW STOCK ITEMS */}
-                        {/* ========================= */}
-
                         <section className="go-panel">
 
                             <div className="inventory-page-header">
 
                                 <div>
-
-                                    <h2>
-                                        Low Stock Items
-                                    </h2>
-
+                                    <h2>Low Stock Items</h2>
                                     <p>
-                                        Items with 5 or fewer
-                                        available units.
+                                        Items with 5 or fewer available
+                                        units.
                                     </p>
-
                                 </div>
 
                             </div>
-
 
                             <div className="inventory-table-container">
 
                                 <table className="inventory-table">
 
                                     <thead>
-
                                         <tr>
-
-                                            <th>
-                                                Item
-                                            </th>
-
-                                            <th>
-                                                Size
-                                            </th>
-
-                                            <th>
-                                                Total Stock
-                                            </th>
-
-                                            <th>
-                                                Available
-                                            </th>
-
-                                            <th>
-                                                Status
-                                            </th>
-
+                                            <th>Item</th>
+                                            <th>Size</th>
+                                            <th>Total Stock</th>
+                                            <th>Reserved</th>
+                                            <th>Available</th>
                                         </tr>
-
                                     </thead>
-
 
                                     <tbody>
 
@@ -4142,8 +3157,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                 <td
                                                     colSpan={5}
                                                     style={{
-                                                        textAlign:
-                                                            "center",
+                                                        textAlign: "center",
                                                     }}
                                                 >
                                                     No low stock items.
@@ -4153,60 +3167,35 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                         ) : (
 
-                                            lowStockItems.map(
-                                                (item) => {
+                                            lowStockItems.map((item) => (
 
-                                                    const available = getAvailable(item);
-                                                    return (
+                                                <tr key={item.id}>
 
-                                                        <tr
-                                                            key={
-                                                                item.id
-                                                            }
-                                                        >
+                                                    <td>
+                                                        <strong>
+                                                            {item.itemName}
+                                                        </strong>
+                                                    </td>
 
-                                                            <td>
+                                                    <td>{item.size}</td>
 
-                                                                <strong>
-                                                                    {
-                                                                        item.itemName
-                                                                    }
-                                                                </strong>
+                                                    <td>{item.totalStock}</td>
 
-                                                            </td>
+                                                    <td>
+                                                        {item.reservedQuantity}
+                                                    </td>
 
-                                                            <td>
-                                                                {
-                                                                    item.size
-                                                                }
-                                                            </td>
+                                                    <td>
 
-                                                            <td>
-                                                                {
-                                                                    item.totalStock
-                                                                }
-                                                            </td>
+                                                        <strong>
+                                                            {getAvailable(item)}
+                                                        </strong>
 
-                                                            <td>
-                                                                {
-                                                                    available
-                                                                }
-                                                            </td>
+                                                    </td>
 
-                                                            <td>
+                                                </tr>
 
-                                                                <span className="inventory-status low-stock">
-                                                                    Low Stock
-                                                                </span>
-
-                                                            </td>
-
-                                                        </tr>
-
-                                                    );
-
-                                                }
-                                            )
+                                            ))
 
                                         )}
 
@@ -4218,85 +3207,49 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         </section>
 
-
-                        {/* ========================= */}
-                        {/* RECENT TRANSACTIONS */}
-                        {/* ========================= */}
-
                         <section className="go-panel">
 
                             <div className="inventory-page-header">
 
                                 <div>
-
-                                    <h2>
-                                        Recent Transactions
-                                    </h2>
-
+                                    <h2>Recent Transactions</h2>
                                     <p>
                                         Recently completed item
                                         reservations.
                                     </p>
-
                                 </div>
 
                             </div>
-
 
                             <div className="inventory-table-container">
 
                                 <table className="inventory-table">
 
                                     <thead>
-
                                         <tr>
-
-                                            <th>
-                                                Reservation ID
-                                            </th>
-
-                                            <th>
-                                                Student
-                                            </th>
-
-                                            <th>
-                                                Items
-                                            </th>
-
-                                            <th>
-                                                Amount
-                                            </th>
-
-
-
-
-                                            <th>
-                                                Pickup Date
-                                            </th>
-
-                                            <th>
-                                                Status
-                                            </th>
-
+                                            <th>Reservation ID</th>
+                                            <th>Student</th>
+                                            <th>Items</th>
+                                            <th>Amount</th>
+                                            <th>Pickup Date</th>
+                                            <th>Status</th>
                                         </tr>
-
                                     </thead>
-
 
                                     <tbody>
 
                                         {reportClaimed.length === 0 ? (
+
                                             <tr>
 
                                                 <td
                                                     colSpan={6}
                                                     style={{
-                                                        textAlign:
-                                                            "center",
+                                                        textAlign: "center",
                                                     }}
                                                 >
-                                                    No completed
-                                                    transactions yet.
+                                                    No completed transactions
+                                                    yet.
                                                 </td>
 
                                             </tr>
@@ -4305,78 +3258,81 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                             reportClaimed
                                                 .slice(0, 10)
-                                                .map(
-                                                    (
-                                                        reservation
-                                                    ) => (
+                                                .map((reservation) => (
 
-                                                        <tr
-                                                            key={
-                                                                reservation.id
+                                                    <tr key={reservation.id}>
+
+                                                        <td>
+
+                                                            <strong>
+                                                                {
+                                                                    reservation.reservationId
+                                                                }
+                                                            </strong>
+
+                                                        </td>
+
+                                                        <td>
+                                                            {
+                                                                reservation.fullName
                                                             }
-                                                        >
+                                                        </td>
 
-                                                            <td>
+                                                        <td>
 
-                                                                <strong>
+                                                            {getReportItems(
+                                                                reservation
+                                                            )
+                                                                .map(
+                                                                    (item) =>
+                                                                        `${item.itemName} (${item.quantity})`
+                                                                )
+                                                                .join(", ")}
+
+                                                        </td>
+
+                                                        <td>
+
+                                                            <strong>
+
+                                                                ₱
+                                                                {getReportAmount(
+                                                                    reservation
+                                                                ).toLocaleString(
+                                                                    undefined,
                                                                     {
-                                                                        reservation.reservationId
+                                                                        minimumFractionDigits:
+                                                                            2,
+                                                                        maximumFractionDigits:
+                                                                            2,
                                                                     }
-                                                                </strong>
+                                                                )}
 
-                                                            </td>
+                                                            </strong>
 
-                                                            <td>
+                                                        </td>
+
+                                                        <td>
+                                                            {
+                                                                reservation.pickupDate
+                                                            }
+                                                        </td>
+
+                                                        <td>
+
+                                                            <span
+                                                                className={`status ${reservation.status.toLowerCase()}`}
+                                                            >
                                                                 {
-                                                                    reservation.fullName
+                                                                    reservation.status
                                                                 }
-                                                            </td>
+                                                            </span>
 
-                                                            <td>
+                                                        </td>
 
-                                                                {getReportItems(reservation)
-                                                                    .map((item) => `${item.itemName} (${item.quantity})`)
-                                                                    .join(", ")}
+                                                    </tr>
 
-                                                            </td>
-
-                                                            <td>
-
-                                                                <strong>
-
-                                                                    ₱
-                                                                    {getReportAmount(reservation).toLocaleString(undefined, {
-                                                                        minimumFractionDigits: 2,
-                                                                        maximumFractionDigits: 2,
-                                                                    })}
-
-                                                                </strong>
-
-                                                            </td>
-
-
-                                                            <td>
-                                                                {
-                                                                    reservation.pickupDate
-                                                                }
-                                                            </td>
-
-                                                            <td>
-
-                                                                <span
-                                                                    className={`status ${reservation.status.toLowerCase()}`}
-                                                                >
-                                                                    {
-                                                                        reservation.status
-                                                                    }
-                                                                </span>
-
-                                                            </td>
-
-                                                        </tr>
-
-                                                    )
-                                                )
+                                                ))
 
                                         )}
 
@@ -4391,6 +3347,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                     </section>
 
                 )}
+
                 {/* ========================= */}
                 {/* TRANSACTIONS PAGE */}
                 {/* ========================= */}
@@ -4415,6 +3372,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                         alignItems: "center",
                                     }}
                                 >
+
                                     <input
                                         type="text"
                                         placeholder="Search name, ID, stub..."
@@ -4446,6 +3404,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     >
                                         ↻ Refresh
                                     </button>
+
                                 </div>
 
                             </div>
@@ -4483,97 +3442,162 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                         <tbody>
 
-                                            {filteredTransactions.map((reservation) => (
+                                            {filteredTransactions.map(
+                                                (reservation) => (
 
-                                                <tr key={reservation.id}>
+                                                    <tr key={reservation.id}>
 
-                                                    <td>
-                                                        <strong>
-                                                            {reservation.reservationId}
-                                                        </strong>
-                                                    </td>
+                                                        <td>
 
-                                                    <td>
-                                                        {reservation.claimStubId || "—"}
-                                                    </td>
-
-                                                    <td>
-                                                        <strong>
-                                                            {reservation.fullName}
-                                                        </strong>
-                                                        <br />
-                                                        <small>
-                                                            ID: {reservation.studentId}
-                                                        </small>
-                                                    </td>
-
-                                                    <td>
-                                                        {reservation.items.map(
-                                                            (item, index) => (
-                                                                <div
-                                                                    key={index}
-                                                                    style={{
-                                                                        marginBottom: "6px",
-                                                                    }}
-                                                                >
-                                                                    <strong>
-                                                                        {item.itemName}
-                                                                    </strong>
-                                                                    <br />
-                                                                    <small>
-                                                                        Size: {item.size}
-                                                                        {" | "}
-                                                                        Qty: {item.quantity}
-                                                                        {" | "}
-                                                                        {item.purchaseType}
-                                                                    </small>
-                                                                </div>
-                                                            )
-                                                        )}
-                                                    </td>
-
-                                                    <td>
-                                                        <strong>
-                                                            {reservation.pickupDate}
-                                                        </strong>
-                                                        <br />
-                                                        <small>
-                                                            {reservation.pickupTime}
-                                                        </small>
-                                                    </td>
-
-                                                    <td>
-                                                        <strong>
-                                                            ₱
-                                                            {reservation.totalAmount.toLocaleString(
-                                                                undefined,
+                                                            <strong>
                                                                 {
-                                                                    minimumFractionDigits: 2,
-                                                                    maximumFractionDigits: 2,
+                                                                    reservation.reservationId
                                                                 }
+                                                            </strong>
+
+                                                        </td>
+
+                                                        <td>
+                                                            {
+                                                                reservation.claimStubId ||
+                                                                "—"
+                                                            }
+                                                        </td>
+
+                                                        <td>
+
+                                                            <strong>
+                                                                {
+                                                                    reservation.fullName
+                                                                }
+                                                            </strong>
+
+                                                            <br />
+
+                                                            <small>
+                                                                ID:{" "}
+                                                                {
+                                                                    reservation.studentId
+                                                                }
+                                                            </small>
+
+                                                        </td>
+
+                                                        <td>
+
+                                                            {reservation.items.map(
+                                                                (item, index) => (
+
+                                                                    <div
+                                                                        key={
+                                                                            index
+                                                                        }
+                                                                        style={{
+                                                                            marginBottom:
+                                                                                "6px",
+                                                                        }}
+                                                                    >
+
+                                                                        <strong>
+                                                                            {
+                                                                                item.itemName
+                                                                            }
+                                                                        </strong>
+
+                                                                        <br />
+
+                                                                        <small>
+
+                                                                            Size:{" "}
+                                                                            {
+                                                                                item.size
+                                                                            }
+
+                                                                            {" | "}
+
+                                                                            Qty:{" "}
+                                                                            {
+                                                                                item.quantity
+                                                                            }
+
+                                                                            {" | "}
+
+                                                                            {
+                                                                                item.purchaseType
+                                                                            }
+
+                                                                        </small>
+
+                                                                    </div>
+
+                                                                )
                                                             )}
-                                                        </strong>
-                                                    </td>
 
-                                                    <td>
-                                                        <span
-                                                            className={`status ${reservation.status.toLowerCase()}`}
-                                                        >
-                                                            {reservation.status}
-                                                        </span>
-                                                    </td>
+                                                        </td>
 
-                                                    <td>
-                                                        {reservation.status.toLowerCase() ===
-                                                            "cancelled"
-                                                            ? reservation.cancellationReason ||
-                                                            "—"
-                                                            : "—"}
-                                                    </td>
+                                                        <td>
 
-                                                </tr>
+                                                            <strong>
+                                                                {
+                                                                    reservation.pickupDate
+                                                                }
+                                                            </strong>
 
-                                            ))}
+                                                            <br />
+
+                                                            <small>
+                                                                {
+                                                                    reservation.pickupTime
+                                                                }
+                                                            </small>
+
+                                                        </td>
+
+                                                        <td>
+
+                                                            <strong>
+
+                                                                ₱
+                                                                {reservation.totalAmount.toLocaleString(
+                                                                    undefined,
+                                                                    {
+                                                                        minimumFractionDigits:
+                                                                            2,
+                                                                        maximumFractionDigits:
+                                                                            2,
+                                                                    }
+                                                                )}
+
+                                                            </strong>
+
+                                                        </td>
+
+                                                        <td>
+
+                                                            <span
+                                                                className={`status ${reservation.status.toLowerCase()}`}
+                                                            >
+                                                                {
+                                                                    reservation.status
+                                                                }
+                                                            </span>
+
+                                                        </td>
+
+                                                        <td>
+
+                                                            {reservation.status.toLowerCase() ===
+                                                                "cancelled"
+                                                                ? reservation.cancellationReason ||
+                                                                "—"
+                                                                : "—"}
+
+                                                        </td>
+
+                                                    </tr>
+
+                                                )
+                                            )}
 
                                         </tbody>
 
@@ -4605,9 +3629,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                             <section className="go-panel">
 
-                                <h2>
-                                    {activePage}
-                                </h2>
+                                <h2>{activePage}</h2>
 
                                 <p
                                     style={{
@@ -4634,8 +3656,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                         style={{
                             position: "fixed",
                             inset: 0,
-                            backgroundColor:
-                                "rgba(0, 0, 0, 0.45)",
+                            backgroundColor: "rgba(0, 0, 0, 0.45)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -4653,16 +3674,14 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 overflowY: "auto",
                                 borderRadius: "12px",
                                 padding: "24px",
-                                boxShadow:
-                                    "0 10px 40px rgba(0,0,0,0.2)",
+                                boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
                             }}
                         >
 
                             <div
                                 style={{
                                     display: "flex",
-                                    justifyContent:
-                                        "space-between",
+                                    justifyContent: "space-between",
                                     alignItems: "center",
                                     marginBottom: "20px",
                                 }}
@@ -4670,11 +3689,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 <div>
 
-                                    <h2
-                                        style={{
-                                            margin: 0,
-                                        }}
-                                    >
+                                    <h2 style={{ margin: 0 }}>
                                         Add New Request
                                     </h2>
 
@@ -4691,9 +3706,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </div>
 
                                 <button
-                                    onClick={() =>
-                                        setShowAddRequestModal(false)
-                                    }
+                                    onClick={() => setShowAddRequestModal(false)}
                                     style={{
                                         border: "none",
                                         background: "transparent",
@@ -4706,9 +3719,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                             </div>
 
-
-                            {/* REQUEST DETAILS */}
-
                             <div
                                 style={{
                                     display: "grid",
@@ -4720,24 +3730,18 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 <div>
 
-                                    <label>
-                                        Reservation ID
-                                    </label>
+                                    <label>Reservation ID</label>
 
                                     <input
                                         type="text"
-                                        value={
-                                            newRequest.reservationId
-                                        }
+                                        value={newRequest.reservationId}
                                         placeholder="Leave blank to auto-generate"
                                         onChange={(e) =>
-                                            setNewRequest(
-                                                (previous) => ({
-                                                    ...previous,
-                                                    reservationId:
-                                                        e.target.value,
-                                                })
-                                            )
+                                            setNewRequest((previous) => ({
+                                                ...previous,
+                                                reservationId:
+                                                    e.target.value,
+                                            }))
                                         }
                                         style={{
                                             width: "100%",
@@ -4748,27 +3752,20 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 </div>
 
-
                                 <div>
 
-                                    <label>
-                                        Claim Stub ID
-                                    </label>
+                                    <label>Claim Stub ID</label>
 
                                     <input
                                         type="text"
-                                        value={
-                                            newRequest.claimStubId
-                                        }
+                                        value={newRequest.claimStubId}
                                         placeholder="Leave blank for pending request"
                                         onChange={(e) =>
-                                            setNewRequest(
-                                                (previous) => ({
-                                                    ...previous,
-                                                    claimStubId:
-                                                        e.target.value,
-                                                })
-                                            )
+                                            setNewRequest((previous) => ({
+                                                ...previous,
+                                                claimStubId:
+                                                    e.target.value,
+                                            }))
                                         }
                                         style={{
                                             width: "100%",
@@ -4779,26 +3776,18 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 </div>
 
-
                                 <div>
 
-                                    <label>
-                                        Full Name *
-                                    </label>
+                                    <label>Full Name *</label>
 
                                     <input
                                         type="text"
-                                        value={
-                                            newRequest.fullName
-                                        }
+                                        value={newRequest.fullName}
                                         onChange={(e) =>
-                                            setNewRequest(
-                                                (previous) => ({
-                                                    ...previous,
-                                                    fullName:
-                                                        e.target.value,
-                                                })
-                                            )
+                                            setNewRequest((previous) => ({
+                                                ...previous,
+                                                fullName: e.target.value,
+                                            }))
                                         }
                                         style={{
                                             width: "100%",
@@ -4809,26 +3798,18 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 </div>
 
-
                                 <div>
 
-                                    <label>
-                                        Student ID *
-                                    </label>
+                                    <label>Student ID *</label>
 
                                     <input
                                         type="text"
-                                        value={
-                                            newRequest.studentId
-                                        }
+                                        value={newRequest.studentId}
                                         onChange={(e) =>
-                                            setNewRequest(
-                                                (previous) => ({
-                                                    ...previous,
-                                                    studentId:
-                                                        e.target.value,
-                                                })
-                                            )
+                                            setNewRequest((previous) => ({
+                                                ...previous,
+                                                studentId: e.target.value,
+                                            }))
                                         }
                                         style={{
                                             width: "100%",
@@ -4839,26 +3820,19 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 </div>
 
-
                                 <div>
 
-                                    <label>
-                                        Mobile Number *
-                                    </label>
+                                    <label>Mobile Number *</label>
 
                                     <input
                                         type="text"
-                                        value={
-                                            newRequest.mobileNumber
-                                        }
+                                        value={newRequest.mobileNumber}
                                         onChange={(e) =>
-                                            setNewRequest(
-                                                (previous) => ({
-                                                    ...previous,
-                                                    mobileNumber:
-                                                        e.target.value,
-                                                })
-                                            )
+                                            setNewRequest((previous) => ({
+                                                ...previous,
+                                                mobileNumber:
+                                                    e.target.value,
+                                            }))
                                         }
                                         style={{
                                             width: "100%",
@@ -4869,27 +3843,19 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 </div>
 
-
                                 <div>
 
-                                    <label>
-                                        Program *
-                                    </label>
+                                    <label>Program *</label>
 
                                     <input
                                         type="text"
-                                        value={
-                                            newRequest.program
-                                        }
+                                        value={newRequest.program}
                                         placeholder="e.g. BSIT"
                                         onChange={(e) =>
-                                            setNewRequest(
-                                                (previous) => ({
-                                                    ...previous,
-                                                    program:
-                                                        e.target.value,
-                                                })
-                                            )
+                                            setNewRequest((previous) => ({
+                                                ...previous,
+                                                program: e.target.value,
+                                            }))
                                         }
                                         style={{
                                             width: "100%",
@@ -4900,26 +3866,19 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 </div>
 
-
                                 <div>
 
-                                    <label>
-                                        Pickup Date *
-                                    </label>
+                                    <label>Pickup Date *</label>
 
                                     <input
                                         type="date"
-                                        value={
-                                            newRequest.pickupDate
-                                        }
+                                        value={newRequest.pickupDate}
                                         onChange={(e) =>
-                                            setNewRequest(
-                                                (previous) => ({
-                                                    ...previous,
-                                                    pickupDate:
-                                                        e.target.value,
-                                                })
-                                            )
+                                            setNewRequest((previous) => ({
+                                                ...previous,
+                                                pickupDate:
+                                                    e.target.value,
+                                            }))
                                         }
                                         style={{
                                             width: "100%",
@@ -4930,25 +3889,18 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 </div>
 
-
                                 <div>
 
-                                    <label>
-                                        Pickup Time *
-                                    </label>
+                                    <label>Pickup Time *</label>
 
                                     <select
-                                        value={
-                                            newRequest.pickupTime
-                                        }
+                                        value={newRequest.pickupTime}
                                         onChange={(e) =>
-                                            setNewRequest(
-                                                (previous) => ({
-                                                    ...previous,
-                                                    pickupTime:
-                                                        e.target.value,
-                                                })
-                                            )
+                                            setNewRequest((previous) => ({
+                                                ...previous,
+                                                pickupTime:
+                                                    e.target.value,
+                                            }))
                                         }
                                         style={{
                                             width: "100%",
@@ -4977,25 +3929,17 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 </div>
 
-
                                 <div>
 
-                                    <label>
-                                        Status *
-                                    </label>
+                                    <label>Status *</label>
 
                                     <select
-                                        value={
-                                            newRequest.status
-                                        }
+                                        value={newRequest.status}
                                         onChange={(e) =>
-                                            setNewRequest(
-                                                (previous) => ({
-                                                    ...previous,
-                                                    status:
-                                                        e.target.value,
-                                                })
-                                            )
+                                            setNewRequest((previous) => ({
+                                                ...previous,
+                                                status: e.target.value,
+                                            }))
                                         }
                                         style={{
                                             width: "100%",
@@ -5004,45 +3948,24 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                         }}
                                     >
                                         <option value="Unpaid">Unpaid</option>
-                                        <option value="Pending">
-                                            Pending
-                                        </option>
-
-                                        <option value="Approved">
-                                            Approved
-                                        </option>
-
-                                        <option value="Claimed">
-                                            Claimed
-                                        </option>
-
-                                        <option value="Cancelled">
-                                            Cancelled
-                                        </option>
-
+                                        <option value="Pending">Pending</option>
                                     </select>
 
                                 </div>
 
-
                                 <div>
 
-                                    <label>
-                                        Total Amount
-                                    </label>
+                                    <label>Total Amount</label>
 
                                     <input
                                         type="number"
-                                        value={
-                                            newRequest.totalAmount
-                                        }
+                                        value={newRequest.totalAmount}
                                         readOnly
                                         style={{
                                             width: "100%",
                                             padding: "10px",
                                             marginTop: "6px",
-                                            background:
-                                                "#f5f7fa",
+                                            background: "#f5f7fa",
                                         }}
                                     />
 
@@ -5050,28 +3973,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                             </div>
 
+                            <div style={{ marginTop: "24px" }}>
 
-                            {/* ITEMS */}
+                                <h3>Requested Items</h3>
 
-                            <div
-                                style={{
-                                    marginTop: "24px",
-                                }}
-                            >
-
-                                <h3>
-                                    Requested Items
-                                </h3>
-
-                                <p
-                                    style={{
-                                        color: "#71849a",
-                                    }}
-                                >
-                                    Add at least one item to the
-                                    request.
+                                <p style={{ color: "#71849a" }}>
+                                    Add at least one item to the request.
                                 </p>
-
 
                                 <div
                                     style={{
@@ -5085,24 +3993,33 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                     <div>
 
-                                        <label>
-                                            Inventory Item *
-                                        </label>
+                                        <label>Inventory Item *</label>
 
                                         <select
                                             value={newRequestItem.inventoryId}
                                             onChange={(e) => {
-                                                const selectedItem = inventory.find(
-                                                    (item) => item.id === e.target.value
-                                                );
+                                                const selectedItem =
+                                                    inventory.find(
+                                                        (item) =>
+                                                            item.id ===
+                                                            e.target.value
+                                                    );
 
                                                 setNewRequestItem({
-                                                    inventoryId: selectedItem?.id || "",
-                                                    itemName: selectedItem?.itemName || "",
-                                                    price: Number(selectedItem?.price || 0),
+                                                    inventoryId:
+                                                        selectedItem?.id || "",
+                                                    itemName:
+                                                        selectedItem?.itemName ||
+                                                        "",
+                                                    price: Number(
+                                                        selectedItem?.price || 0
+                                                    ),
                                                     quantity: 1,
-                                                    size: selectedItem?.size || "",
-                                                    subtotal: Number(selectedItem?.price || 0),
+                                                    size:
+                                                        selectedItem?.size || "",
+                                                    subtotal: Number(
+                                                        selectedItem?.price || 0
+                                                    ),
                                                     purchaseType: "Online",
                                                 });
                                             }}
@@ -5117,116 +4034,107 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                 Select item
                                             </option>
 
-                                            {inventory.map(
-                                                (item) => (
-                                                    <option
-                                                        key={item.id}
-                                                        value={item.id}
-                                                    >
-                                                        {item.itemName} -
-                                                        {item.size} - ₱
-                                                        {Number(
-                                                            item.price || 0
-                                                        ).toLocaleString()}
-                                                    </option>
-                                                )
-                                            )}
+                                            {inventory.map((item) => (
+
+                                                <option
+                                                    key={item.id}
+                                                    value={item.id}
+                                                >
+
+                                                    {item.itemName} -
+                                                    {item.size} - ₱
+                                                    {Number(
+                                                        item.price || 0
+                                                    ).toLocaleString()}
+                                                    {" | Avail: "}
+                                                    {Math.max(
+                                                        0,
+                                                        Number(
+                                                            item.totalStock || 0
+                                                        ) -
+                                                        Number(
+                                                            item.reservedQuantity ||
+                                                            0
+                                                        )
+                                                    )}
+
+                                                </option>
+
+                                            ))}
 
                                         </select>
 
                                     </div>
 
-
                                     <div>
 
-                                        <label>
-                                            Item Name *
-                                        </label>
+                                        <label>Item Name *</label>
 
                                         <input
                                             type="text"
-                                            value={
-                                                newRequestItem.itemName
-                                            }
+                                            value={newRequestItem.itemName}
                                             readOnly
                                             style={{
                                                 width: "100%",
                                                 padding: "10px",
                                                 marginTop: "6px",
-                                                background:
-                                                    "#f5f7fa",
+                                                background: "#f5f7fa",
                                             }}
                                         />
 
                                     </div>
 
-
                                     <div>
 
-                                        <label>
-                                            Size *
-                                        </label>
+                                        <label>Size *</label>
 
                                         <input
                                             type="text"
-                                            value={
-                                                newRequestItem.size
-                                            }
+                                            value={newRequestItem.size}
                                             readOnly
                                             style={{
                                                 width: "100%",
                                                 padding: "10px",
                                                 marginTop: "6px",
-                                                background:
-                                                    "#f5f7fa",
+                                                background: "#f5f7fa",
                                             }}
                                         />
 
                                     </div>
 
-
                                     <div>
 
-                                        <label>
-                                            Price
-                                        </label>
+                                        <label>Price</label>
 
                                         <input
                                             type="number"
-                                            value={
-                                                newRequestItem.price
-                                            }
+                                            value={newRequestItem.price}
                                             readOnly
                                             style={{
                                                 width: "100%",
                                                 padding: "10px",
                                                 marginTop: "6px",
-                                                background:
-                                                    "#f5f7fa",
+                                                background: "#f5f7fa",
                                             }}
                                         />
 
                                     </div>
 
-
                                     <div>
 
-                                        <label>
-                                            Purchase Type *
-                                        </label>
+                                        <label>Purchase Type *</label>
 
                                         <select
-                                            value={
-                                                newRequestItem.purchaseType
-                                            }
+                                            value={newRequestItem.purchaseType}
                                             onChange={(e) =>
                                                 setNewRequestItem(
                                                     (previous) => ({
                                                         ...previous,
                                                         purchaseType:
-                                                            e.target.value as
-                                                            "Online" |
-                                                            "Walk-in",
+                                                            e.target
+                                                                .value as
+                                                            | "Online"
+                                                            | "Walk-in",
                                                     })
                                                 )
                                             }
@@ -5239,7 +4147,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                             <option value="Online">
                                                 Online
                                             </option>
-
                                             <option value="Walk-in">
                                                 Walk-in
                                             </option>
@@ -5247,44 +4154,35 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                     </div>
 
-
                                     <div>
 
-                                        <label>
-                                            Quantity *
-                                        </label>
+                                        <label>Quantity *</label>
 
                                         <input
                                             type="number"
                                             min="1"
-                                            value={
-                                                newRequestItem.quantity
-                                            }
+                                            value={newRequestItem.quantity}
                                             onChange={(e) => {
 
                                                 const quantity =
                                                     Math.max(
                                                         1,
                                                         Number(
-                                                            e.target.value ||
-                                                            1
+                                                            e.target.value || 1
                                                         )
                                                     );
 
                                                 setNewRequestItem(
                                                     (previous) => ({
                                                         ...previous,
-                                                        quantity:
-                                                            quantity,
+                                                        quantity: quantity,
                                                         subtotal:
                                                             Number(
                                                                 previous.price ||
                                                                 0
-                                                            ) *
-                                                            quantity,
+                                                            ) * quantity,
                                                     })
                                                 );
-
                                             }}
                                             style={{
                                                 width: "100%",
@@ -5295,21 +4193,15 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                     </div>
 
-
                                     <button
                                         type="button"
-                                        onClick={
-                                            addRequestItem
-                                        }
+                                        onClick={addRequestItem}
                                         style={{
-                                            padding:
-                                                "10px 14px",
+                                            padding: "10px 14px",
                                             cursor: "pointer",
                                             border: "none",
-                                            borderRadius:
-                                                "6px",
-                                            background:
-                                                "#4f46e5",
+                                            borderRadius: "6px",
+                                            background: "#4f46e5",
                                             color: "#ffffff",
                                         }}
                                     >
@@ -5318,23 +4210,11 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 </div>
 
+                                <div style={{ marginTop: "18px" }}>
 
-                                {/* ADDED ITEMS */}
+                                    {newRequest.items.length === 0 ? (
 
-                                <div
-                                    style={{
-                                        marginTop: "18px",
-                                    }}
-                                >
-
-                                    {newRequest.items.length ===
-                                        0 ? (
-
-                                        <p
-                                            style={{
-                                                color: "#71849a",
-                                            }}
-                                        >
+                                        <p style={{ color: "#71849a" }}>
                                             No items added yet.
                                         </p>
 
@@ -5348,33 +4228,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                                     <tr>
 
-                                                        <th>
-                                                            Item
-                                                        </th>
-
-                                                        <th>
-                                                            Size
-                                                        </th>
-
-                                                        <th>
-                                                            Price
-                                                        </th>
-
-                                                        <th>
-                                                            Quantity
-                                                        </th>
-
-                                                        <th>
-                                                            Purchase Type
-                                                        </th>
-
-                                                        <th>
-                                                            Subtotal
-                                                        </th>
-
-                                                        <th>
-                                                            Action
-                                                        </th>
+                                                        <th>Item</th>
+                                                        <th>Size</th>
+                                                        <th>Price</th>
+                                                        <th>Quantity</th>
+                                                        <th>Purchase Type</th>
+                                                        <th>Subtotal</th>
+                                                        <th>Action</th>
 
                                                     </tr>
 
@@ -5383,16 +4243,9 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                 <tbody>
 
                                                     {newRequest.items.map(
-                                                        (
-                                                            item,
-                                                            index
-                                                        ) => (
+                                                        (item, index) => (
 
-                                                            <tr
-                                                                key={
-                                                                    index
-                                                                }
-                                                            >
+                                                            <tr key={index}>
 
                                                                 <td>
                                                                     {
@@ -5401,17 +4254,17 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                                 </td>
 
                                                                 <td>
-                                                                    {
-                                                                        item.size
-                                                                    }
+                                                                    {item.size}
                                                                 </td>
 
                                                                 <td>
+
                                                                     ₱
                                                                     {Number(
                                                                         item.price ||
                                                                         0
                                                                     ).toLocaleString()}
+
                                                                 </td>
 
                                                                 <td>
@@ -5427,6 +4280,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                                 </td>
 
                                                                 <td>
+
                                                                     ₱
                                                                     {Number(
                                                                         item.subtotal ||
@@ -5440,6 +4294,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                                                                 2,
                                                                         }
                                                                     )}
+
                                                                 </td>
 
                                                                 <td>
@@ -5478,14 +4333,10 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                             </div>
 
-
-                            {/* MODAL ACTIONS */}
-
                             <div
                                 style={{
                                     display: "flex",
-                                    justifyContent:
-                                        "flex-end",
+                                    justifyContent: "flex-end",
                                     gap: "10px",
                                     marginTop: "24px",
                                 }}
@@ -5493,14 +4344,9 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setShowAddRequestModal(
-                                            false
-                                        )
-                                    }
+                                    onClick={() => setShowAddRequestModal(false)}
                                     style={{
-                                        padding:
-                                            "10px 18px",
+                                        padding: "10px 18px",
                                         cursor: "pointer",
                                     }}
                                 >
@@ -5509,18 +4355,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                                 <button
                                     type="button"
-                                    onClick={
-                                        addNewRequest
-                                    }
+                                    onClick={addNewRequest}
                                     style={{
-                                        padding:
-                                            "10px 18px",
+                                        padding: "10px 18px",
                                         cursor: "pointer",
                                         border: "none",
-                                        borderRadius:
-                                            "6px",
-                                        background:
-                                            "#4f46e5",
+                                        borderRadius: "6px",
+                                        background: "#4f46e5",
                                         color: "#ffffff",
                                         fontWeight: 600,
                                     }}
@@ -5536,12 +4377,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                 )}
 
-
-
                 {/* ========================= */}
-                {/* EDIT STOCK MODAL */}
+                {/* CANCEL RESERVATION MODAL */}
                 {/* ========================= */}
+
                 {showCancelModal && selectedReservationForCancel && (
+
                     <div
                         style={{
                             position: "fixed",
@@ -5556,6 +4397,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                             zIndex: 9999,
                         }}
                     >
+
                         <div
                             style={{
                                 backgroundColor: "white",
@@ -5565,19 +4407,43 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 maxWidth: "90%",
                             }}
                         >
+
                             <h2>Cancel Reservation</h2>
 
                             <p>
-                                Please provide a reason for cancelling this
-                                reservation.
+                                Please provide a reason for cancelling
+                                this reservation.
                             </p>
 
                             <p>
+
                                 <strong>
                                     Reservation ID:
                                 </strong>{" "}
-                                {selectedReservationForCancel.reservationId}
+
+                                {
+                                    selectedReservationForCancel.reservationId
+                                }
+
                             </p>
+
+                            {selectedReservationForCancel.status?.toLowerCase() ===
+                                "approved" && (
+
+                                    <p
+                                        style={{
+                                            color: "#b91c1c",
+                                            fontSize: "14px",
+                                        }}
+                                    >
+
+                                        ⚠ This reservation is already
+                                        approved. Cancelling it will
+                                        restore the deducted stock.
+
+                                    </p>
+
+                                )}
 
                             <label>
                                 Note / Cancellation Reason
@@ -5607,6 +4473,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     gap: "10px",
                                 }}
                             >
+
                                 <button
                                     onClick={() => {
                                         setShowCancelModal(false);
@@ -5623,390 +4490,224 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 >
                                     Continue Cancellation
                                 </button>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 )}
-                {showEditStockModal &&
-                    selectedInventoryItem && (
+
+                {/* ========================= */}
+                {/* EDIT STOCK MODAL */}
+                {/* ========================= */}
+
+                {showEditStockModal && selectedInventoryItem && (
+
+                    <div
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            backgroundColor: "rgba(0, 0, 0, 0.45)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            zIndex: 9999,
+                        }}
+                    >
 
                         <div
                             style={{
-                                position: "fixed",
-                                inset: 0,
-                                backgroundColor:
-                                    "rgba(0, 0, 0, 0.45)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                zIndex: 9999,
+                                backgroundColor: "#fff",
+                                width: "500px",
+                                maxWidth: "90%",
+                                maxHeight: "90vh",
+                                overflowY: "auto",
+                                borderRadius: "12px",
+                                padding: "25px",
+                                boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
                             }}
                         >
 
-                            <div
+                            <h2>Edit Stock</h2>
+
+                            <p
                                 style={{
-                                    backgroundColor: "#fff",
-                                    width: "500px",
-                                    maxWidth: "90%",
-                                    maxHeight: "90vh",
-                                    overflowY: "auto",
-                                    borderRadius: "12px",
-                                    padding: "25px",
-                                    boxShadow:
-                                        "0 10px 30px rgba(0,0,0,0.2)",
+                                    color: "#666",
+                                    marginBottom: "20px",
                                 }}
                             >
 
-                                <h2>
-                                    Edit Stock
-                                </h2>
+                                Available is calculated automatically:
+                                Total Stock − Reserved.
 
-                                <p
+                            </p>
+
+                            <div style={{ marginBottom: "15px" }}>
+
+                                <label>Item</label>
+
+                                <input
+                                    type="text"
+                                    value={`${selectedInventoryItem.itemName} - ${selectedInventoryItem.size}`}
+                                    readOnly
                                     style={{
-                                        color: "#666",
-                                        marginBottom: "20px",
+                                        width: "100%",
+                                        padding: "10px",
+                                        marginTop: "5px",
+                                        boxSizing: "border-box",
                                     }}
-                                >
-                                    Edit the stock values for this
-                                    inventory item.
-                                </p>
+                                />
 
+                            </div>
 
-                                {/* ITEM NAME */}
-                                <div
+                            <div style={{ marginBottom: "15px" }}>
+
+                                <label>Price</label>
+
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={editStock.price}
+                                    onChange={(e) =>
+                                        setEditStock({
+                                            ...editStock,
+                                            price: Number(e.target.value),
+                                        })
+                                    }
                                     style={{
-                                        marginBottom: "15px",
+                                        width: "100%",
+                                        padding: "10px",
+                                        marginTop: "5px",
+                                        boxSizing: "border-box",
                                     }}
-                                >
+                                />
 
-                                    <label>
-                                        Item
-                                    </label>
+                            </div>
 
-                                    <input
-                                        type="text"
-                                        value={
-                                            `${selectedInventoryItem.itemName} - ${selectedInventoryItem.size}`
-                                        }
-                                        readOnly
-                                        style={{
-                                            width: "100%",
-                                            padding: "10px",
-                                            marginTop: "5px",
-                                            boxSizing:
-                                                "border-box",
-                                        }}
-                                    />
+                            <div style={{ marginBottom: "15px" }}>
 
-                                </div>
+                                <label>Total Stock</label>
 
-
-                                {/* PRICE */}
-                                <div
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={editStock.totalStock}
+                                    onChange={(e) =>
+                                        setEditStock({
+                                            ...editStock,
+                                            totalStock: Number(
+                                                e.target.value
+                                            ),
+                                        })
+                                    }
                                     style={{
-                                        marginBottom: "15px",
+                                        width: "100%",
+                                        padding: "10px",
+                                        marginTop: "5px",
+                                        boxSizing: "border-box",
                                     }}
-                                >
+                                />
 
-                                    <label>
-                                        Price
-                                    </label>
+                            </div>
 
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={editStock.price}
-                                        onChange={(e) =>
-                                            setEditStock({
-                                                ...editStock,
-                                                price: Number(
-                                                    e.target.value
-                                                ),
-                                            })
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            padding: "10px",
-                                            marginTop: "5px",
-                                            boxSizing: "border-box",
-                                        }}
-                                    />
+                            <div style={{ marginBottom: "15px" }}>
 
-                                </div>
+                                <label>Reserved Quantity</label>
 
-
-                                {/* TOTAL STOCK */}
-                                <div
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={editStock.reservedQuantity}
+                                    onChange={(e) =>
+                                        setEditStock({
+                                            ...editStock,
+                                            reservedQuantity: Number(
+                                                e.target.value
+                                            ),
+                                        })
+                                    }
                                     style={{
-                                        marginBottom: "15px",
+                                        width: "100%",
+                                        padding: "10px",
+                                        marginTop: "5px",
+                                        boxSizing: "border-box",
                                     }}
-                                >
+                                />
 
-                                    <label>
-                                        Total Stock
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={
-                                            editStock.totalStock
-                                        }
-                                        onChange={(e) =>
-                                            setEditStock({
-                                                ...editStock,
-                                                totalStock:
-                                                    Number(
-                                                        e.target.value
-                                                    ),
-                                            })
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            padding: "10px",
-                                            marginTop: "5px",
-                                            boxSizing:
-                                                "border-box",
-                                        }}
-                                    />
-
-                                </div>
-
-
-                                {/* ONLINE STOCK */}
-                                <div
+                                <small
                                     style={{
-                                        marginBottom: "15px",
+                                        color: "#71849a",
+                                        display: "block",
+                                        marginTop: "4px",
                                     }}
                                 >
 
-                                    <label>
-                                        Online Stock
-                                    </label>
+                                    Cannot be greater than Total Stock.
 
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={
-                                            editStock.onlineStock
-                                        }
-                                        onChange={(e) =>
-                                            setEditStock({
-                                                ...editStock,
-                                                onlineStock:
-                                                    Number(
-                                                        e.target.value
-                                                    ),
-                                            })
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            padding: "10px",
-                                            marginTop: "5px",
-                                            boxSizing:
-                                                "border-box",
-                                        }}
-                                    />
+                                </small>
 
-                                </div>
+                            </div>
 
+                            <div style={{ marginBottom: "20px" }}>
 
-                                {/* WALK-IN STOCK */}
-                                <div
+                                <label>Available (calculated)</label>
+
+                                <input
+                                    type="number"
+                                    value={Math.max(
+                                        0,
+                                        editStock.totalStock -
+                                        editStock.reservedQuantity
+                                    )}
+                                    readOnly
                                     style={{
-                                        marginBottom: "15px",
+                                        width: "100%",
+                                        padding: "10px",
+                                        marginTop: "5px",
+                                        boxSizing: "border-box",
+                                        background: "#f5f7fa",
+                                    }}
+                                />
+
+                            </div>
+
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "flex-end",
+                                    gap: "10px",
+                                }}
+                            >
+
+                                <button
+                                    onClick={() => {
+                                        setShowEditStockModal(false);
+                                        setSelectedInventoryItem(null);
                                     }}
                                 >
+                                    Cancel
+                                </button>
 
-                                    <label>
-                                        Walk-in Stock
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={
-                                            editStock.walkInStock
-                                        }
-                                        onChange={(e) =>
-                                            setEditStock({
-                                                ...editStock,
-                                                walkInStock:
-                                                    Number(
-                                                        e.target.value
-                                                    ),
-                                            })
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            padding: "10px",
-                                            marginTop: "5px",
-                                            boxSizing:
-                                                "border-box",
-                                        }}
-                                    />
-
-                                </div>
-
-
-                                {/* RESERVED QUANTITY */}
-                                <div
-                                    style={{
-                                        marginBottom: "15px",
-                                    }}
-                                >
-
-                                    <label>
-                                        Reserved Quantity
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={
-                                            editStock.reservedQuantity
-                                        }
-                                        onChange={(e) =>
-                                            setEditStock({
-                                                ...editStock,
-                                                reservedQuantity:
-                                                    Number(
-                                                        e.target.value
-                                                    ),
-                                            })
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            padding: "10px",
-                                            marginTop: "5px",
-                                            boxSizing:
-                                                "border-box",
-                                        }}
-                                    />
-
-                                </div>
-
-
-                                {/* AVAILABLE ONLINE */}
-                                <div
-                                    style={{
-                                        marginBottom: "15px",
-                                    }}
-                                >
-
-                                    <label>
-                                        Available Online
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={
-                                            editStock.availableOnline
-                                        }
-                                        onChange={(e) =>
-                                            setEditStock({
-                                                ...editStock,
-                                                availableOnline:
-                                                    Number(
-                                                        e.target.value
-                                                    ),
-                                            })
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            padding: "10px",
-                                            marginTop: "5px",
-                                            boxSizing:
-                                                "border-box",
-                                        }}
-                                    />
-
-                                </div>
-
-
-                                {/* AVAILABLE WALK-IN */}
-                                <div
-                                    style={{
-                                        marginBottom: "20px",
-                                    }}
-                                >
-
-                                    <label>
-                                        Available Walk-in
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={
-                                            editStock.availableWalkIn
-                                        }
-                                        onChange={(e) =>
-                                            setEditStock({
-                                                ...editStock,
-                                                availableWalkIn:
-                                                    Number(
-                                                        e.target.value
-                                                    ),
-                                            })
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            padding: "10px",
-                                            marginTop: "5px",
-                                            boxSizing:
-                                                "border-box",
-                                        }}
-                                    />
-
-                                </div>
-
-
-                                {/* BUTTONS */}
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        justifyContent:
-                                            "flex-end",
-                                        gap: "10px",
-                                    }}
-                                >
-
-                                    <button
-                                        onClick={() => {
-                                            setShowEditStockModal(
-                                                false
-                                            );
-
-                                            setSelectedInventoryItem(
-                                                null
-                                            );
-                                        }}
-                                    >
-                                        Cancel
-                                    </button>
-
-
-                                    <button
-                                        onClick={saveEditedStock}
-                                    >
-                                        Save Changes
-                                    </button>
-
-                                </div>
+                                <button onClick={saveEditedStock}>
+                                    Save Changes
+                                </button>
 
                             </div>
 
                         </div>
-                    )}
+
+                    </div>
+
+                )}
+
             </main>
 
         </div>
 
     );
 }
-
 
 export default GeneralOfficeDashboard;

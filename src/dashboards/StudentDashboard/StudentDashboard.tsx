@@ -1,9 +1,7 @@
-
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   collection,
   onSnapshot,
-/*   orderBy, */
   query,
   where,
 } from "firebase/firestore";
@@ -65,16 +63,9 @@ type StudentTransaction = {
   time: string;
   claimCode: string;
   createdAt: unknown;
+  details: Record<string, any>;
 };
-/* type InventoryItem = {
-  id: string;
-  itemName: string;
-  size?: string;
-  availableOnline?: number;
-  totalStock?: number;
-  status?: string;
-};
- */
+
 const ACTIVE_STATUSES = [
   "PENDING",
   "APPROVED",
@@ -119,6 +110,9 @@ export default function StudentDashboard({
   const [itemsLoading, setItemsLoading] =
     useState(Boolean(studentId));
 
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<StudentTransaction | null>(null);
+
   /* =========================================
      DOCUMENT REQUESTS
   ========================================= */
@@ -155,6 +149,8 @@ export default function StudentDashboard({
               date: String(data.requested_date || ""),
               time: String(data.requested_time || ""),
               createdAt: data.created_at,
+
+              details: data,
             };
           })
         );
@@ -198,13 +194,22 @@ export default function StudentDashboard({
               key: `ITEM-${document.id}`,
               id: String(data.reservationId || document.id),
               kind: "ITEM",
-              title: String(data.itemName || "Item Reservation"),
+
+              title:
+                Array.isArray(data.items) && data.items.length > 0
+                  ? data.items
+                      .map((item: any) => item.itemName)
+                      .join(", ")
+                  : "Item Reservation",
+
               status: String(data.status || "PENDING"),
 
               claimCode: String(data.claimStubId || ""),
               date: String(data.pickupDate || ""),
               time: String(data.pickupTime || ""),
               createdAt: data.createdAt,
+
+              details: data,
             };
           })
         );
@@ -285,9 +290,9 @@ export default function StudentDashboard({
 
   const notificationAudience = studentId
     ? [
-      studentAudience(studentId),
-      ALL_STUDENTS_AUDIENCE,
-    ]
+        studentAudience(studentId),
+        ALL_STUDENTS_AUDIENCE,
+      ]
     : null;
 
   const {
@@ -333,52 +338,6 @@ export default function StudentDashboard({
       ),
     [groupInvites]
   );
-
-  /* =========================================
-     LIVE INVENTORY
-  ========================================= */
-/* 
-  const [inventory, setInventory] =
-    useState<InventoryItem[]>([]); */
-/* 
-  const [inventoryLoading, setInventoryLoading] =
-    useState(true);
-
-  useEffect(() => {
-    const inventoryQuery = query(
-      collection(db, "inventory"),
-      orderBy("itemName")
-    );
-
-    return onSnapshot(
-      inventoryQuery,
-      (snapshot) => {
-        setInventory(
-          snapshot.docs.map((document) => ({
-            id: document.id,
-            ...(document.data() as Omit<InventoryItem, "id">),
-          }))
-        );
-
-        setInventoryLoading(false);
-      },
-      (error) => {
-        console.warn("Could not load live stock:", error);
-        setInventory([]);
-        setInventoryLoading(false);
-      }
-    );
-  }, []);
-
-  const liveStocks = useMemo(
-    () =>
-      inventory
-        .filter(
-          (item) => Number(item.availableOnline ?? 0) > 0
-        )
-        .slice(0, 4),
-    [inventory]
-  ); */
 
   /* =========================================
      NOTIFICATION CLICK
@@ -471,6 +430,7 @@ export default function StudentDashboard({
             <TransactionHistory
               transactions={transactions}
               loading={transactionsLoading}
+              onSelect={setSelectedTransaction}
             />
           )}
 
@@ -483,6 +443,13 @@ export default function StudentDashboard({
             />
           )}
         </div>
+
+        {selectedTransaction && (
+          <TransactionDetailsModal
+            transaction={selectedTransaction}
+            onClose={() => setSelectedTransaction(null)}
+          />
+        )}
       </div>
     );
   }
@@ -564,6 +531,7 @@ export default function StudentDashboard({
             ) : trackingTransactions.length > 0 ? (
               <TrackingCarousel
                 transactions={trackingTransactions}
+                onSelect={setSelectedTransaction}
               />
             ) : (
               <div className="tracking-empty">
@@ -611,7 +579,9 @@ export default function StudentDashboard({
                       className="pickup-row"
                       type="button"
                       key={transaction.key}
-                      onClick={() => go("transactions")}
+                      onClick={() =>
+                        setSelectedTransaction(transaction)
+                      }
                     >
                       <div className="pickup-date">
                         <strong>
@@ -706,6 +676,7 @@ export default function StudentDashboard({
                   <TransactionRow
                     key={transaction.key}
                     transaction={transaction}
+                    onSelect={setSelectedTransaction}
                   />
                 ))}
               </div>
@@ -725,8 +696,7 @@ export default function StudentDashboard({
 
                 <span>
                   {unreadNotifications > 0
-                    ? `${unreadNotifications} unread update${unreadNotifications === 1 ? "" : "s"
-                    }`
+                    ? `${unreadNotifications} unread update${unreadNotifications === 1 ? "" : "s"}`
                     : "You're all caught up"}
                 </span>
               </div>
@@ -808,6 +778,13 @@ export default function StudentDashboard({
             <ItemStocks />
           </div>
         </div>
+      )}
+
+      {selectedTransaction && (
+        <TransactionDetailsModal
+          transaction={selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
+        />
       )}
     </div>
   );
@@ -930,8 +907,10 @@ function DashboardHeader({
 
 function TrackingCarousel({
   transactions,
+  onSelect,
 }: {
   transactions: StudentTransaction[];
+  onSelect: (transaction: StudentTransaction) => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -1010,7 +989,21 @@ function TrackingCarousel({
             className="tracking-carousel__slide"
             key={transaction.key}
           >
-            <TrackingContent transaction={transaction} />
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelect(transaction)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(transaction);
+                }
+              }}
+              aria-label={`View details for ${transaction.title}`}
+              style={{ cursor: "pointer" }}
+            >
+              <TrackingContent transaction={transaction} />
+            </div>
           </div>
         ))}
       </div>
@@ -1032,8 +1025,7 @@ function TrackingCarousel({
               <button
                 key={transaction.key}
                 type="button"
-                className={`tracking-carousel__dot ${activeIndex === index ? "active" : ""
-                  }`}
+                className={`tracking-carousel__dot ${activeIndex === index ? "active" : ""}`}
                 onClick={() => goToSlide(index)}
                 aria-label={`Go to transaction ${index + 1}`}
                 aria-current={
@@ -1062,8 +1054,6 @@ function TrackingCarousel({
   );
 }
 
-
-
 function TrackingContent({
   transaction,
 }: {
@@ -1072,6 +1062,7 @@ function TrackingContent({
   const status = normalizeStatus(transaction.status);
   const showClaimingDetails =
     status === "APPROVED" || status === "CLAIMED";
+
   /*
     TRACKING PROGRESS BASED ONLY ON STATUS
 
@@ -1151,6 +1142,7 @@ function TrackingContent({
           </div>
         )}
       </div>
+
       {/* TRACKING PROGRESS LINE */}
 
       <div className="tracking-progress">
@@ -1160,8 +1152,7 @@ function TrackingContent({
 
           return (
             <div
-              className={`tracking-step ${complete ? "is-complete" : ""
-                } ${current ? "is-current" : ""}`}
+              className={`tracking-step ${complete ? "is-complete" : ""} ${current ? "is-current" : ""}`}
               key={step}
             >
               <span className="tracking-step__dot">
@@ -1175,6 +1166,7 @@ function TrackingContent({
           );
         })}
       </div>
+
       {/* CLAIMING SCHEDULE */}
 
       {showClaimingDetails && (
@@ -1197,6 +1189,7 @@ function TrackingContent({
     </div>
   );
 }
+
 /* =========================================
    WIDGET HEADER
 ========================================= */
@@ -1266,13 +1259,28 @@ function ServiceAction({
 
 function TransactionRow({
   transaction,
+  onSelect,
 }: {
   transaction: StudentTransaction;
+  onSelect: (transaction: StudentTransaction) => void;
 }) {
   const status = normalizeStatus(transaction.status);
 
   return (
-    <div className="transaction-row">
+    <div
+      className="transaction-row"
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(transaction)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(transaction);
+        }
+      }}
+      aria-label={`View details for ${transaction.title}`}
+      style={{ cursor: "pointer" }}
+    >
       <span className="transaction-row__icon">
         <Icon
           name={
@@ -1293,8 +1301,6 @@ function TransactionRow({
       </div>
 
       <StatusBadge status={status} />
-
-
 
       {transaction.claimCode && (
         <span className="transaction-claim-code">
@@ -1318,9 +1324,11 @@ function TransactionRow({
 function TransactionHistory({
   transactions,
   loading,
+  onSelect,
 }: {
   transactions: StudentTransaction[];
   loading: boolean;
+  onSelect: (transaction: StudentTransaction) => void;
 }) {
   return (
     <section className="page-card">
@@ -1344,12 +1352,559 @@ function TransactionHistory({
             <TransactionRow
               key={transaction.key}
               transaction={transaction}
+              onSelect={onSelect}
             />
           ))}
         </div>
       )}
     </section>
   );
+}
+
+/* =========================================
+   TRANSACTION DETAILS MODAL
+========================================= */
+
+function TransactionDetailsModal({
+  transaction,
+  onClose,
+}: {
+  transaction: StudentTransaction;
+  onClose: () => void;
+}) {
+  const details = transaction.details || {};
+  const isDocument = transaction.kind === "DOCUMENT";
+  const items = Array.isArray(details.items) ? details.items : [];
+
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [onClose]);
+
+  const overlayStyle: CSSProperties = {
+    position: "fixed",
+    inset: 0,
+    zIndex: 9999,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+    background: "rgba(15, 23, 42, 0.62)",
+  };
+
+  const panelStyle: CSSProperties = {
+    width: "min(680px, 100%)",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    background: "#ffffff",
+    color: "#1f2937",
+    borderRadius: "16px",
+    padding: "24px",
+    boxShadow: "0 24px 70px rgba(0,0,0,0.25)",
+  };
+
+  const sectionStyle: CSSProperties = {
+    marginTop: "20px",
+    paddingTop: "16px",
+    borderTop: "1px solid #e5e7eb",
+  };
+
+  const gridStyle: CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+    gap: "14px",
+  };
+
+  function Detail({
+    label,
+    value,
+  }: {
+    label: string;
+    value: unknown;
+  }) {
+    if (value === undefined || value === null || value === "") {
+      return null;
+    }
+
+    return (
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: "12px",
+            color: "#6b7280",
+            marginBottom: "5px",
+          }}
+        >
+          {label}
+        </div>
+
+        <div
+          style={{
+            fontSize: "14px",
+            fontWeight: 600,
+            overflowWrap: "anywhere",
+          }}
+        >
+          {String(value)}
+        </div>
+      </div>
+    );
+  }
+
+  function DateDetail({
+    label,
+    value,
+  }: {
+    label: string;
+    value: unknown;
+  }) {
+    const formatted = formatTransactionDate(value);
+
+    if (!formatted) return null;
+
+    return <Detail label={label} value={formatted} />;
+  }
+
+  return (
+    <div
+      style={overlayStyle}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transaction-details-title"
+        style={panelStyle}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "16px",
+            alignItems: "flex-start",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                color: "#64748b",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "1px",
+              }}
+            >
+              {isDocument ? "DOCUMENT REQUEST" : "ITEM RESERVATION"}
+            </div>
+
+            <h2
+              id="transaction-details-title"
+              style={{ margin: "6px 0", fontSize: "22px" }}
+            >
+              Transaction Details
+            </h2>
+
+            <div style={{ color: "#64748b", fontSize: "13px" }}>
+              Transaction ID: {transaction.id}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close transaction details"
+            style={{
+              border: 0,
+              background: "#f1f5f9",
+              borderRadius: "50%",
+              width: "36px",
+              height: "36px",
+              fontSize: "23px",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={{ marginTop: "16px" }}>
+          <StatusBadge
+            status={normalizeStatus(transaction.status)}
+            large
+          />
+        </div>
+
+        {/* GENERAL INFORMATION */}
+
+        <div style={sectionStyle}>
+          <h3 style={{ margin: "0 0 14px", fontSize: "15px" }}>
+            Transaction Information
+          </h3>
+
+          <div style={gridStyle}>
+            <Detail
+              label="Description"
+              value={transaction.title}
+            />
+
+            <Detail
+              label="Transaction Type"
+              value={getKindLabel(transaction.kind)}
+            />
+
+            <Detail
+              label="Student ID"
+              value={
+                isDocument
+                  ? details.student_id
+                  : details.studentId
+              }
+            />
+
+            <DateDetail
+              label="Date Created"
+              value={
+                isDocument
+                  ? details.created_at
+                  : details.createdAt
+              }
+            />
+
+            <DateDetail
+              label="Last Updated"
+              value={
+                isDocument
+                  ? details.updated_at
+                  : details.updatedAt
+              }
+            />
+          </div>
+        </div>
+
+        {/* DOCUMENT REQUEST DETAILS */}
+
+        {isDocument ? (
+          <>
+            <div style={sectionStyle}>
+              <h3 style={{ margin: "0 0 14px", fontSize: "15px" }}>
+                Request Details
+              </h3>
+
+              <div style={gridStyle}>
+                <Detail
+                  label="Purpose"
+                  value={details.purpose}
+                />
+
+                <Detail
+                  label="Number of Copies"
+                  value={details.number_of_copies}
+                />
+
+                <Detail
+                  label="Request Method"
+                  value={details.request_method}
+                />
+
+                <Detail
+                  label="Requested Date"
+                  value={details.requested_date}
+                />
+
+                <Detail
+                  label="Requested Time"
+                  value={details.requested_time}
+                />
+
+                <Detail
+                  label="Total Amount"
+                  value={
+                    details.total_amount != null
+                      ? `₱${Number(details.total_amount).toFixed(2)}`
+                      : null
+                  }
+                />
+
+                <Detail
+                  label="Payment Status"
+                  value={details.payment_status}
+                />
+
+                <Detail
+                  label="Payment Stub Code"
+                  value={details.payment_stub_code}
+                />
+
+                <Detail
+                  label="Claim Code"
+                  value={details.claim_code}
+                />
+              </div>
+            </div>
+
+            <div style={sectionStyle}>
+              <h3 style={{ margin: "0 0 14px", fontSize: "15px" }}>
+                Processing Information
+              </h3>
+
+              <div style={gridStyle}>
+                <DateDetail
+                  label="Submitted At"
+                  value={details.submitted_at}
+                />
+
+                <DateDetail
+                  label="Payment Confirmed At"
+                  value={details.payment_confirmed_at}
+                />
+
+                <Detail
+                  label="Payment Confirmed By"
+                  value={details.payment_confirmed_by}
+                />
+
+                <DateDetail
+                  label="Approved At"
+                  value={details.approved_at}
+                />
+
+                <Detail
+                  label="Approved By"
+                  value={
+                    details.approved_by_name ||
+                    details.approved_by
+                  }
+                />
+
+                <DateDetail
+                  label="Processing Started At"
+                  value={details.processing_started_at}
+                />
+
+                <Detail
+                  label="Processing Started By"
+                  value={
+                    details.processing_started_by_name ||
+                    details.processing_started_by
+                  }
+                />
+
+                <DateDetail
+                  label="Ready for Pickup At"
+                  value={details.ready_for_pickup_at}
+                />
+
+                <Detail
+                  label="Ready for Pickup By"
+                  value={
+                    details.ready_for_pickup_by_name ||
+                    details.ready_for_pickup_by
+                  }
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* ITEM RESERVATION DETAILS */}
+
+            <div style={sectionStyle}>
+              <h3 style={{ margin: "0 0 14px", fontSize: "15px" }}>
+                Reservation Details
+              </h3>
+
+              <div style={gridStyle}>
+                <Detail
+                  label="Full Name"
+                  value={details.fullName}
+                />
+
+                <Detail
+                  label="Mobile Number"
+                  value={details.mobileNumber}
+                />
+
+                <Detail
+                  label="Program"
+                  value={details.program}
+                />
+
+                <Detail
+                  label="Pickup Date"
+                  value={details.pickupDate}
+                />
+
+                <Detail
+                  label="Claim Stub ID"
+                  value={details.claimStubId}
+                />
+
+                <Detail
+                  label="Total Amount"
+                  value={
+                    details.totalAmount != null
+                      ? `₱${Number(details.totalAmount).toFixed(2)}`
+                      : null
+                  }
+                />
+
+                <DateDetail
+                  label="Payment Confirmed At"
+                  value={details.payment_confirmed_at}
+                />
+
+                <Detail
+                  label="Payment Confirmed By"
+                  value={details.payment_confirmed_by}
+                />
+
+                <DateDetail
+                  label="Claimed At"
+                  value={details.claimedAt}
+                />
+              </div>
+            </div>
+
+            {/* RESERVED ITEMS */}
+
+            {items.length > 0 && (
+              <div style={sectionStyle}>
+                <h3 style={{ margin: "0 0 14px", fontSize: "15px" }}>
+                  Reserved Items
+                </h3>
+
+                <div style={{ display: "grid", gap: "10px" }}>
+                  {items.map((item: any, index: number) => (
+                    <div
+                      key={`${item.inventoryId || item.itemName || "item"}-${index}`}
+                      style={{
+                        padding: "13px",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "10px",
+                      }}
+                    >
+                      <strong
+                        style={{
+                          display: "block",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        {item.itemName || "Reserved Item"}
+                      </strong>
+
+                      <div style={gridStyle}>
+                        <Detail
+                          label="Size"
+                          value={item.size}
+                        />
+
+                        <Detail
+                          label="Quantity"
+                          value={item.quantity}
+                        />
+
+                        <Detail
+                          label="Unit Price"
+                          value={
+                            item.price != null
+                              ? `₱${Number(item.price).toFixed(2)}`
+                              : null
+                          }
+                        />
+
+                        <Detail
+                          label="Subtotal"
+                          value={
+                            item.subtotal != null
+                              ? `₱${Number(item.subtotal).toFixed(2)}`
+                              : null
+                          }
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: "24px",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              border: 0,
+              borderRadius: "8px",
+              padding: "10px 18px",
+              background: "#1e3a8a",
+              color: "white",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* =========================================
+   DATE FORMATTER
+========================================= */
+
+function formatTransactionDate(value: unknown): string {
+  if (value === undefined || value === null || value === "") {
+    return "";
+  }
+
+  let date: Date;
+
+  const timestamp = value as {
+    toDate?: () => Date;
+    seconds?: number;
+  };
+
+  if (value instanceof Date) {
+    date = value;
+  } else if (typeof timestamp?.toDate === "function") {
+    date = timestamp.toDate();
+  } else if (typeof timestamp?.seconds === "number") {
+    date = new Date(timestamp.seconds * 1000);
+  } else {
+    date = new Date(value as string | number);
+  }
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 /* =========================================
@@ -1395,8 +1950,7 @@ function NotificationPage({
             return (
               <button
                 type="button"
-                className={`notification-page-row ${unread ? "is-unread" : ""
-                  }`}
+                className={`notification-page-row ${unread ? "is-unread" : ""}`}
                 key={notification.id}
                 onClick={() => {
                   void onNotificationClick(notification);
@@ -1499,8 +2053,7 @@ function StatusBadge({
 }) {
   return (
     <span
-      className={`status-badge status-badge--${status.toLowerCase()} ${large ? "status-badge--large" : ""
-        }`}
+      className={`status-badge status-badge--${status.toLowerCase()} ${large ? "status-badge--large" : ""}`}
     >
       {status.replace(/_/g, " ")}
     </span>
@@ -1558,8 +2111,8 @@ function getMonthName(date: string): string {
   return Number.isNaN(parsed.getTime())
     ? ""
     : parsed.toLocaleDateString("en-US", {
-      month: "short",
-    });
+        month: "short",
+      });
 }
 
 /* =========================================

@@ -1,10 +1,14 @@
+
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
+  query,
   runTransaction,
   serverTimestamp,
+  where,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -79,21 +83,17 @@ export default function ItemReservation({
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
-  const [selectedCategory, setSelectedCategory] =
-    useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const [selectedItem, setSelectedItem] =
-    useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
-  const [selectedSize, setSelectedSize] =
-    useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   const [quantity, setQuantity] = useState(1);
 
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  const [showCheckout, setShowCheckout] =
-    useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   const [loading, setLoading] = useState(true);
 
@@ -105,31 +105,124 @@ export default function ItemReservation({
   const [program, setProgram] = useState("");
 
   // =========================
+  // LOAD STUDENT INFORMATION
+  // =========================
+
+  useEffect(() => {
+    const fetchStudentDetails = async () => {
+      try {
+        const studentQuery = query(
+          collection(db, "accounts"),
+          where("student_id", "==", studentId),
+          where("role", "==", "student")
+        );
+
+        const snapshot = await getDocs(studentQuery);
+
+        if (!snapshot.empty) {
+          const studentData = snapshot.docs[0].data();
+
+          setFullName(studentData.name || "");
+          setMobileNumber(studentData.contactNumber || "");
+          setProgram(studentData.program || "");
+        } else {
+          console.error("Student account not found:", studentId);
+        }
+      } catch (error) {
+        console.error("Error fetching student information:", error);
+      }
+    };
+
+    if (studentId) {
+      fetchStudentDetails();
+    }
+  }, [studentId]);
+
+  // =========================
   // LOAD INVENTORY
   // =========================
+
+
+
+  // =========================
+  // LOAD STUDENT INFORMATION
+  // =========================
+
+  useEffect(() => {
+    const fetchStudentDetails = async () => {
+      try {
+        const studentQuery = query(
+          collection(db, "accounts"),
+          where("student_id", "==", studentId),
+          where("role", "==", "student")
+        );
+
+        const snapshot = await getDocs(studentQuery);
+
+        if (!snapshot.empty) {
+          const studentData = snapshot.docs[0].data();
+
+          setFullName(studentData.name || "");
+          setMobileNumber(studentData.contactNumber || "");
+          setProgram(studentData.program || "");
+        } else {
+          console.error("Student account not found:", studentId);
+        }
+      } catch (error) {
+        console.error("Error fetching student information:", error);
+      }
+    };
+
+    if (studentId) {
+      fetchStudentDetails();
+    }
+  }, [studentId]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "inventory"),
       (snapshot) => {
-        const items: InventoryItem[] =
-          snapshot.docs.map((inventoryDoc) => ({
-            id: inventoryDoc.id,
-            ...(inventoryDoc.data() as Omit<
-              InventoryItem,
-              "id"
-            >),
-          }));
+        const items: InventoryItem[] = snapshot.docs.map(
+          (inventoryDoc) => {
+            const data = inventoryDoc.data();
+
+            const totalStock = Number(data.totalStock ?? 0);
+            const walkInStock = Number(data.walkInStock ?? 0);
+
+            // Calculate online availability.
+            // Do not use the stored availableOnline field.
+            const reservedQuantity = Number(data.reservedQuantity ?? 0);
+
+            const availableOnline = Math.max(
+              0,
+              totalStock - walkInStock - reservedQuantity
+            );
+            return {
+              id: inventoryDoc.id,
+              itemName: String(data.itemName ?? ""),
+              size: String(data.size ?? "N/A"),
+
+              totalStock,
+              onlineStock: availableOnline,
+              walkInStock,
+
+              availableOnline,
+              availableWalkIn: walkInStock,
+
+              reservedQuantity,
+
+              status: String(data.status ?? "Unavailable"),
+
+              price: Number(data.price ?? 0),
+            };
+          }
+        );
 
         setInventory(items);
         setLoading(false);
       },
       (error) => {
-        console.error(
-          "Error loading inventory:",
-          error
-        );
-
+        console.error("Error loading inventory:", error);
         setLoading(false);
       }
     );
@@ -147,9 +240,7 @@ export default function ItemReservation({
     }
 
     return inventory.filter(
-      (item) =>
-        getCategory(item.itemName) ===
-        selectedCategory
+      (item) => getCategory(item.itemName) === selectedCategory
     );
   }, [inventory, selectedCategory]);
 
@@ -201,11 +292,7 @@ export default function ItemReservation({
           item.size === selectedSize
       ) || null
     );
-  }, [
-    inventory,
-    selectedItem,
-    selectedSize,
-  ]);
+  }, [inventory, selectedItem, selectedSize]);
 
   // =========================
   // CART TOTAL
@@ -213,8 +300,7 @@ export default function ItemReservation({
 
   const cartTotal = useMemo(() => {
     return cart.reduce(
-      (total, item) =>
-        total + item.price * item.quantity,
+      (total, item) => total + item.price * item.quantity,
       0
     );
   }, [cart]);
@@ -252,55 +338,45 @@ export default function ItemReservation({
 
     try {
       setReserving(true);
-      // Generate reservation ID using Date.now()
+
+      // Generate reservation ID
       const reservationId = `IR-${Date.now()}`;
 
-      // Use the generated reservation ID as the Firestore document ID
+      // Create reservation document reference
       const reservationRef = doc(
         db,
         "itemReservations",
         reservationId
       );
+
       await runTransaction(
         db,
         async (transaction) => {
           // ========================================
-          // GET ALL INVENTORY REFERENCES
+          // GET INVENTORY REFERENCES
           // ========================================
 
           const inventoryRefs = cart.map((item) =>
-            doc(
-              db,
-              "inventory",
-              item.inventoryId
+            doc(db, "inventory", item.inventoryId)
+          );
+
+          // ========================================
+          // READ INVENTORY DOCUMENTS
+          // ========================================
+
+          const inventorySnapshots = await Promise.all(
+            inventoryRefs.map((inventoryRef) =>
+              transaction.get(inventoryRef)
             )
           );
 
           // ========================================
-          // READ ALL INVENTORY DOCUMENTS
+          // CHECK STOCK ONLY
           // ========================================
 
-          const inventorySnapshots =
-            await Promise.all(
-              inventoryRefs.map(
-                (inventoryRef) =>
-                  transaction.get(inventoryRef)
-              )
-            );
-
-          // ========================================
-          // CHECK STOCK
-          // ========================================
-
-          for (
-            let i = 0;
-            i < cart.length;
-            i++
-          ) {
+          for (let i = 0; i < cart.length; i++) {
             const cartItem = cart[i];
-
-            const inventorySnapshot =
-              inventorySnapshots[i];
+            const inventorySnapshot = inventorySnapshots[i];
 
             if (!inventorySnapshot.exists()) {
               throw new Error(
@@ -308,17 +384,16 @@ export default function ItemReservation({
               );
             }
 
-            const inventoryData =
-              inventorySnapshot.data();
+            const inventoryData = inventorySnapshot.data();
 
-            const availableOnline = Number(
-              inventoryData.availableOnline ?? 0
+            const availableOnline = Math.max(
+              0,
+              Number(inventoryData.totalStock ?? 0) -
+              Number(inventoryData.walkInStock ?? 0) -
+              Number(inventoryData.reservedQuantity ?? 0)
             );
 
-            if (
-              availableOnline <
-              cartItem.quantity
-            ) {
+            if (availableOnline < cartItem.quantity) {
               throw new Error(
                 `Not enough online stock for ${cartItem.itemName} (${cartItem.size}). Available: ${availableOnline}.`
               );
@@ -326,119 +401,47 @@ export default function ItemReservation({
           }
 
           // ========================================
-          // UPDATE INVENTORY
+          // CREATE RESERVATION ONLY
           // ========================================
+          // IMPORTANT:
+          // No inventory deduction happens here.
+          // General Office will deduct stock upon approval.
 
-          for (
-            let i = 0;
-            i < cart.length;
-            i++
-          ) {
-            const cartItem = cart[i];
+          transaction.set(reservationRef, {
+            reservationId,
 
-            const inventorySnapshot =
-              inventorySnapshots[i];
+            studentId,
 
-            if (!inventorySnapshot.exists()) {
-              throw new Error(
-                `${cartItem.itemName} (${cartItem.size}) no longer exists in inventory.`
-              );
-            }
+            fullName: fullName.trim(),
 
-            const inventoryData =
-              inventorySnapshot.data();
+            mobileNumber: mobileNumber.trim(),
 
-            const availableOnline = Number(
-              inventoryData.availableOnline ?? 0
-            );
+            program: program.trim(),
 
-            const reservedQuantity = Number(
-              inventoryData.reservedQuantity ?? 0
-            );
+            items: cart.map((item) => ({
+              inventoryId: item.inventoryId,
 
-            const newAvailableOnline =
-              availableOnline -
-              cartItem.quantity;
+              itemName: item.itemName,
 
-            const newReservedQuantity =
-              reservedQuantity +
-              cartItem.quantity;
+              size: item.size,
 
-            transaction.update(
-              inventoryRefs[i],
-              {
-                availableOnline:
-                  newAvailableOnline,
+              quantity: item.quantity,
 
-                reservedQuantity:
-                  newReservedQuantity,
+              price: item.price,
 
-                status:
-                  newAvailableOnline <= 0
-                    ? "Out of Stock"
-                    : "Available",
-              }
-            );
-          }
+              subtotal: item.price * item.quantity,
+            })),
 
-          // ========================================
-          // CREATE RESERVATION
-          // ========================================
+            totalAmount: cart.reduce(
+              (total, item) =>
+                total + item.price * item.quantity,
+              0
+            ),
 
-          transaction.set(
-            reservationRef,
-            {
-              reservationId,
+            status: "Unpaid",
 
-              studentId,
-
-              fullName:
-                fullName.trim(),
-
-              mobileNumber:
-                mobileNumber.trim(),
-
-              program:
-                program.trim(),
-
-              items: cart.map(
-                (item) => ({
-                  inventoryId:
-                    item.inventoryId,
-
-                  itemName:
-                    item.itemName,
-
-                  size:
-                    item.size,
-
-                  quantity:
-                    item.quantity,
-
-                  price:
-                    item.price,
-
-                  subtotal:
-                    item.price *
-                    item.quantity,
-                })
-              ),
-
-              totalAmount:
-                cart.reduce(
-                  (total, item) =>
-                    total +
-                    item.price *
-                    item.quantity,
-                  0
-                ),
-
-              status: "Unpaid",
-
-              createdAt:
-                serverTimestamp(),
-            }
-          );
+            createdAt: serverTimestamp(),
+          });
         }
       );
 
@@ -457,7 +460,6 @@ export default function ItemReservation({
       setMobileNumber("");
       setProgram("");
 
-
       setSelectedItem(null);
       setSelectedSize(null);
       setQuantity(1);
@@ -467,10 +469,7 @@ export default function ItemReservation({
       // Return to dashboard
       onBack();
     } catch (error) {
-      console.error(
-        "Reservation failed:",
-        error
-      );
+      console.error("Reservation failed:", error);
 
       if (error instanceof Error) {
         window.alert(error.message);
@@ -491,9 +490,7 @@ export default function ItemReservation({
   if (loading) {
     return (
       <div className="reservation-page">
-        <p>
-          Loading available items...
-        </p>
+        <p>Loading available items...</p>
       </div>
     );
   }
@@ -513,26 +510,19 @@ export default function ItemReservation({
             <button
               type="button"
               className="back-button"
-              onClick={() =>
-                setShowCheckout(false)
-              }
+              onClick={() => setShowCheckout(false)}
             >
               ← Back
             </button>
 
-            <h1>
-              Reservation
-            </h1>
+            <h1>Reservation</h1>
           </div>
 
           {/* ITEMS */}
 
           <div className="checkout-items">
-
             <div className="checkout-items-header">
-              <span>
-                Reservation
-              </span>
+              <span>Reservation</span>
 
               <button
                 type="button"
@@ -547,51 +537,37 @@ export default function ItemReservation({
               </button>
             </div>
 
-            {cart.map(
-              (item, index) => (
-                <div
-                  className="checkout-item"
-                  key={`${item.inventoryId}-${index}`}
-                >
-                  <div>
-                    <strong>
-                      {item.size !== "N/A"
-                        ? `(${item.size}) `
-                        : ""}
-
-                      {item.itemName}
-
-                      {" x "}
-
-                      {item.quantity}
-                    </strong>
-                  </div>
-
-                  <span>
-                    ₱
-                    {(
-                      item.price *
-                      item.quantity
-                    ).toLocaleString(
-                      "en-PH",
-                      {
-                        minimumFractionDigits: 0,
-                      }
-                    )}
-                  </span>
+            {cart.map((item, index) => (
+              <div
+                className="checkout-item"
+                key={`${item.inventoryId}-${index}`}
+              >
+                <div>
+                  <strong>
+                    {item.size !== "N/A" ? `(${item.size}) ` : ""}
+                    {item.itemName}
+                    {" x "}
+                    {item.quantity}
+                  </strong>
                 </div>
-              )
-            )}
+
+                <span>
+                  ₱
+                  {(
+                    item.price * item.quantity
+                  ).toLocaleString("en-PH", {
+                    minimumFractionDigits: 0,
+                  })}
+                </span>
+              </div>
+            ))}
 
             <div className="checkout-total">
               <span>
                 Php{" "}
-                {cartTotal.toLocaleString(
-                  "en-PH",
-                  {
-                    minimumFractionDigits: 0,
-                  }
-                )}
+                {cartTotal.toLocaleString("en-PH", {
+                  minimumFractionDigits: 0,
+                })}
               </span>
             </div>
           </div>
@@ -599,31 +575,23 @@ export default function ItemReservation({
           {/* STUDENT */}
 
           <div className="checkout-section">
-            <h3>
-              STUDENT
-            </h3>
+            <h3>STUDENT</h3>
 
             <div className="student-field">
-              <label>
-                Full Name
-              </label>
+              <label>Full Name</label>
 
               <input
                 type="text"
                 value={fullName}
                 onChange={(event) =>
-                  setFullName(
-                    event.target.value
-                  )
+                  setFullName(event.target.value)
                 }
                 placeholder="Enter your full name"
               />
             </div>
 
             <div className="student-field">
-              <label>
-                Student ID
-              </label>
+              <label>Student ID</label>
 
               <input
                 type="text"
@@ -633,34 +601,26 @@ export default function ItemReservation({
             </div>
 
             <div className="student-field">
-              <label>
-                Mobile Number
-              </label>
+              <label>Mobile Number</label>
 
               <input
                 type="tel"
                 value={mobileNumber}
                 onChange={(event) =>
-                  setMobileNumber(
-                    event.target.value
-                  )
+                  setMobileNumber(event.target.value)
                 }
                 placeholder="Enter mobile number"
               />
             </div>
 
             <div className="student-field">
-              <label>
-                Program
-              </label>
+              <label>Program</label>
 
               <input
                 type="text"
                 value={program}
                 onChange={(event) =>
-                  setProgram(
-                    event.target.value
-                  )
+                  setProgram(event.target.value)
                 }
                 placeholder="Enter your program"
               />
@@ -675,9 +635,7 @@ export default function ItemReservation({
             onClick={handleReserve}
             disabled={reserving}
           >
-            {reserving
-              ? "Reserving..."
-              : "Reserve"}
+            {reserving ? "Reserving..." : "Reserve"}
           </button>
         </div>
       </div>
@@ -706,236 +664,158 @@ export default function ItemReservation({
           </button>
 
           <div className="item-selection-header">
-            <span>
-              {getCategory(
-                selectedItem
-              )}
-            </span>
+            <span>{getCategory(selectedItem)}</span>
 
-            <h1>
-              {selectedItem}
-            </h1>
+            <h1>{selectedItem}</h1>
 
-            <p>
-              Size — price and online
-              stock vary
-            </p>
+            <p>Size — price and online stock vary</p>
           </div>
 
           {/* SIZES */}
 
           <div className="size-list">
-            {selectedItemSizes.map(
-              (item) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  className={
-                    selectedSize ===
-                      item.size
-                      ? "size-option selected"
-                      : "size-option"
-                  }
-                  disabled={
-                    item.availableOnline <=
-                    0
-                  }
-                  onClick={() => {
-                    setSelectedSize(
-                      item.size
-                    );
+            {selectedItemSizes.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={
+                  selectedSize === item.size
+                    ? "size-option selected"
+                    : "size-option"
+                }
+                disabled={item.availableOnline <= 0}
+                onClick={() => {
+                  setSelectedSize(item.size);
+                  setQuantity(1);
+                }}
+              >
+                <div className="size-name">
+                  {item.size === "N/A" ? "One Size" : item.size}
+                </div>
 
-                    setQuantity(1);
-                  }}
-                >
-                  <div className="size-name">
-                    {item.size === "N/A"
-                      ? "One Size"
-                      : item.size}
-                  </div>
+                <div className="size-price">
+                  ₱
+                  {(item.price ?? 0).toLocaleString("en-PH", {
+                    minimumFractionDigits: 2,
+                  })}
+                </div>
 
-                  <div className="size-price">
-                    ₱
-                    {(
-                      item.price ?? 0
-                    ).toLocaleString(
-                      "en-PH",
-                      {
-                        minimumFractionDigits: 2,
-                      }
-                    )}
-                  </div>
-
-                  <div className="size-stock">
-                    {item.availableOnline >
-                      0
-                      ? `${item.availableOnline} left`
-                      : "Out of stock"}
-                  </div>
-                </button>
-              )
-            )}
+                <div className="size-stock">
+                  {item.availableOnline > 0
+                    ? `${item.availableOnline} left`
+                    : "Out of stock"}
+                </div>
+              </button>
+            ))}
           </div>
 
           {/* QUANTITY */}
 
-          {selectedSize &&
-            selectedInventory && (
-              <div className="quantity-section">
+          {selectedSize && selectedInventory && (
+            <div className="quantity-section">
+              <h3>Quantity</h3>
 
-                <h3>
-                  Quantity
-                </h3>
+              <div className="quantity-controls">
+                <button
+                  type="button"
+                  disabled={quantity <= 1}
+                  onClick={() =>
+                    setQuantity(Math.max(1, quantity - 1))
+                  }
+                >
+                  −
+                </button>
 
-                <div className="quantity-controls">
-
-                  <button
-                    type="button"
-                    disabled={
-                      quantity <= 1
-                    }
-                    onClick={() =>
-                      setQuantity(
-                        Math.max(
-                          1,
-                          quantity - 1
-                        )
-                      )
-                    }
-                  >
-                    −
-                  </button>
-
-                  <span>
-                    {quantity}
-                  </span>
-
-                  <button
-                    type="button"
-                    disabled={
-                      quantity >=
-                      Math.min(
-                        5,
-                        selectedInventory.availableOnline
-                      )
-                    }
-                    onClick={() =>
-                      setQuantity(
-                        Math.min(
-                          5,
-                          selectedInventory.availableOnline,
-                          quantity + 1
-                        )
-                      )
-                    }
-                  >
-                    +
-                  </button>
-
-                </div>
-
-                <p>
-                  Maximum quantity:{" "}
-                  {Math.min(
-                    5,
-                    selectedInventory.availableOnline
-                  )}
-                </p>
-
-                {/* ADD TO RESERVATION */}
+                <span>{quantity}</span>
 
                 <button
                   type="button"
-                  className="add-reservation-button"
-                  onClick={() => {
-                    if (
-                      !selectedItem ||
-                      !selectedSize ||
-                      !selectedInventory
-                    ) {
-                      return;
-                    }
-
-                    const price =
-                      selectedInventory.price ??
-                      0;
-
-                    const inventoryId =
-                      selectedInventory.id;
-
-                    setCart(
-                      (currentCart) => {
-                        const existingIndex =
-                          currentCart.findIndex(
-                            (item) =>
-                              item.inventoryId ===
-                              inventoryId
-                          );
-
-                        // If item already exists,
-                        // increase quantity
-                        if (
-                          existingIndex !==
-                          -1
-                        ) {
-                          return currentCart.map(
-                            (
-                              item,
-                              index
-                            ) => {
-                              if (
-                                index !==
-                                existingIndex
-                              ) {
-                                return item;
-                              }
-
-                              return {
-                                ...item,
-
-                                quantity:
-                                  Math.min(
-                                    5,
-                                    item.quantity +
-                                    quantity
-                                  ),
-                              };
-                            }
-                          );
-                        }
-
-                        // Add new item
-                        return [
-                          ...currentCart,
-
-                          {
-                            inventoryId,
-
-                            itemName:
-                              selectedItem,
-
-                            size:
-                              selectedSize,
-
-                            quantity,
-
-                            price,
-                          },
-                        ];
-                      }
-                    );
-
-                    setSelectedItem(null);
-                    setSelectedSize(null);
-                    setQuantity(1);
-
-                    setShowCheckout(true);
-                  }}
+                  disabled={
+                    quantity >=
+                    Math.min(5, selectedInventory.availableOnline)
+                  }
+                  onClick={() =>
+                    setQuantity(
+                      Math.min(
+                        5,
+                        selectedInventory.availableOnline,
+                        quantity + 1
+                      )
+                    )
+                  }
                 >
-                  Add to Reservation
+                  +
                 </button>
               </div>
-            )}
+
+              <p>
+                Maximum quantity:{" "}
+                {Math.min(5, selectedInventory.availableOnline)}
+              </p>
+
+              {/* ADD TO RESERVATION */}
+
+              <button
+                type="button"
+                className="add-reservation-button"
+                onClick={() => {
+                  if (
+                    !selectedItem ||
+                    !selectedSize ||
+                    !selectedInventory
+                  ) {
+                    return;
+                  }
+
+                  const price = selectedInventory.price ?? 0;
+                  const inventoryId = selectedInventory.id;
+
+                  setCart((currentCart) => {
+                    const existingIndex = currentCart.findIndex(
+                      (item) => item.inventoryId === inventoryId
+                    );
+
+                    // If item already exists, increase quantity
+                    if (existingIndex !== -1) {
+                      return currentCart.map((item, index) => {
+                        if (index !== existingIndex) {
+                          return item;
+                        }
+
+                        return {
+                          ...item,
+                          quantity: Math.min(
+                            5,
+                            item.quantity + quantity
+                          ),
+                        };
+                      });
+                    }
+
+                    // Add new item
+                    return [
+                      ...currentCart,
+                      {
+                        inventoryId,
+                        itemName: selectedItem,
+                        size: selectedSize,
+                        quantity,
+                        price,
+                      },
+                    ];
+                  });
+
+                  setSelectedItem(null);
+                  setSelectedSize(null);
+                  setQuantity(1);
+
+                  setShowCheckout(true);
+                }}
+              >
+                Add to Reservation
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -959,145 +839,99 @@ export default function ItemReservation({
           ← Back
         </button>
 
-        <h1>
-          Item Reservation
-        </h1>
+        <h1>Item Reservation</h1>
       </div>
 
       {/* REMINDER */}
 
       <div className="reservation-reminder">
         <h2>
-          Reserve your items,
-          claim them at the counter.
+          Reserve your items, claim them at the counter.
         </h2>
 
         <p>
-          Reserved items must be
-          claimed within three (3)
-          days. Failure to claim
-          within this period will
-          automatically cancel the
-          reservation.
+          Reserved items must be claimed within three (3) days.
+          Failure to claim within this period will automatically
+          cancel the reservation.
         </p>
       </div>
 
       {/* FILTERS */}
 
       <div className="reservation-filters">
-        {categories.map(
-          (category) => (
-            <button
-              key={category}
-              type="button"
-              className={
-                selectedCategory ===
-                  category
-                  ? "reservation-filter active"
-                  : "reservation-filter"
-              }
-              onClick={() =>
-                setSelectedCategory(
-                  category
-                )
-              }
-            >
-              {category}
-            </button>
-          )
-        )}
+        {categories.map((category) => (
+          <button
+            key={category}
+            type="button"
+            className={
+              selectedCategory === category
+                ? "reservation-filter active"
+                : "reservation-filter"
+            }
+            onClick={() => setSelectedCategory(category)}
+          >
+            {category}
+          </button>
+        ))}
       </div>
 
       {/* ITEMS */}
 
       <div className="reservation-items">
-
-        {reservationItems.length ===
-          0 ? (
-          <p>
-            No items are available
-            in this category.
-          </p>
+        {reservationItems.length === 0 ? (
+          <p>No items are available in this category.</p>
         ) : (
-          reservationItems.map(
-            (item) => {
+          reservationItems.map((item) => {
+            const category = getCategory(item.itemName);
 
-              const category =
-                getCategory(
-                  item.itemName
-                );
-
-              const totalAvailableOnline =
-                filteredInventory
-                  .filter(
-                    (stock) =>
-                      stock.itemName ===
-                      item.itemName
-                  )
-                  .reduce(
-                    (
-                      total,
-                      stock
-                    ) =>
-                      total +
-                      Number(
-                        stock.availableOnline ??
-                        0
-                      ),
-                    0
-                  );
-
-              return (
-                <div
-                  key={item.id}
-                  className="reservation-item-card"
-                >
-
-                  <div className="reservation-item-info">
-
-                    <span className="item-category">
-                      {category}
-                    </span>
-
-                    <h2>
-                      {item.itemName}
-                    </h2>
-
-                    <p>
-                      Available Online:{" "}
-                      <strong>
-                        {
-                          totalAvailableOnline
-                        }
-                      </strong>
-                    </p>
-
-                  </div>
-
-                  <button
-                    type="button"
-                    className="go-reservation-button"
-                    onClick={() => {
-                      setSelectedItem(
-                        item.itemName
-                      );
-
-                      setSelectedSize(
-                        null
-                      );
-
-                      setQuantity(1);
-                    }}
-                  >
-                    Choose Item
-                  </button>
-
-                </div>
+            const totalAvailableOnline = filteredInventory
+              .filter(
+                (stock) => stock.itemName === item.itemName
+              )
+              .reduce(
+                (total, stock) =>
+                  total +
+                  Math.max(
+                    0,
+                    Number(stock.totalStock ?? 0) -
+                    Number(stock.walkInStock ?? 0) -
+                    Number(stock.reservedQuantity ?? 0)
+                  ),
+                0
               );
-            }
-          )
-        )}
+            return (
+              <div
+                key={item.id}
+                className="reservation-item-card"
+              >
+                <div className="reservation-item-info">
+                  <span className="item-category">
+                    {category}
+                  </span>
 
+                  <h2>{item.itemName}</h2>
+
+                  <p>
+                    Available Online:{" "}
+                    <strong>{totalAvailableOnline}</strong>
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="go-reservation-button"
+                  onClick={() => {
+                    setSelectedItem(item.itemName);
+                    setSelectedSize(null);
+                    setQuantity(1);
+                  }}
+                >
+                  Choose Item
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
