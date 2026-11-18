@@ -187,7 +187,7 @@
   justify-content: center;
 }
 
-.group-request-banner > span:nth-child(2) {
+.group-request-banner>span:nth-child(2) {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -218,6 +218,57 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+/* SEPARATE TRACKING COLUMNS */
+
+.tracking-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.tracking-column {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.tracking-column__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tracking-column__header h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.tracking-column__header span {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.tracking-column .tracking-empty {
+  margin-top: 0;
+  min-height: 130px;
+}
+
+.tracking-column .tracking-content {
+  margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .tracking-columns {
+    grid-template-columns: 1fr;
+  }
 }
 
 .section-kicker {
@@ -286,7 +337,7 @@
   gap: 2px;
 }
 
-.tracking-summary__text > span {
+.tracking-summary__text>span {
   color: #7b8491;
   font-size: 9px;
   font-weight: 800;
@@ -387,7 +438,7 @@
   background: #f5f8fb;
 }
 
-.tracking-pickup > div {
+.tracking-pickup>div {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -439,7 +490,7 @@
 /* DESKTOP GRID */
 .dashboard-service-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr ;
+  grid-template-columns: 1fr 1fr;
   gap: 18px;
   align-items: stretch;
 }
@@ -567,7 +618,7 @@
   border-bottom: 0;
 }
 
-.stock-widget-row > div {
+.stock-widget-row>div {
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -585,14 +636,14 @@
   font-size: 9px;
 }
 
-.stock-widget-row > span {
+.stock-widget-row>span {
   color: var(--green);
   font-size: 17px;
   font-weight: 800;
   white-space: nowrap;
 }
 
-.stock-widget-row > span small {
+.stock-widget-row>span small {
   color: #6c7886;
   font-weight: 500;
 }
@@ -620,7 +671,7 @@
   background: #fff;
 }
 
-.dashboard-actions-widget > h2 {
+.dashboard-actions-widget>h2 {
   margin-bottom: 12px;
 }
 
@@ -815,7 +866,7 @@
   justify-content: center;
 }
 
-.notification-strip__title > div {
+.notification-strip__title>div {
   display: flex;
   flex-direction: column;
 }
@@ -836,7 +887,7 @@
   gap: 7px;
 }
 
-.notification-strip__items > span {
+.notification-strip__items>span {
   color: var(--muted);
   font-size: 10px;
 }
@@ -1236,12 +1287,12 @@
     min-height: 43px;
   }
 
-  .stock-widget-row > span {
+  .stock-widget-row>span {
     font-size: 15px;
   }
 
   /* Three main actions like the mobile guide */
-  .dashboard-actions-widget > h2 {
+  .dashboard-actions-widget>h2 {
     display: none;
   }
 
@@ -1714,5 +1765,88 @@
 
   .tracking-carousel__controls {
     gap: 7px;
+  }
+}
+
+/* =========================================
+   SEPARATE DOCUMENT AND ITEM TRACKING
+========================================= */
+
+.tracking-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+  align-items: stretch;
+}
+
+.tracking-column {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.tracking-column__title {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.tracking-column .tracking-carousel {
+  width: 100%;
+  min-width: 0;
+}
+
+.tracking-column .tracking-carousel__viewport {
+  width: 100%;
+  min-width: 0;
+}
+
+.tracking-column .tracking-carousel__slide {
+  width: 100%;
+  min-width: 0;
+}
+
+.tracking-column__empty {
+  min-height: 180px;
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed #cbd3dc;
+  border-radius: 9px;
+  background: #fafbfc;
+  color: #8993a1;
+  text-align: center;
+}
+
+.tracking-column__empty strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.tracking-column__empty p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Stack the two tracking columns on smaller screens */
+
+@media (max-width: 768px) {
+  .tracking-columns {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .tracking-column {
+    padding: 14px;
   }
 }

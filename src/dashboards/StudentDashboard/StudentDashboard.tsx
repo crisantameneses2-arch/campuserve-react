@@ -59,6 +59,7 @@ type StudentTransaction = {
   kind: "DOCUMENT" | "ITEM";
   title: string;
   status: string;
+  payment_status: string;
   date: string;
   time: string;
   claimCode: string;
@@ -144,6 +145,7 @@ export default function StudentDashboard({
               kind: "DOCUMENT",
               title: String(data.purpose || "Document Request"),
               status: String(data.status || "PENDING"),
+              payment_status: String(data.payment_status || ""),
 
               claimCode: String(data.claim_code || ""),
               date: String(data.requested_date || ""),
@@ -198,12 +200,12 @@ export default function StudentDashboard({
               title:
                 Array.isArray(data.items) && data.items.length > 0
                   ? data.items
-                      .map((item: any) => item.itemName)
-                      .join(", ")
+                    .map((item: any) => item.itemName)
+                    .join(", ")
                   : "Item Reservation",
 
               status: String(data.status || "PENDING"),
-
+              payment_status: String(data.payment_status || ""),
               claimCode: String(data.claimStubId || ""),
               date: String(data.pickupDate || ""),
               time: String(data.pickupTime || ""),
@@ -266,7 +268,22 @@ export default function StudentDashboard({
       }),
     [transactions]
   );
+  // Separate live tracking transactions by type
+  const documentTrackingTransactions = useMemo(
+    () =>
+      trackingTransactions.filter(
+        (transaction) => transaction.kind === "DOCUMENT"
+      ),
+    [trackingTransactions]
+  );
 
+  const itemTrackingTransactions = useMemo(
+    () =>
+      trackingTransactions.filter(
+        (transaction) => transaction.kind === "ITEM"
+      ),
+    [trackingTransactions]
+  );
   /* =========================================
      UPCOMING TRANSACTIONS
   ========================================= */
@@ -290,9 +307,9 @@ export default function StudentDashboard({
 
   const notificationAudience = studentId
     ? [
-        studentAudience(studentId),
-        ALL_STUDENTS_AUDIENCE,
-      ]
+      studentAudience(studentId),
+      ALL_STUDENTS_AUDIENCE,
+    ]
     : null;
 
   const {
@@ -497,6 +514,8 @@ export default function StudentDashboard({
             </button>
           )}
 
+
+
           {/* LIVE TRACKING */}
 
           <section className="tracking-card">
@@ -506,47 +525,98 @@ export default function StudentDashboard({
                   LIVE TRACKING
                 </span>
 
-                <h1>
-                  Document or Item Live Tracking
-                </h1>
+                <h1>Request and Reservation Tracking</h1>
 
                 <p className="tracking-subtitle">
                   Monitor your document requests and item reservations.
                 </p>
               </div>
 
-              {trackingTransactions.length > 0 && (
-                <button
-                  type="button"
-                  className="tracking-history-button"
-                  onClick={() => go("transactions")}
-                >
-                  View history →
-                </button>
-              )}
+              {(documentTrackingTransactions.length > 0 ||
+                itemTrackingTransactions.length > 0) && (
+                  <button
+                    type="button"
+                    className="tracking-history-button"
+                    onClick={() => go("transactions")}
+                  >
+                    View history →
+                  </button>
+                )}
             </div>
 
             {transactionsLoading ? (
               <DashboardLoading />
-            ) : trackingTransactions.length > 0 ? (
-              <TrackingCarousel
-                transactions={trackingTransactions}
-                onSelect={setSelectedTransaction}
-              />
             ) : (
-              <div className="tracking-empty">
-                <div className="tracking-empty__icon">
-                  <Icon name="activity" size={26} />
+              <div className="tracking-columns">
+
+                {/* DOCUMENT TRACKING */}
+
+                <div className="tracking-column">
+                  <div className="tracking-column__header">
+                    <h2>Document Requests</h2>
+
+                    <span>
+                      {documentTrackingTransactions.length} active
+                    </span>
+                  </div>
+
+                  {documentTrackingTransactions.length > 0 ? (
+                    <TrackingCarousel
+                      transactions={documentTrackingTransactions}
+                      onSelect={setSelectedTransaction}
+                    />
+                  ) : (
+                    <div className="tracking-empty">
+                      <div className="tracking-empty__icon">
+                        <Icon name="file" size={26} />
+                      </div>
+
+                      <div>
+                        <strong>No Active Document Requests</strong>
+
+                        <p>
+                          You currently have no document requests
+                          being processed.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div>
-                  <strong>No active transactions</strong>
+                {/* ITEM TRACKING */}
 
-                  <p>
-                    Your document requests and item reservations
-                    will appear here once submitted.
-                  </p>
+                <div className="tracking-column">
+                  <div className="tracking-column__header">
+                    <h2>Item Reservations</h2>
+
+                    <span>
+                      {itemTrackingTransactions.length} active
+                    </span>
+                  </div>
+
+                  {itemTrackingTransactions.length > 0 ? (
+                    <TrackingCarousel
+                      transactions={itemTrackingTransactions}
+                      onSelect={setSelectedTransaction}
+                    />
+                  ) : (
+                    <div className="tracking-empty">
+                      <div className="tracking-empty__icon">
+                        <Icon name="shopping-bag" size={26} />
+                      </div>
+
+                      <div>
+                        <strong>No Active Item Reservations</strong>
+
+                        <p>
+                          You currently have no item reservations
+                          being processed.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
               </div>
             )}
           </section>
@@ -916,6 +986,37 @@ function TrackingCarousel({
 
   const carouselRef = useRef<HTMLDivElement>(null);
 
+  // Automatically rotate every 5 seconds.
+  // Each tracking carousel has its own timer.
+
+  useEffect(() => {
+    if (transactions.length <= 1) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((currentIndex) => {
+        const nextIndex =
+          (currentIndex + 1) % transactions.length;
+
+        const element = carouselRef.current;
+
+        if (element) {
+          element.scrollTo({
+            left: nextIndex * element.clientWidth,
+            behavior: "smooth",
+          });
+        }
+
+        return nextIndex;
+      });
+    }, 5000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [transactions.length]);
+
   useEffect(() => {
     setActiveIndex(0);
 
@@ -1036,7 +1137,7 @@ function TrackingCarousel({
           </div>
 
           <span className="tracking-carousel__counter">
-            {activeIndex + 1} / {transactions.length}
+            {activeIndex + 1} of {transactions.length}
           </span>
 
           <button
@@ -1060,42 +1161,75 @@ function TrackingContent({
   transaction: StudentTransaction;
 }) {
   const status = normalizeStatus(transaction.status);
+  const paymentStatus = normalizeStatus(transaction.payment_status);
+
+  const isDocument = transaction.kind === "DOCUMENT";
+
   const showClaimingDetails =
-    status === "APPROVED" || status === "CLAIMED";
+    status === "APPROVED" ||
+    status === "CLAIMED" ||
+    status === "READY_FOR_PICKUP";
 
-  /*
-    TRACKING PROGRESS BASED ONLY ON STATUS
+  // Separate tracking steps
+  const documentSteps = [
+    "NEW REQUEST",
+    "APPROVED",
+    "PAID",
+    "IN PROCESSING",
+    "READY FOR PICKUP",
+  ];
 
-    UNPAID   = 0
-    PENDING  = 1
-    PAID     = 2
-    APPROVED = 3
-    CLAIMED  = 4
-  */
+  // Keep the existing inventory tracking steps
+  const itemSteps = TRACKING_STEPS;
+
+  const currentSteps = isDocument ? documentSteps : itemSteps;
 
   let activeIndex = 0;
 
-  if (
-    status === "CLAIMED" ||
-    status === "COMPLETED"
-  ) {
-    activeIndex = 4;
-  } else if (
-    status === "APPROVED" ||
-    status === "PROCESSING" ||
-    status === "READY_FOR_PICKUP" ||
-    status === "RESCHEDULED"
-  ) {
-    activeIndex = 3;
-  } else if (status === "PAID") {
-    activeIndex = 2;
-  } else if (status === "PENDING") {
-    activeIndex = 1;
-  } else if (status === "UNPAID") {
-    activeIndex = 0;
-  }
+  if (isDocument) {
+    // DOCUMENT TRACKING
 
-  return (
+    if (
+      status === "READY_FOR_PICKUP" ||
+      status === "CLAIMED" ||
+      status === "COMPLETED"
+    ) {
+      activeIndex = 4;
+    } else if (status === "PROCESSING") {
+      activeIndex = 3;
+    } else if (
+      status === "APPROVED" &&
+      paymentStatus === "PAID"
+    ) {
+      activeIndex = 2;
+    } else if (status === "APPROVED") {
+      activeIndex = 1;
+    } else if (status === "PENDING") {
+      activeIndex = 0;
+    }
+  } else {
+    // INVENTORY TRACKING — PRESERVE EXISTING LOGIC
+
+    if (
+      status === "CLAIMED" ||
+      status === "COMPLETED"
+    ) {
+      activeIndex = 4;
+    } else if (
+      status === "APPROVED" ||
+      status === "PROCESSING" ||
+      status === "READY_FOR_PICKUP" ||
+      status === "RESCHEDULED"
+    ) {
+      activeIndex = 3;
+    } else if (status === "PAID") {
+      activeIndex = 2;
+    } else if (status === "PENDING") {
+      activeIndex = 1;
+    } else if (status === "UNPAID") {
+      activeIndex = 0;
+    }
+  } return (
     <div className="tracking-content">
 
       {/* TRANSACTION INFORMATION */}
@@ -1146,7 +1280,7 @@ function TrackingContent({
       {/* TRACKING PROGRESS LINE */}
 
       <div className="tracking-progress">
-        {TRACKING_STEPS.map((step, index) => {
+        {currentSteps.map((step, index) => {
           const complete = index < activeIndex;
           const current = index === activeIndex;
 
@@ -1636,10 +1770,7 @@ function TransactionDetailsModal({
                   }
                 />
 
-                <Detail
-                  label="Payment Status"
-                  value={details.payment_status}
-                />
+
 
                 <Detail
                   label="Payment Stub Code"
@@ -2111,8 +2242,8 @@ function getMonthName(date: string): string {
   return Number.isNaN(parsed.getTime())
     ? ""
     : parsed.toLocaleDateString("en-US", {
-        month: "short",
-      });
+      month: "short",
+    });
 }
 
 /* =========================================

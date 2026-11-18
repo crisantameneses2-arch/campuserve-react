@@ -120,8 +120,9 @@ function CashierDashboard({ account }: CashierDashboardProps) {
   const [message, setMessage] = useState("");
 
   const isPaid = (payment: PaymentRecord) =>
-    payment.status?.toUpperCase() === "PAID";
-
+    payment.recordType === "Document Request"
+      ? payment.payment_status?.toUpperCase() === "PAID"
+      : payment.status?.toUpperCase() === "PAID";
   // Load actual payment records from Firestore.
   const loadPayments = async () => {
     setLoading(true);
@@ -216,19 +217,23 @@ function CashierDashboard({ account }: CashierDashboardProps) {
 
         const currentData = paymentSnapshot.data();
 
-        // Do not generate another code if payment was already confirmed.
-        if (currentData.status?.toUpperCase() === "PAID") {
+        // Check whether payment has already been confirmed.
+        const alreadyPaid =
+          payment.recordType === "Document Request"
+            ? currentData.payment_status?.toUpperCase() === "PAID"
+            : currentData.status?.toUpperCase() === "PAID";
+
+        if (alreadyPaid) {
           return {
             alreadyPaid: true,
             claimingCode:
               payment.recordType === "Document Request"
-                ? currentData.claim_code
-                : currentData.claimStubId,
+                ? currentData.claim_code || ""
+                : currentData.claimStubId || "",
           };
         }
 
         const updates: Record<string, any> = {
-          status: "PAID",
           payment_confirmed_at: serverTimestamp(),
           payment_confirmed_by: account.firebaseUid || "",
         };
@@ -236,12 +241,16 @@ function CashierDashboard({ account }: CashierDashboardProps) {
         let claimingCode = "";
 
         if (payment.recordType === "Document Request") {
-          // Generate the Registrar's claiming code.
-          claimingCode = currentData.claim_code || generateCode("DOC");
-          updates.claim_code = claimingCode;
+          // Keep the document request status as APPROVED.
+          // Only update its separate payment_status field.
+          updates.payment_status = "PAID";
         } else {
-          // Generate the General Office's claiming stub.
-          claimingCode = currentData.claimStubId || generateCode("CS");
+          // Item reservations retain their existing payment behavior.
+          updates.status = "PAID";
+
+          claimingCode =
+            currentData.claimStubId || generateCode("CS");
+
           updates.claimStubId = claimingCode;
         }
 
