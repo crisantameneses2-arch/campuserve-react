@@ -29,6 +29,7 @@ type PaymentRecord = {
 
   payment_stub_code?: string;
   paymentCode?: string;
+  payment_status?: string;
 
   claim_code?: string;
   claimStubId?: string;
