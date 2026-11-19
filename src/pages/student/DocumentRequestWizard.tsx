@@ -248,7 +248,7 @@ export default function DocumentRequestWizard({
           const status =
             String(
               requestData.status ??
-                "DRAFT"
+              "DRAFT"
             );
 
           setGroupRequestStatus(
@@ -283,14 +283,14 @@ export default function DocumentRequestWizard({
             members.map((member) => ({
               member_id:
                 typeof member.member_id ===
-                "string"
+                  "string"
                   ? member.member_id
                   : undefined,
 
               student_id:
                 String(
                   member.student_id ??
-                    ""
+                  ""
                 ),
 
               invitation_status:
@@ -499,20 +499,17 @@ export default function DocumentRequestWizard({
           }
         );
 
-      const result =
-        await response.json().catch(
-          () => ({})
-        );
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
-          typeof result.message ===
-          "string"
-            ? result.message
-            : "The invitation could not be sent."
+          typeof result.error === "string"
+            ? result.error  
+            : typeof result.message === "string"
+              ? result.message
+              : `The invitation could not be sent. (HTTP ${response.status})`
         );
       }
-
       /*
        * Firestore onSnapshot will update
        * the member list automatically.
@@ -696,13 +693,13 @@ export default function DocumentRequestWizard({
 
             document_type:
               catalogDocument.id ===
-              "others"
+                "others"
                 ? "Others"
                 : catalogDocument.name,
 
             custom_document_name:
               catalogDocument.id ===
-              "others"
+                "others"
                 ? ""
                 : null,
 
@@ -742,10 +739,10 @@ export default function DocumentRequestWizard({
 
             const subtotal =
               document.unit_price ===
-              null
+                null
                 ? null
                 : document.unit_price *
-                  safeQuantity;
+                safeQuantity;
 
             return {
               ...document,
@@ -767,12 +764,12 @@ export default function DocumentRequestWizard({
         current.map(
           (document) =>
             document.id ===
-            documentId
+              documentId
               ? {
-                  ...document,
-                  custom_document_name:
-                    customName,
-                }
+                ...document,
+                custom_document_name:
+                  customName,
+              }
               : document
         )
     );
@@ -790,7 +787,7 @@ export default function DocumentRequestWizard({
   function validateMethod(): string | null {
     if (
       requestMethod ===
-        "WITH_OTHERS" &&
+      "WITH_OTHERS" &&
       groupMembers.length === 0
     ) {
       return (
@@ -804,7 +801,7 @@ export default function DocumentRequestWizard({
      */
     if (
       requestMethod ===
-        "WITH_OTHERS" &&
+      "WITH_OTHERS" &&
       hasPendingMembers
     ) {
       return (
@@ -818,7 +815,7 @@ export default function DocumentRequestWizard({
      */
     if (
       requestMethod ===
-        "WITH_OTHERS" &&
+      "WITH_OTHERS" &&
       !hasAcceptedMembers
     ) {
       return (
@@ -855,7 +852,7 @@ export default function DocumentRequestWizard({
 
       if (
         document.document_type ===
-          "Others" &&
+        "Others" &&
         !document.custom_document_name?.trim()
       ) {
         return (
@@ -886,46 +883,46 @@ export default function DocumentRequestWizard({
   ======================================================= */
 
   function validateCurrentStep(): string | null {
-  if (currentStep === 1) {
-    return validateMethod();
-  }
+    if (currentStep === 1) {
+      return validateMethod();
+    }
 
-  if (currentStep === 2) {
-    return validateDocuments();
-  }
+    if (currentStep === 2) {
+      return validateDocuments();
+    }
 
-  if (currentStep === 3) {
-    return validateDetails();
-  }
+    if (currentStep === 3) {
+      return validateDetails();
+    }
 
-  return null;
-}
+    return null;
+  }
 
   /* =======================================================
      VALIDATION - EVERYTHING
   ======================================================= */
 
   function validateEverything(): string | null {
-  const methodError = validateMethod();
+    const methodError = validateMethod();
 
-  if (methodError) {
-    return methodError;
+    if (methodError) {
+      return methodError;
+    }
+
+    const documentError = validateDocuments();
+
+    if (documentError) {
+      return documentError;
+    }
+
+    const detailsError = validateDetails();
+
+    if (detailsError) {
+      return detailsError;
+    }
+
+    return null;
   }
-
-  const documentError = validateDocuments();
-
-  if (documentError) {
-    return documentError;
-  }
-
-  const detailsError = validateDetails();
-
-  if (detailsError) {
-    return detailsError;
-  }
-
-  return null;
-}
 
   /* =======================================================
      GROUP CONFIRMATION
@@ -963,7 +960,7 @@ export default function DocumentRequestWizard({
     if (
       currentStep === 1 &&
       requestMethod ===
-        "WITH_OTHERS"
+      "WITH_OTHERS"
     ) {
       if (
         groupMembers.length === 0
@@ -1004,10 +1001,11 @@ export default function DocumentRequestWizard({
     }
 
     if (currentStep < 3) {
-  setCurrentStep(
-    (step) => step + 1
-  );
-}}
+      setCurrentStep(
+        (step) => step + 1
+      );
+    }
+  }
 
   function handleBack() {
     setError("");
@@ -1124,13 +1122,36 @@ export default function DocumentRequestWizard({
             purpose:
               purpose.trim(),
 
-        
-
             number_of_copies:
               numberOfCopies,
 
             total_amount:
               totalAmount,
+
+            details:
+              selectedDocuments.map(
+                (document) => ({
+                  document_type:
+                    document.document_type,
+
+                  custom_document_name:
+                    document.document_type ===
+                      "Others"
+                      ? document
+                        .custom_document_name
+                        ?.trim() || null
+                      : null,
+
+                  quantity:
+                    document.quantity,
+
+                  unit_price:
+                    document.unit_price,
+
+                  subtotal:
+                    document.subtotal,
+                })
+              ),
           }
         );
 
@@ -1188,11 +1209,11 @@ export default function DocumentRequestWizard({
 
             custom_document_name:
               document.document_type ===
-              "Others"
+                "Others"
                 ? document
-                    .custom_document_name
-                    ?.trim() ||
-                  null
+                  .custom_document_name
+                  ?.trim() ||
+                null
                 : null,
 
             quantity:
@@ -1322,61 +1343,61 @@ export default function DocumentRequestWizard({
 
           {requestMethod ===
             "WITH_OTHERS" && (
-            <div
-              style={{
-                marginTop:
-                  "20px",
-                padding:
-                  "16px",
-                border:
-                  "1px solid #e5e7eb",
-                borderRadius:
-                  "8px",
-              }}
-            >
-              <strong>
-                Group Members
-              </strong>
-
               <div
                 style={{
                   marginTop:
-                    "12px",
+                    "20px",
+                  padding:
+                    "16px",
+                  border:
+                    "1px solid #e5e7eb",
+                  borderRadius:
+                    "8px",
                 }}
               >
-                {groupMembers.map(
-                  (member) => (
-                    <div
-                      key={
-                        member.member_id ??
-                        member.student_id
-                      }
-                      style={{
-                        display:
-                          "flex",
-                        justifyContent:
-                          "space-between",
-                        padding:
-                          "8px 0",
-                      }}
-                    >
-                      <span>
-                        {
+                <strong>
+                  Group Members
+                </strong>
+
+                <div
+                  style={{
+                    marginTop:
+                      "12px",
+                  }}
+                >
+                  {groupMembers.map(
+                    (member) => (
+                      <div
+                        key={
+                          member.member_id ??
                           member.student_id
                         }
-                      </span>
+                        style={{
+                          display:
+                            "flex",
+                          justifyContent:
+                            "space-between",
+                          padding:
+                            "8px 0",
+                        }}
+                      >
+                        <span>
+                          {
+                            member.student_id
+                          }
+                        </span>
 
-                      <span>
-                        {
-                          member.invitation_status
-                        }
-                      </span>
-                    </div>
-                  )
-                )}
+                        <span>
+                          {
+                            member.invitation_status
+                          }
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
 
         <button
@@ -1449,17 +1470,17 @@ export default function DocumentRequestWizard({
       {currentStep === 1 && (
         <>
           <StepMethod
-  requestMethod={requestMethod}
-  onRequestMethodChange={(method) => {
-    setRequestMethod(method);
-    setError("");
-  }}
-  groupMembers={groupMembers}
-  onAddMember={addGroupMember}
-  onRemoveMember={removeGroupMember}
-  currentStudentId={studentId}
-  canEditMembers={isGroupDraft}
-/>
+            requestMethod={requestMethod}
+            onRequestMethodChange={(method) => {
+              setRequestMethod(method);
+              setError("");
+            }}
+            groupMembers={groupMembers}
+            onAddMember={addGroupMember}
+            onRemoveMember={removeGroupMember}
+            currentStudentId={studentId}
+            canEditMembers={isGroupDraft}
+          />
 
           {/* =================================================
               GROUP REQUEST STATUS
@@ -1468,7 +1489,7 @@ export default function DocumentRequestWizard({
           {requestMethod ===
             "WITH_OTHERS" &&
             groupMembers.length >
-              0 && (
+            0 && (
               <div
                 style={{
                   marginTop:
@@ -1597,12 +1618,12 @@ export default function DocumentRequestWizard({
 
                       <span>
                         {member.invitation_status ===
-                        "ACCEPTED"
+                          "ACCEPTED"
                           ? "Accepted"
                           : member.invitation_status ===
                             "DECLINED"
-                          ? "Declined"
-                          : "Pending"}
+                            ? "Declined"
+                            : "Pending"}
                       </span>
                     </div>
                   )
@@ -1755,7 +1776,7 @@ export default function DocumentRequestWizard({
             }
             disabled={
               currentStep ===
-                1 ||
+              1 ||
               loading ||
               sendingInvitation ||
               creatingGroupRequest

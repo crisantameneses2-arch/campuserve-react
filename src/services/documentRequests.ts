@@ -5,6 +5,7 @@ import {
   getDocs,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -183,41 +184,136 @@ export async function finalizeDraftGroupDocumentRequest(
     purpose: string;
     number_of_copies: number;
     total_amount: number;
+    details: DocumentDetailInput[];
+  },
+) {
+  if (!input.details || input.details.length === 0) {
+    throw new Error("Select at least one document before submitting.");
   }
-): Promise<void> {
-  const requestRef = doc(
-    db,
-    "document_requests",
-    request_id
+
+  if (!input.purpose.trim()) {
+    throw new Error("Please provide the purpose of the request.");
+  }
+
+  const calculatedCopies = input.details.reduce(
+    (total, detail) => total + Number(detail.quantity || 0),
+    0,
   );
 
-  await updateDoc(
-    requestRef,
-    {
-      purpose:
-        input.purpose,
+  const calculatedAmount = input.details.reduce(
+    (total, detail) => total + Number(detail.subtotal || 0),
+    0,
+  );
 
-      number_of_copies:
-        input.number_of_copies,
+  if (
+    input.details.some(
+      (detail) =>
+        !Number.isInteger(Number(detail.quantity)) ||
+        Number(detail.quantity) < 1
+    )
+  ) {
+    throw new Error("Each document must have at least one copy.");
+  }
 
-      total_amount:
-        input.total_amount,
+  if (calculatedCopies !== input.number_of_copies) {
+    throw new Error("The total number of copies does not match the selected documents.");
+  }
 
-      /*
-       * The group request is now officially
-       * submitted.
-       */
-      status: "PENDING",
+  if (
+    Math.round(calculatedAmount * 100) !==
+    Math.round(input.total_amount * 100)
+  ) {
+    throw new Error("The total amount does not match the selected documents.");
+  }
 
-      finalized_at:
-        serverTimestamp(),
+  const requestRef = doc(db, "document_requests", request_id);
 
-      submitted_at:
-        serverTimestamp(),
+  const membersQuery = query(
+    collection(db, "group_request_members"),
+    where("request_id", "==", request_id),
+  );
+
+  // Get the group member document references.
+  const membersSnapshot = await getDocs(membersQuery);
+
+  const memberRefs = membersSnapshot.docs.map(
+    (member) => member.ref,
+  );
+
+  // Prepare document detail records.
+  const detailRecords = input.details.map((detail) => {
+    const detailRef = doc(
+      collection(db, "document_request_details"),
+    );
+
+    return {
+      ref: detailRef,
+      data: {
+        detail_id: detailRef.id,
+        request_id,
+        document_type: detail.document_type,
+        custom_document_name: detail.custom_document_name,
+        quantity: detail.quantity,
+        unit_price: detail.unit_price,
+        subtotal: detail.subtotal,
+      },
+    };
+  });
+
+  await runTransaction(db, async (transaction) => {
+    // All reads must happen before writes.
+    const requestSnapshot = await transaction.get(requestRef);
+
+    if (!requestSnapshot.exists()) {
+      throw new Error("The group request could not be found.");
     }
-  );
-}
 
+    if (requestSnapshot.data().status !== "DRAFT") {
+      throw new Error("This group request has already been submitted.");
+    }
+
+    // Read each member document individually.
+    const memberDocuments = await Promise.all(
+      memberRefs.map((memberRef) => transaction.get(memberRef)),
+    );
+
+    const acceptedMembers = memberDocuments.filter(
+      (member) =>
+        member.exists() &&
+        String(member.data()?.invitation_status || "").toUpperCase() === "ACCEPTED",
+    );
+
+    const pendingMembers = memberDocuments.filter(
+      (member) =>
+        member.exists() &&
+        String(member.data()?.invitation_status || "").toUpperCase() === "PENDING",
+    );
+
+    if (acceptedMembers.length === 0) {
+      throw new Error("At least one group member must accept the invitation.");
+    }
+
+    if (pendingMembers.length > 0) {
+      throw new Error("Wait until all group invitations have been answered.");
+    }
+
+    // Save all selected document details.
+    for (const detail of detailRecords) {
+      transaction.set(detail.ref, detail.data);
+    }
+
+    // Submit the consolidated group request.
+    transaction.update(requestRef, {
+      purpose: input.purpose.trim(),
+      number_of_copies: input.number_of_copies,
+      total_amount: input.total_amount,
+      status: "PENDING",
+      finalized_at: serverTimestamp(),
+      submitted_at: serverTimestamp(),
+      updated_at: serverTimestamp(),
+    });
+  });
+}
 /* =========================================================
    CREATE DOCUMENT REQUEST
 ========================================================= */

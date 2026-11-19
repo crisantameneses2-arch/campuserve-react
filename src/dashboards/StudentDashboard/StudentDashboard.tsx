@@ -13,6 +13,7 @@ import ItemReservation from "../../pages/student/ItemReservation";
 import DocumentRequestWizard from "../../pages/student/DocumentRequestWizard";
 import DocumentRequestList from "../../pages/student/DocumentRequestList";
 import ClaimStubPage from "../../pages/student/ClaimStubPage";
+import GroupRequestInvitations from "../../pages/student/GroupRequestInvitations";
 
 import { useNotifications } from "../../hooks/useNotifications";
 import {
@@ -48,6 +49,7 @@ type DashboardPage =
   | "dashboard"
   | "request"
   | "requests"
+  | "groupInvites"
   | "itemReservation"
   | "claimStub"
   | "transactions"
@@ -428,6 +430,9 @@ export default function StudentDashboard({
           {activePage === "requests" && (
             <DocumentRequestList studentId={studentId} />
           )}
+          {activePage === "groupInvites" && (
+            <GroupRequestInvitations studentId={studentId} />
+          )}
 
           {activePage === "itemReservation" && (
             <ItemReservation
@@ -494,7 +499,7 @@ export default function StudentDashboard({
             <button
               className="group-request-banner"
               type="button"
-              onClick={() => go("requests")}
+              onClick={() => go("groupInvites")}
             >
               <span className="banner-icon">
                 <Icon name="users" size={20} />
@@ -936,6 +941,12 @@ function DashboardHeader({
             onClick={() => onNavigate("request")}
           >
             Request Document
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate("groupInvites")}
+          >
+            Group Request Invitations
           </button>
 
           <button

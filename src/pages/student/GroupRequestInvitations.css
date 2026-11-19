@@ -1,0 +1,133 @@
+
+.group-invitations-page {
+  width: 100%;
+  padding: 24px;
+}
+
+.group-invitations-header {
+  margin-bottom: 24px;
+}
+
+.group-invitations-header h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.group-invitations-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.group-invitations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group-invitation-card {
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.group-invitation-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.group-invitation-top h3 {
+  margin: 0 0 5px;
+}
+
+.group-invitation-top p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.group-invitation-status {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.group-invitation-status.pending {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.group-invitation-status.accepted {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.group-invitation-status.declined {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.group-invitation-details {
+  margin-top: 18px;
+  color: #374151;
+}
+
+.group-invitation-details p {
+  margin: 8px 0;
+}
+
+.group-invitation-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.group-invitation-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.group-invitation-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.group-invitation-accept {
+  color: #fff;
+  background: #2563eb;
+}
+
+.group-invitation-decline {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.group-invitations-empty {
+  padding: 40px 20px;
+  text-align: center;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+}
+
+.group-invitations-empty p {
+  color: #6b7280;
+}
+
+.group-invitation-responded {
+  margin-top: 18px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.group-invitation-error {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  color: #b91c1c;
+  background: #fee2e2;
+}

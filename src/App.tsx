@@ -11,7 +11,7 @@ import DocumentRequestList from "./pages/student/DocumentRequestList";
 
 import "./App.css";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   signInWithEmailAndPassword,
@@ -20,6 +20,7 @@ import {
   sendPasswordResetEmail,
   EmailAuthProvider,
   linkWithCredential,
+  onAuthStateChanged,
   User,
 } from "firebase/auth";
 
@@ -80,6 +81,8 @@ type Account = {
 function App() {
   const [account, setAccount] =
     useState<Account | null>(null);
+
+  const [authChecking, setAuthChecking] = useState(false);
 
   const [error, setError] = useState("");
 
@@ -166,6 +169,102 @@ function App() {
       accountData,
     };
   };
+  // ==================================================
+  // RESTORE LOGGED-IN ACCOUNT WHEN APP LOADS
+  // ==================================================
+//uncomment udring final defense>
+  /* useEffect(() => {
+    let firstAuthCheck = true;
+
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (user) => {
+
+        // Only handle the initial Firebase session check.
+        // Login handlers already handle new logins.
+        if (!firstAuthCheck) return;
+
+        firstAuthCheck = false;
+
+        try {
+          if (!user) {
+            setAccount(null);
+            return;
+          }
+
+          // Google-only accounts must complete password setup
+          // before accessing the dashboard.
+          const hasPasswordProvider =
+            user.providerData.some(
+              (provider) =>
+                provider.providerId === "password"
+            );
+
+          if (!hasPasswordProvider) {
+            await signOut(auth);
+            setAccount(null);
+            return;
+          }
+
+          // Find the CampuServe account using Firebase UID.
+          const accountQuery = query(
+            collection(db, "accounts"),
+            where("firebaseUid", "==", user.uid)
+          );
+
+          const accountSnapshot =
+            await getDocs(accountQuery);
+
+          let restoredAccount: Account | null = null;
+
+          if (!accountSnapshot.empty) {
+            restoredAccount =
+              accountSnapshot.docs[0].data() as Account;
+          } else if (user.email) {
+            // Fallback for accounts that do not yet have
+            // their Firebase UID saved in Firestore.
+            const accountResult =
+              await findAccountByEmail(user.email);
+
+            if (accountResult) {
+              restoredAccount =
+                accountResult.accountData;
+            }
+          }
+
+          // Check whether the account exists and is active.
+          if (
+            !restoredAccount ||
+            restoredAccount.status !== "active"
+          ) {
+            await signOut(auth);
+            setAccount(null);
+            return;
+          }
+
+          // Restore the logged-in account in React.
+          setAccount({
+            ...restoredAccount,
+            firebaseUid: user.uid,
+          });
+
+        } catch (error) {
+          console.error(
+            "Session restoration error:",
+            error
+          );
+
+          setAccount(null);
+
+        } finally {
+          setAuthChecking(false);
+        }
+      }
+    );
+
+    return () => unsubscribe();
+
+  }, []); */
 
   // ==================================================
   // EMAIL + PASSWORD LOGIN
@@ -302,9 +401,8 @@ function App() {
       );
 
       setError(
-        `Login failed: ${
-          error?.code ||
-          "unknown-error"
+        `Login failed: ${error?.code ||
+        "unknown-error"
         }`
       );
 
@@ -475,9 +573,8 @@ function App() {
       );
 
       setError(
-        `Google login failed: ${
-          error?.code ||
-          "unknown-error"
+        `Google login failed: ${error?.code ||
+        "unknown-error"
         }`
       );
 
@@ -598,9 +695,8 @@ function App() {
       );
 
       setError(
-        `Password setup failed: ${
-          error?.code ||
-          "unknown-error"
+        `Password setup failed: ${error?.code ||
+        "unknown-error"
         }`
       );
 
@@ -609,7 +705,7 @@ function App() {
     }
   };
 
-    // ==================================================
+  // ==================================================
   // FORGOT PASSWORD
   // ==================================================
 
@@ -713,253 +809,271 @@ function App() {
   // ==================================================
 
   //const handleLogout = async () => {
- //   await signOut(auth);
+  //   await signOut(auth);
 
- //   setAccount(null);
+  //   setAccount(null);
 
-   // setEmail("");
+  // setEmail("");
   //  setPassword("");
   //  setError("");
   //  setMessage("");
-//  };
+  //  };
+
+  // ==================================================
+  // LOGIN SCREEN
+  // ==================================================
+
+  // ==================================================
+  // WAIT FOR FIREBASE SESSION RESTORATION
+  // ==================================================
+
+  if (authChecking) {
+    return (
+      <div className="campuserve-login-page">
+        <div className="campuserve-login-card">
+          <h2>CampuServe</h2>
+          <p>Restoring your account session...</p>
+        </div>
+      </div>
+    );
+  }
 
   // ==================================================
   // LOGIN SCREEN
   // ==================================================
 
   if (!account) {
-
     // ----------------------------------------------
     // SET UP PASSWORD SCREEN
     // ----------------------------------------------
 
     if (showSetPassword) {
       return (
-  <div className="campuserve-login-page">
+        <div className="campuserve-login-page">
 
-    <div className="campuserve-brand-panel">
+          <div className="campuserve-brand-panel">
 
-      <div className="campuserve-brand-content">
+            <div className="campuserve-brand-content">
 
-        <div className="campuserve-logo">
-          C
-        </div>
+              <div className="campuserve-logo">
+                C
+              </div>
 
-        <h1>CampuServe</h1>
+              <h1>CampuServe</h1>
 
-        <p className="brand-tagline">
-          One account.
-          <br />
-          All your campus services.
-        </p>
+              <p className="brand-tagline">
+                One account.
+                <br />
+                All your campus services.
+              </p>
 
-        <div className="campuserve-university">
-          <strong>
-            Pangasinan State University
-          </strong>
-          <br />
-          Lingayen Campus
-        </div>
+              <div className="campuserve-university">
+                <strong>
+                  Pangasinan State University
+                </strong>
+                <br />
+                Lingayen Campus
+              </div>
 
-      </div>
-
-    </div>
-
-
-    <div className="campuserve-login-area">
-
-      <div className="campuserve-login-card">
-
-        <div className="campuserve-login-heading">
-
-          <h2>
-            Create your password
-          </h2>
-
-          <p>
-            Your Google account has been
-            verified. Create a CampuServe
-            password so you can also sign
-            in with your email.
-          </p>
-
-        </div>
-
-
-        {pendingGoogleUser?.email && (
-          <div className="campuserve-info-box">
-
-            Verified Google account
-
-            <div className="campuserve-email-badge">
-              {pendingGoogleUser.email}
             </div>
 
           </div>
-        )}
 
 
-        {/* NEW PASSWORD */}
+          <div className="campuserve-login-area">
 
-        <div className="campuserve-form-group">
+            <div className="campuserve-login-card">
 
-          <label>
-            CampuServe password
-          </label>
+              <div className="campuserve-login-heading">
 
-          <div className="campuserve-input-wrapper">
+                <h2>
+                  Create your password
+                </h2>
 
-            <input
-              className="campuserve-input campuserve-password-input"
-              type={
-                showNewPassword
-                  ? "text"
-                  : "password"
-              }
-              placeholder="Create a password"
-              value={newPassword}
-              onChange={(event) =>
-                setNewPassword(
-                  event.target.value
-                )
-              }
-              disabled={loading}
-            />
+                <p>
+                  Your Google account has been
+                  verified. Create a CampuServe
+                  password so you can also sign
+                  in with your email.
+                </p>
 
-            <button
-              type="button"
-              className="campuserve-password-toggle"
-              onClick={() =>
-                setShowNewPassword(
-                  !showNewPassword
-                )
-              }
-              disabled={loading}
-              aria-label={
-                showNewPassword
-                  ? "Hide password"
-                  : "Show password"
-              }
-            >
-              {showNewPassword
-                ? "🙈"
-                : "👁"}
-            </button>
+              </div>
 
-          </div>
 
-          <div className="campuserve-password-requirement">
-            At least 6 characters
+              {pendingGoogleUser?.email && (
+                <div className="campuserve-info-box">
+
+                  Verified Google account
+
+                  <div className="campuserve-email-badge">
+                    {pendingGoogleUser.email}
+                  </div>
+
+                </div>
+              )}
+
+
+              {/* NEW PASSWORD */}
+
+              <div className="campuserve-form-group">
+
+                <label>
+                  CampuServe password
+                </label>
+
+                <div className="campuserve-input-wrapper">
+
+                  <input
+                    className="campuserve-input campuserve-password-input"
+                    type={
+                      showNewPassword
+                        ? "text"
+                        : "password"
+                    }
+                    placeholder="Create a password"
+                    value={newPassword}
+                    onChange={(event) =>
+                      setNewPassword(
+                        event.target.value
+                      )
+                    }
+                    disabled={loading}
+                  />
+
+                  <button
+                    type="button"
+                    className="campuserve-password-toggle"
+                    onClick={() =>
+                      setShowNewPassword(
+                        !showNewPassword
+                      )
+                    }
+                    disabled={loading}
+                    aria-label={
+                      showNewPassword
+                        ? "Hide password"
+                        : "Show password"
+                    }
+                  >
+                    {showNewPassword
+                      ? "🙈"
+                      : "👁"}
+                  </button>
+
+                </div>
+
+                <div className="campuserve-password-requirement">
+                  At least 6 characters
+                </div>
+
+              </div>
+
+
+              {/* CONFIRM PASSWORD */}
+
+              <div className="campuserve-form-group">
+
+                <label>
+                  Confirm password
+                </label>
+
+                <div className="campuserve-input-wrapper">
+
+                  <input
+                    className="campuserve-input campuserve-password-input"
+                    type={
+                      showConfirmPassword
+                        ? "text"
+                        : "password"
+                    }
+                    placeholder="Re-enter your password"
+                    value={confirmPassword}
+                    onChange={(event) =>
+                      setConfirmPassword(
+                        event.target.value
+                      )
+                    }
+                    disabled={loading}
+                  />
+
+                  <button
+                    type="button"
+                    className="campuserve-password-toggle"
+                    onClick={() =>
+                      setShowConfirmPassword(
+                        !showConfirmPassword
+                      )
+                    }
+                    disabled={loading}
+                    aria-label={
+                      showConfirmPassword
+                        ? "Hide password"
+                        : "Show password"
+                    }
+                  >
+                    {showConfirmPassword
+                      ? "🙈"
+                      : "👁"}
+                  </button>
+
+                </div>
+
+              </div>
+
+
+              {/* CREATE PASSWORD */}
+
+              <button
+                className="campuserve-primary-button"
+                onClick={handleSetPassword}
+                disabled={loading}
+              >
+                {loading
+                  ? "Creating password..."
+                  : "Create password"}
+              </button>
+
+
+              {/* CANCEL */}
+
+              <button
+                className="campuserve-secondary-button"
+                onClick={async () => {
+
+                  await signOut(auth);
+
+                  setShowSetPassword(false);
+                  setNewPassword("");
+                  setConfirmPassword("");
+
+                  setShowNewPassword(false);
+                  setShowConfirmPassword(false);
+
+                  setPendingGoogleUser(null);
+                  setPendingGoogleAccount(null);
+
+                  setError("");
+                  setMessage("");
+
+                }}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+
+
+              {error && (
+                <div className="campuserve-error">
+                  {error}
+                </div>
+              )}
+
+            </div>
+
           </div>
 
         </div>
-
-
-        {/* CONFIRM PASSWORD */}
-
-        <div className="campuserve-form-group">
-
-          <label>
-            Confirm password
-          </label>
-
-          <div className="campuserve-input-wrapper">
-
-            <input
-              className="campuserve-input campuserve-password-input"
-              type={
-                showConfirmPassword
-                  ? "text"
-                  : "password"
-              }
-              placeholder="Re-enter your password"
-              value={confirmPassword}
-              onChange={(event) =>
-                setConfirmPassword(
-                  event.target.value
-                )
-              }
-              disabled={loading}
-            />
-
-            <button
-              type="button"
-              className="campuserve-password-toggle"
-              onClick={() =>
-                setShowConfirmPassword(
-                  !showConfirmPassword
-                )
-              }
-              disabled={loading}
-              aria-label={
-                showConfirmPassword
-                  ? "Hide password"
-                  : "Show password"
-              }
-            >
-              {showConfirmPassword
-                ? "🙈"
-                : "👁"}
-            </button>
-
-          </div>
-
-        </div>
-
-
-        {/* CREATE PASSWORD */}
-
-        <button
-          className="campuserve-primary-button"
-          onClick={handleSetPassword}
-          disabled={loading}
-        >
-          {loading
-            ? "Creating password..."
-            : "Create password"}
-        </button>
-
-
-        {/* CANCEL */}
-
-        <button
-          className="campuserve-secondary-button"
-          onClick={async () => {
-
-            await signOut(auth);
-
-            setShowSetPassword(false);
-            setNewPassword("");
-            setConfirmPassword("");
-
-            setShowNewPassword(false);
-            setShowConfirmPassword(false);
-
-            setPendingGoogleUser(null);
-            setPendingGoogleAccount(null);
-
-            setError("");
-            setMessage("");
-
-          }}
-          disabled={loading}
-        >
-          Cancel
-        </button>
-
-
-        {error && (
-          <div className="campuserve-error">
-            {error}
-          </div>
-        )}
-
-      </div>
-
-    </div>
-
-  </div>
-);
+      );
     }
 
     // ----------------------------------------------
@@ -968,125 +1082,125 @@ function App() {
 
     if (showForgotPassword) {
       return (
-  <div className="campuserve-login-page">
+        <div className="campuserve-login-page">
 
-    <div className="campuserve-brand-panel">
+          <div className="campuserve-brand-panel">
 
-      <div className="campuserve-brand-content">
+            <div className="campuserve-brand-content">
 
-        <div className="campuserve-logo">
-          C
-        </div>
+              <div className="campuserve-logo">
+                C
+              </div>
 
-        <h1>CampuServe</h1>
+              <h1>CampuServe</h1>
 
-        <p className="brand-tagline">
-          Secure campus services,
-          <br />
-          wherever you are.
-        </p>
+              <p className="brand-tagline">
+                Secure campus services,
+                <br />
+                wherever you are.
+              </p>
 
-        <div className="campuserve-university">
-          <strong>
-            Pangasinan State University
-          </strong>
-          <br />
-          Lingayen Campus
-        </div>
+              <div className="campuserve-university">
+                <strong>
+                  Pangasinan State University
+                </strong>
+                <br />
+                Lingayen Campus
+              </div>
 
-      </div>
+            </div>
 
-    </div>
-
-
-    <div className="campuserve-login-area">
-
-      <div className="campuserve-login-card">
-
-        <div className="campuserve-login-heading">
-
-          <h2>
-            Reset your password
-          </h2>
-
-          <p>
-            Enter your registered email
-            address and we'll send you a
-            password reset link.
-          </p>
-
-        </div>
-
-
-        <div className="campuserve-form-group">
-
-          <label>
-            Email address
-          </label>
-
-          <input
-            className="campuserve-input"
-            type="email"
-            placeholder="you@example.com"
-            value={resetEmail}
-            onChange={(event) =>
-              setResetEmail(
-                event.target.value
-              )
-            }
-            disabled={loading}
-          />
-
-        </div>
-
-
-        <button
-          className="campuserve-primary-button"
-          onClick={handleForgotPassword}
-          disabled={loading}
-        >
-          {loading
-            ? "Sending..."
-            : "Send reset email"}
-        </button>
-
-
-        <button
-          className="campuserve-secondary-button"
-          onClick={() => {
-
-            setShowForgotPassword(false);
-
-            setResetEmail("");
-            setError("");
-            setMessage("");
-
-          }}
-          disabled={loading}
-        >
-          Back to login
-        </button>
-
-
-        {error && (
-          <div className="campuserve-error">
-            {error}
           </div>
-        )}
 
 
-        {message && (
-          <div className="campuserve-success">
-            {message}
+          <div className="campuserve-login-area">
+
+            <div className="campuserve-login-card">
+
+              <div className="campuserve-login-heading">
+
+                <h2>
+                  Reset your password
+                </h2>
+
+                <p>
+                  Enter your registered email
+                  address and we'll send you a
+                  password reset link.
+                </p>
+
+              </div>
+
+
+              <div className="campuserve-form-group">
+
+                <label>
+                  Email address
+                </label>
+
+                <input
+                  className="campuserve-input"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={resetEmail}
+                  onChange={(event) =>
+                    setResetEmail(
+                      event.target.value
+                    )
+                  }
+                  disabled={loading}
+                />
+
+              </div>
+
+
+              <button
+                className="campuserve-primary-button"
+                onClick={handleForgotPassword}
+                disabled={loading}
+              >
+                {loading
+                  ? "Sending..."
+                  : "Send reset email"}
+              </button>
+
+
+              <button
+                className="campuserve-secondary-button"
+                onClick={() => {
+
+                  setShowForgotPassword(false);
+
+                  setResetEmail("");
+                  setError("");
+                  setMessage("");
+
+                }}
+                disabled={loading}
+              >
+                Back to login
+              </button>
+
+
+              {error && (
+                <div className="campuserve-error">
+                  {error}
+                </div>
+              )}
+
+
+              {message && (
+                <div className="campuserve-success">
+                  {message}
+                </div>
+              )}
+
+            </div>
+
           </div>
-        )}
 
-      </div>
-
-    </div>
-
-  </div>
-);
+        </div>
+      );
     }
 
     // ----------------------------------------------
@@ -1094,248 +1208,248 @@ function App() {
     // ----------------------------------------------
 
     return (
-  <div className="campuserve-login-page">
+      <div className="campuserve-login-page">
 
-    {/* ============================================
+        {/* ============================================
         UNIVERSITY BRANDING
     ============================================ */}
 
-    <div className="campuserve-brand-panel">
+        <div className="campuserve-brand-panel">
 
-      <div className="campuserve-brand-content">
+          <div className="campuserve-brand-content">
 
-        <div className="campuserve-logo">
-          C
+            <div className="campuserve-logo">
+              C
+            </div>
+
+            <h1>CampuServe</h1>
+
+            <p className="brand-tagline">
+              Your campus services,
+              <br />
+              all in one place.
+            </p>
+
+            <div className="campuserve-university">
+              <strong>
+                Pangasinan State University
+              </strong>
+              <br />
+              Lingayen Campus
+              <br />
+              <span>
+                Integrated Document Request
+                and Item Reservation System
+              </span>
+            </div>
+
+          </div>
+
         </div>
 
-        <h1>CampuServe</h1>
 
-        <p className="brand-tagline">
-          Your campus services,
-          <br />
-          all in one place.
-        </p>
-
-        <div className="campuserve-university">
-          <strong>
-            Pangasinan State University
-          </strong>
-          <br />
-          Lingayen Campus
-          <br />
-          <span>
-            Integrated Document Request
-            and Item Reservation System
-          </span>
-        </div>
-
-      </div>
-
-    </div>
-
-
-    {/* ============================================
+        {/* ============================================
         LOGIN AREA
     ============================================ */}
 
-    <div className="campuserve-login-area">
+        <div className="campuserve-login-area">
 
-      <div className="campuserve-login-card">
+          <div className="campuserve-login-card">
 
-        <div className="campuserve-login-heading">
+            <div className="campuserve-login-heading">
 
-          <h2>
-            Welcome back
-          </h2>
+              <h2>
+                Welcome back
+              </h2>
 
-          <p>
-            Sign in to your CampuServe account
-            to continue.
-          </p>
+              <p>
+                Sign in to your CampuServe account
+                to continue.
+              </p>
 
-        </div>
-
-
-        {/* EMAIL */}
-
-        <div className="campuserve-form-group">
-
-          <label>
-            Email address
-          </label>
-
-          <input
-            className="campuserve-input"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(event) =>
-              setEmail(event.target.value)
-            }
-            disabled={loading}
-          />
-
-        </div>
+            </div>
 
 
-        {/* PASSWORD */}
+            {/* EMAIL */}
 
-        <div className="campuserve-form-group">
+            <div className="campuserve-form-group">
 
-          <label>
-            Password
-          </label>
+              <label>
+                Email address
+              </label>
 
-          <div className="campuserve-input-wrapper">
+              <input
+                className="campuserve-input"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
+                disabled={loading}
+              />
 
-            <input
-              className="campuserve-input campuserve-password-input"
-              type={
-                showPassword
-                  ? "text"
-                  : "password"
-              }
-              placeholder="Enter your password"
-              value={password}
-              onChange={(event) =>
-                setPassword(
-                  event.target.value
-                )
-              }
-              disabled={loading}
-            />
+            </div>
+
+
+            {/* PASSWORD */}
+
+            <div className="campuserve-form-group">
+
+              <label>
+                Password
+              </label>
+
+              <div className="campuserve-input-wrapper">
+
+                <input
+                  className="campuserve-input campuserve-password-input"
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(event) =>
+                    setPassword(
+                      event.target.value
+                    )
+                  }
+                  disabled={loading}
+                />
+
+                <button
+                  type="button"
+                  className="campuserve-password-toggle"
+                  onClick={() =>
+                    setShowPassword(
+                      !showPassword
+                    )
+                  }
+                  disabled={loading}
+                  aria-label={
+                    showPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
+                >
+                  {showPassword
+                    ? "🙈"
+                    : "👁"}
+                </button>
+
+              </div>
+
+            </div>
+
+
+            {/* FORGOT PASSWORD */}
+
+            <div className="campuserve-forgot-row">
+
+              <button
+                type="button"
+                className="campuserve-link-button"
+                onClick={() => {
+
+                  setShowForgotPassword(true);
+
+                  setError("");
+                  setMessage("");
+
+                }}
+                disabled={loading}
+              >
+                Forgot password?
+              </button>
+
+            </div>
+
+
+            {/* LOGIN */}
 
             <button
-              type="button"
-              className="campuserve-password-toggle"
-              onClick={() =>
-                setShowPassword(
-                  !showPassword
-                )
-              }
+              className="campuserve-primary-button"
+              onClick={handleEmailLogin}
               disabled={loading}
-              aria-label={
-                showPassword
-                  ? "Hide password"
-                  : "Show password"
-              }
             >
-              {showPassword
-                ? "🙈"
-                : "👁"}
+              {loading
+                ? "Signing in..."
+                : "Sign in"}
             </button>
 
+
+            {/* DIVIDER */}
+
+            <div className="campuserve-divider">
+
+              <span>or</span>
+
+            </div>
+
+
+            {/* GOOGLE */}
+
+            <button
+              className="campuserve-google-button"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+            >
+
+              <span className="campuserve-google-icon">
+                G
+              </span>
+
+              {loading
+                ? "Signing in..."
+                : "Continue with Google"}
+
+            </button>
+
+
+            {/* ERROR */}
+
+            {error && (
+              <div className="campuserve-error">
+                {error}
+              </div>
+            )}
+
+
+            {/* SUCCESS */}
+
+            {message && (
+              <div className="campuserve-success">
+                {message}
+              </div>
+            )}
+
+
+            {/* ALUMNI */}
+
+            <div className="campuserve-alumni-box">
+
+              <h3>
+                Alumni Access
+              </h3>
+
+              <p>
+                Alumni registration will be
+                available here. Alumni accounts
+                require approval from the
+                Registrar or Administrator
+                before accessing CampuServe.
+              </p>
+
+            </div>
+
           </div>
-
-        </div>
-
-
-        {/* FORGOT PASSWORD */}
-
-        <div className="campuserve-forgot-row">
-
-          <button
-            type="button"
-            className="campuserve-link-button"
-            onClick={() => {
-
-              setShowForgotPassword(true);
-
-              setError("");
-              setMessage("");
-
-            }}
-            disabled={loading}
-          >
-            Forgot password?
-          </button>
-
-        </div>
-
-
-        {/* LOGIN */}
-
-        <button
-          className="campuserve-primary-button"
-          onClick={handleEmailLogin}
-          disabled={loading}
-        >
-          {loading
-            ? "Signing in..."
-            : "Sign in"}
-        </button>
-
-
-        {/* DIVIDER */}
-
-        <div className="campuserve-divider">
-
-          <span>or</span>
-
-        </div>
-
-
-        {/* GOOGLE */}
-
-        <button
-          className="campuserve-google-button"
-          onClick={handleGoogleLogin}
-          disabled={loading}
-        >
-
-          <span className="campuserve-google-icon">
-            G
-          </span>
-
-          {loading
-            ? "Signing in..."
-            : "Continue with Google"}
-
-        </button>
-
-
-        {/* ERROR */}
-
-        {error && (
-          <div className="campuserve-error">
-            {error}
-          </div>
-        )}
-
-
-        {/* SUCCESS */}
-
-        {message && (
-          <div className="campuserve-success">
-            {message}
-          </div>
-        )}
-
-
-        {/* ALUMNI */}
-
-        <div className="campuserve-alumni-box">
-
-          <h3>
-            Alumni Access
-          </h3>
-
-          <p>
-            Alumni registration will be
-            available here. Alumni accounts
-            require approval from the
-            Registrar or Administrator
-            before accessing CampuServe.
-          </p>
 
         </div>
 
       </div>
-
-    </div>
-
-  </div>
-);
+    );
   }
 
   // ==================================================
@@ -1359,7 +1473,7 @@ function App() {
           element={
             account.role ===
               "student" ||
-            account.role ===
+              account.role ===
               "alumni" ? (
               <StudentDashboard
                 account={account}
@@ -1381,9 +1495,9 @@ function App() {
           path="/student/requests"
           element={
             account.role ===
-                "student" ||
-            account.role ===
-                "alumni" ? (
+              "student" ||
+              account.role ===
+              "alumni" ? (
               <DocumentRequestList
                 studentId={
                   account.student_id ||
@@ -1407,9 +1521,9 @@ function App() {
           path="/student/requests/:requestId/claim"
           element={
             account.role ===
-                "student" ||
-            account.role ===
-                "alumni" ? (
+              "student" ||
+              account.role ===
+              "alumni" ? (
               <ClaimStub />
             ) : (
               <Navigate
@@ -1428,7 +1542,7 @@ function App() {
           path="/admin"
           element={
             account.role ===
-            "admin" ? (
+              "admin" ? (
               <AdminDashboard
                 account={account}
               />
@@ -1449,7 +1563,7 @@ function App() {
           path="/general-office"
           element={
             account.role ===
-            "general_office" ? (
+              "general_office" ? (
               <GeneralOfficeDashboard
                 account={account}
               />
@@ -1462,17 +1576,17 @@ function App() {
           }
         />
 
-{/* CASHIER DASHBOARD */}
-<Route
-  path="/cashier"
-  element={
-    account.role === "cashier" ? (
-      <CashierDashboard account={account} />
-    ) : (
-      <Navigate to="/" replace />
-    )
-  }
-/>
+        {/* CASHIER DASHBOARD */}
+        <Route
+          path="/cashier"
+          element={
+            account.role === "cashier" ? (
+              <CashierDashboard account={account} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
 
         {/* -------------------------------------------
             DEFAULT DASHBOARD
@@ -1485,38 +1599,38 @@ function App() {
               {(account.role ===
                 "student" ||
                 account.role ===
-                  "alumni") && (
-                <Navigate
-                  to="/student"
-                  replace
-                />
-              )}
+                "alumni") && (
+                  <Navigate
+                    to="/student"
+                    replace
+                  />
+                )}
 
-{account.role === "cashier" && (
-  <Navigate to="/cashier" replace />
-)}
+              {account.role === "cashier" && (
+                <Navigate to="/cashier" replace />
+              )}
 
               {account.role ===
                 "admin" && (
-                <Navigate
-                  to="/admin"
-                  replace
-                />
-              )}
+                  <Navigate
+                    to="/admin"
+                    replace
+                  />
+                )}
 
               {account.role ===
                 "general_office" && (
-                <Navigate
-                  to="/general-office"
-                  replace
-                />
+                  <Navigate
+                    to="/general-office"
+                    replace
+                  />
+                )}
+
+              {account.role === "registrar" && (
+                <RegistrarDashboard account={account} />
               )}
 
-            {account.role === "registrar" && (
-        <RegistrarDashboard account={account} />
-      )}
 
-   
             </>
           }
         />
@@ -1537,7 +1651,7 @@ function App() {
 
       </Routes>
 
-      
+
     </div>
   );
 }
