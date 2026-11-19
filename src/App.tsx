@@ -11,7 +11,7 @@ import DocumentRequestList from "./pages/student/DocumentRequestList";
 
 import "./App.css";
 
-import { useEffect, useState } from "react";
+import {/*  useEffect, */ useState } from "react";
 
 import {
   signInWithEmailAndPassword,
@@ -20,7 +20,7 @@ import {
   sendPasswordResetEmail,
   EmailAuthProvider,
   linkWithCredential,
-  onAuthStateChanged,
+ /*  onAuthStateChanged, */
   User,
 } from "firebase/auth";
 
@@ -82,7 +82,7 @@ function App() {
   const [account, setAccount] =
     useState<Account | null>(null);
 
-  const [authChecking, setAuthChecking] = useState(false);
+  const [authChecking/* , setAuthChecking */] = useState(false);
 
   const [error, setError] = useState("");
 
@@ -172,7 +172,7 @@ function App() {
   // ==================================================
   // RESTORE LOGGED-IN ACCOUNT WHEN APP LOADS
   // ==================================================
-//uncomment udring final defense>
+  //uncomment udring final defense>
   /* useEffect(() => {
     let firstAuthCheck = true;
 
