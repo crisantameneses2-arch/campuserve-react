@@ -1,57 +1,172 @@
 
+/* =========================================================
+   GROUP INVITATIONS PAGE
+========================================================= */
+
 .group-invitations-page {
   width: 100%;
-  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px;
+  box-sizing: border-box;
+  color: #1f2937;
 }
 
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+
 .group-invitations-header {
-  margin-bottom: 24px;
+  margin-bottom: 30px;
 }
 
 .group-invitations-header h2 {
   margin: 0 0 8px;
-  font-size: 22px;
+  color: #111827;
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.5px;
 }
 
 .group-invitations-header p {
   margin: 0;
   color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
 }
+
+/* =========================================================
+   ERROR MESSAGE
+========================================================= */
+
+.group-invitation-error {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #b91c1c;
+  background: #fef2f2;
+  font-size: 14px;
+}
+
+/* =========================================================
+   SECTION LAYOUT
+========================================================= */
+
+.group-request-section {
+  width: 100%;
+  min-width: 0;
+  margin-top: 32px;
+}
+
+.group-request-section > h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  color: #111827;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.group-request-section > h3::before {
+  content: "";
+  width: 4px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  background: #2563eb;
+}
+
+/* =========================================================
+   CARD LIST
+========================================================= */
 
 .group-invitations-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
 }
 
+/* =========================================================
+   INVITATION CARDS
+========================================================= */
+
 .group-invitation-card {
-  padding: 20px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 22px;
+  overflow-wrap: anywhere;
+
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
+  border-radius: 14px;
+  background: #ffffff;
+
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
+
+.group-invitation-card:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.07);
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   CARD HEADER
+========================================================= */
 
 .group-invitation-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.group-invitation-top > div {
+  flex: 1;
+  min-width: 0;
 }
 
 .group-invitation-top h3 {
-  margin: 0 0 5px;
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .group-invitation-top p {
   margin: 0;
   color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
+/* =========================================================
+   STATUS BADGES
+========================================================= */
+
 .group-invitation-status {
-  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  padding: 6px 11px;
   border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
+
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.35px;
+  text-transform: uppercase;
 }
 
 .group-invitation-status.pending {
@@ -60,8 +175,8 @@
 }
 
 .group-invitation-status.accepted {
-  color: #1d4ed8;
-  background: #dbeafe;
+  color: #166534;
+  background: #dcfce7;
 }
 
 .group-invitation-status.declined {
@@ -69,37 +184,77 @@
   background: #fee2e2;
 }
 
+/* =========================================================
+   INVITATION DETAILS
+========================================================= */
+
 .group-invitation-details {
-  margin-top: 18px;
-  color: #374151;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 17px;
+
+  border-top: 1px solid #f1f5f9;
+  color: #4b5563;
 }
 
 .group-invitation-details p {
-  margin: 8px 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
+
+.group-invitation-details strong {
+  color: #374151;
+  font-weight: 650;
+}
+
+/* =========================================================
+   INVITATION ACTIONS
+========================================================= */
 
 .group-invitation-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 20px;
 }
 
 .group-invitation-actions button {
+  min-height: 40px;
   padding: 10px 20px;
+
   border: none;
   border-radius: 8px;
+
+  font-size: 13px;
+  font-weight: 650;
   cursor: pointer;
-  font-weight: 600;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.group-invitation-actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 .group-invitation-actions button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .group-invitation-accept {
-  color: #fff;
+  color: #ffffff;
   background: #2563eb;
+}
+
+.group-invitation-accept:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 .group-invitation-decline {
@@ -107,27 +262,199 @@
   background: #fee2e2;
 }
 
+.group-invitation-decline:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+/* =========================================================
+   ALREADY RESPONDED
+========================================================= */
+
+.group-invitation-responded {
+  margin: 18px 0 0;
+  padding: 11px 13px;
+  border-radius: 8px;
+
+  color: #6b7280;
+  background: #f9fafb;
+  font-size: 13px;
+}
+
+/* =========================================================
+   EMPTY STATES
+========================================================= */
+
 .group-invitations-empty {
-  padding: 40px 20px;
+  padding: 42px 20px;
   text-align: center;
+
   border: 1px dashed #d1d5db;
-  border-radius: 12px;
+  border-radius: 14px;
+  background: #fafafa;
+}
+
+.group-invitations-empty h3 {
+  margin: 0 0 8px;
+  color: #374151;
+  font-size: 16px;
 }
 
 .group-invitations-empty p {
-  color: #6b7280;
+  margin: 0;
+  color: #9ca3af;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
-.group-invitation-responded {
-  margin-top: 18px;
-  color: #6b7280;
-  font-size: 14px;
+/* =========================================================
+   DRAFT REQUEST COUNTS
+========================================================= */
+
+.group-draft-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 5px;
 }
 
-.group-invitation-error {
-  margin-bottom: 16px;
-  padding: 12px;
+.group-draft-counts span {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
-  color: #b91c1c;
-  background: #fee2e2;
+
+  background: #f9fafb;
+  color: #4b5563;
+
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* =========================================================
+   DRAFT MEMBERS
+========================================================= */
+
+.group-draft-members {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.group-draft-members > strong {
+  display: block;
+  margin-bottom: 12px;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.group-draft-members > p {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.group-draft-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-draft-member {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  padding: 12px 14px;
+  border: 1px solid #eef0f3;
+  border-radius: 9px;
+
+  background: #fafbfc;
+}
+
+.group-draft-member > span:first-child {
+  min-width: 0;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.group-draft-member small {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* =========================================================
+   CONTINUE REQUEST BUTTON
+========================================================= */
+
+.group-invitation-actions .group-invitation-accept {
+  min-width: 145px;
+}
+
+/* =========================================================
+   RESPONSIVE DESIGN
+========================================================= */
+
+@media (max-width: 768px) {
+  .group-invitations-page {
+    padding: 20px 16px;
+  }
+
+  .group-invitations-header h2 {
+    font-size: 22px;
+  }
+
+  .group-request-section {
+    margin-top: 26px;
+  }
+
+  .group-invitation-card {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .group-invitations-page {
+    padding: 16px 12px;
+  }
+
+  .group-invitations-header h2 {
+    font-size: 20px;
+  }
+
+  .group-invitation-card {
+    padding: 15px;
+    border-radius: 11px;
+  }
+
+  .group-invitation-top h3 {
+    font-size: 15px;
+  }
+
+  .group-invitation-actions {
+    flex-direction: column;
+  }
+
+  .group-invitation-actions button {
+    width: 100%;
+  }
+
+  .group-draft-member {
+    align-items: flex-start;
+  }
+
+  .group-draft-counts {
+    gap: 6px;
+  }
+
+  .group-draft-counts span {
+    padding: 7px 9px;
+    font-size: 11px;
+  }
 }

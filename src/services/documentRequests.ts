@@ -631,38 +631,171 @@ export function subscribeToDocumentRequest(
    GET STUDENT'S DOCUMENT REQUESTS
 ========================================================= */
 
+
 export function subscribeToStudentDocumentRequests(
   student_id: string,
   callback: (
     data: Record<string, unknown>[]
   ) => void
 ): () => void {
-  const requestsQuery =
-    query(
-      collection(
-        db,
-        "document_requests"
-      ),
-      where(
-        "student_id",
-        "==",
-        student_id
-      )
-    );
+  // Requests created by the student.
+  const ownRequests = new Map<
+    string,
+    Record<string, unknown>
+  >();
 
-  return onSnapshot(
-    requestsQuery,
+  // Requests shared with the student.
+  const sharedRequests = new Map<
+    string,
+    Record<string, unknown>
+  >();
+
+  // Active listeners for shared parent requests.
+  const requestListeners = new Map<
+    string,
+    () => void
+  >();
+
+  let isActive = true;
+
+  const emitRequests = () => {
+    if (!isActive) return;
+
+    // Own requests take priority if a request appears
+    // in both collections.
+    const combined = new Map(sharedRequests);
+
+    ownRequests.forEach((request, requestId) => {
+      combined.set(requestId, {
+        ...request,
+        is_group_member: false,
+      });
+    });
+
+    callback(Array.from(combined.values()));
+  };
+
+  // Listen to requests created by this student.
+  const ownRequestsQuery = query(
+    collection(db, "document_requests"),
+    where("student_id", "==", student_id)
+  );
+
+  const unsubscribeOwn = onSnapshot(
+    ownRequestsQuery,
     (snapshot) => {
-      const requests =
-        snapshot.docs.map(
-          (item) => ({
-            ...item.data(),
-          })
-        );
+      ownRequests.clear();
 
-      callback(requests);
+      snapshot.docs.forEach((item) => {
+        ownRequests.set(item.id, {
+          ...item.data(),
+          is_group_member: false,
+        });
+      });
+
+      emitRequests();
     }
   );
+
+  // Listen to group memberships belonging to this student.
+  const membershipsQuery = query(
+    collection(db, "group_request_members"),
+    where("student_id", "==", student_id)
+  );
+
+  const unsubscribeMemberships = onSnapshot(
+    membershipsQuery,
+    (snapshot) => {
+      if (!isActive) return;
+
+      const acceptedRequestIds = new Set<string>();
+
+      snapshot.docs.forEach((member) => {
+        const data = member.data();
+
+        if (
+          String(data.invitation_status || "")
+            .toUpperCase() === "ACCEPTED" &&
+          typeof data.request_id === "string"
+        ) {
+          acceptedRequestIds.add(data.request_id);
+        }
+      });
+
+      // Remove listeners for memberships that are no
+      // longer accepted or no longer exist.
+      for (const [requestId, unsubscribe] of requestListeners) {
+        if (!acceptedRequestIds.has(requestId)) {
+          unsubscribe();
+          requestListeners.delete(requestId);
+          sharedRequests.delete(requestId);
+        }
+      }
+
+      // Subscribe to each newly accepted shared request.
+      acceptedRequestIds.forEach((requestId) => {
+        if (requestListeners.has(requestId)) return;
+
+        const requestRef = doc(
+          db,
+          "document_requests",
+          requestId
+        );
+
+        const unsubscribe = onSnapshot(
+          requestRef,
+          (requestSnapshot) => {
+            if (!isActive) return;
+
+            if (!requestSnapshot.exists()) {
+              sharedRequests.delete(requestId);
+              emitRequests();
+              return;
+            }
+
+            const requestData = requestSnapshot.data();
+
+            // A shared request should not appear until
+            // the original requester submits it.
+            if (
+              String(requestData.status || "")
+                .toUpperCase() === "DRAFT"
+            ) {
+              sharedRequests.delete(requestId);
+            } else {
+              sharedRequests.set(requestId, {
+                ...requestData,
+                is_group_member: true,
+              });
+            }
+
+            emitRequests();
+          }
+        );
+
+        requestListeners.set(requestId, unsubscribe);
+      });
+
+      emitRequests();
+    }
+  );
+
+  // Clean up all listeners when the component unmounts
+  // or the student ID changes.
+  return () => {
+    isActive = false;
+
+    unsubscribeOwn();
+    unsubscribeMemberships();
+
+    requestListeners.forEach((unsubscribe) => {
+      unsubscribe();
+    });
+
+    requestListeners.clear();
+    ownRequests.clear();
+    sharedRequests.clear();
+  };
 }
 
 /* =========================================================
@@ -701,6 +834,28 @@ export function subscribeToDocumentRequestDetails(
       callback(details);
     }
   );
+}
+
+export function subscribeToStudentDraftGroupRequests(
+  student_id: string,
+  callback: (
+    data: Record<string, unknown>[]
+  ) => void
+): () => void {
+  const draftsQuery = query(
+    collection(db, "document_requests"),
+    where("student_id", "==", student_id),
+    where("request_method", "==", "WITH_OTHERS"),
+    where("status", "==", "DRAFT")
+  );
+
+  return onSnapshot(draftsQuery, (snapshot) => {
+    const drafts = snapshot.docs.map((item) => ({
+      ...item.data(),
+    }));
+
+    callback(drafts);
+  });
 }
 
 /* =========================================================

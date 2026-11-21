@@ -97,6 +97,8 @@ export default function StudentDashboard({
 
   const [activePage, setActivePage] =
     useState<DashboardPage>("dashboard");
+  const [selectedDraftRequestId, setSelectedDraftRequestId] =
+    useState<string | null>(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [stocksOpen, setStocksOpen] = useState(false);
@@ -424,16 +426,23 @@ export default function StudentDashboard({
           </button>
 
           {activePage === "request" && (
-            <DocumentRequestWizard studentId={studentId} />
+            <DocumentRequestWizard
+              studentId={studentId}
+              draftRequestId={selectedDraftRequestId}
+            />
           )}
-
           {activePage === "requests" && (
             <DocumentRequestList studentId={studentId} />
           )}
           {activePage === "groupInvites" && (
-            <GroupRequestInvitations studentId={studentId} />
+            <GroupRequestInvitations
+              studentId={studentId}
+              onContinueDraft={(requestId) => {
+                setSelectedDraftRequestId(requestId);
+                go("request");
+              }}
+            />
           )}
-
           {activePage === "itemReservation" && (
             <ItemReservation
               studentId={studentId}

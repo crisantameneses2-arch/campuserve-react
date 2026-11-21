@@ -30,17 +30,14 @@ import {
 
 import { DOCUMENTS } from "../../constants/documents";
 
-import {
-  auth,
-  db,
-} from "../../../firebase";
-
+import { db } from "../../../firebase";
 /* =========================================================
    TYPES
 ========================================================= */
 
 type DocumentRequestWizardProps = {
   studentId: string;
+  draftRequestId?: string | null;
 };
 
 type GroupMemberStatus =
@@ -69,9 +66,9 @@ type RequestStatus =
 /* =========================================================
    COMPONENT
 ========================================================= */
-
 export default function DocumentRequestWizard({
   studentId,
+  draftRequestId = null,
 }: DocumentRequestWizardProps) {
   /* =======================================================
      WIZARD STATE
@@ -107,6 +104,15 @@ export default function DocumentRequestWizard({
 
   const [groupRequestStatus, setGroupRequestStatus] =
     useState<RequestStatus>("DRAFT");
+  useEffect(() => {
+    if (!draftRequestId) return;
+
+    setRequestMethod("WITH_OTHERS");
+    setGroupRequestId(draftRequestId);
+    setGroupRequestStatus("DRAFT");
+    setCurrentStep(1);
+    setError("");
+  }, [draftRequestId]);
 
   const [creatingGroupRequest, setCreatingGroupRequest] =
     useState(false);
@@ -353,6 +359,7 @@ export default function DocumentRequestWizard({
      STEP 1 - ADD GROUP MEMBER
   ======================================================= */
 
+
   async function addGroupMember(
     memberStudentId: string
   ) {
@@ -365,20 +372,13 @@ export default function DocumentRequestWizard({
       return;
     }
 
-    if (
-      requestMethod !==
-      "WITH_OTHERS"
-    ) {
+    if (requestMethod !== "WITH_OTHERS") {
       setError(
         "Please select With Others first."
       );
       return;
     }
 
-    /*
-     * Members may only be changed
-     * while the parent request is DRAFT.
-     */
     if (!isGroupDraft) {
       setError(
         "This group request has already been submitted. Members can no longer be changed."
@@ -386,10 +386,6 @@ export default function DocumentRequestWizard({
       return;
     }
 
-    /*
-     * Prevent the host from adding
-     * themselves.
-     */
     if (
       cleanedStudentId.toLowerCase() ===
       studentId.trim().toLowerCase()
@@ -400,14 +396,10 @@ export default function DocumentRequestWizard({
       return;
     }
 
-    /*
-     * Prevent duplicate members.
-     */
     if (
       groupMembers.some(
         (member) =>
-          member.student_id
-            .toLowerCase() ===
+          member.student_id.toLowerCase() ===
           cleanedStudentId.toLowerCase()
       )
     ) {
@@ -417,143 +409,39 @@ export default function DocumentRequestWizard({
       return;
     }
 
-    /*
-     * Keep this outside the try block.
-     *
-     * If the invitation fails after the
-     * Firestore member has been created,
-     * we can delete that member.
-     */
-    let createdMemberId: string | null =
-      null;
-
     try {
       setSendingInvitation(true);
 
-      /*
-       * 1. Make sure the real DRAFT
-       *    document request exists.
-       */
+      // 1. Ensure the group DRAFT exists.
       const requestId =
         await ensureGroupDraft();
 
-      /*
-       * 2. Create the group member.
-       *
-       * The member begins as PENDING.
-       */
-      createdMemberId =
-        await createGroupMember(
-          requestId,
-          cleanedStudentId
-        );
+      // 2. Create the Firestore invitation.
+      // The invitation will appear in the
+      // invited student's CampuServe dashboard.
+      await createGroupMember(
+        requestId,
+        cleanedStudentId
+      );
 
-      /*
-       * 3. Get currently authenticated
-       *    Firebase user.
-       */
-      const currentUser =
-        auth.currentUser;
-
-      if (!currentUser) {
-        throw new Error(
-          "Your login session could not be found. Please log in again."
-        );
-      }
-
-      /*
-       * 4. Get Firebase ID token.
-       */
-      const idToken =
-        await currentUser.getIdToken();
-
-      /*
-       * 5. Send invitation through
-       *    the Vercel API.
-       *
-       * The API handles:
-       * - host verification
-       * - invited student's email lookup
-       * - secure token generation
-       * - Resend email
-       */
-      const response =
-        await fetch(
-          "/api/send-group-invitation",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-
-              Authorization:
-                `Bearer ${idToken}`,
-            },
-
-            body: JSON.stringify({
-              requestId,
-              memberId:
-                createdMemberId,
-            }),
-          }
-        );
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          typeof result.error === "string"
-            ? result.error  
-            : typeof result.message === "string"
-              ? result.message
-              : `The invitation could not be sent. (HTTP ${response.status})`
-        );
-      }
-      /*
-       * Firestore onSnapshot will update
-       * the member list automatically.
-       */
+      // Firestore subscriptions will automatically
+      // update the host's member list.
     } catch (addError) {
       console.error(
         "Failed to add group member:",
         addError
       );
 
-      /*
-       * IMPORTANT:
-       *
-       * If we already created the member
-       * but the email failed, remove the
-       * orphaned member while the request
-       * is still DRAFT.
-       */
-      if (createdMemberId) {
-        try {
-          await deleteDoc(
-            doc(
-              db,
-              "group_request_members",
-              createdMemberId
-            )
-          );
-        } catch (cleanupError) {
-          console.error(
-            "Failed to clean up group member after invitation failure:",
-            cleanupError
-          );
-        }
-      }
-
       setError(
         addError instanceof Error
           ? addError.message
-          : "The invitation could not be sent."
+          : "The invitation could not be created. Please try again."
       );
     } finally {
       setSendingInvitation(false);
     }
   }
+
 
   /* =======================================================
      STEP 1 - REMOVE GROUP MEMBER
@@ -797,7 +685,7 @@ export default function DocumentRequestWizard({
 
     /*
      * Every invitation must receive
-     * a Gmail response before continuing.
+     * an in-app response before continuing.
      */
     if (
       requestMethod ===
@@ -973,7 +861,7 @@ export default function DocumentRequestWizard({
 
       if (hasPendingMembers) {
         setError(
-          "Please wait for all invited students to respond through Gmail."
+          "Please wait for all invited students to respond through CampuServe."
         );
         return;
       }
@@ -1529,7 +1417,7 @@ export default function DocumentRequestWizard({
                   <p>
                     Waiting for invited
                     students to respond
-                    through Gmail.
+                    through CampuServe.
                   </p>
                 )}
 
