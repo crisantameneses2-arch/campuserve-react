@@ -334,7 +334,7 @@ body {
     border-radius: 10px;
 }
 
-.inventory-item > span {
+.inventory-item>span {
     font-size: 11px;
     color: #526d8a;
     text-align: right;
@@ -451,6 +451,7 @@ body {
         font-size: 20px;
     }
 }
+
 /* ========================= */
 /* INVENTORY PAGE */
 /* ========================= */
@@ -541,6 +542,7 @@ body {
     text-align: center;
     color: #71849a;
 }
+
 .reservation-page {
     padding: 30px;
     background: #f7f7fb;
@@ -676,4 +678,318 @@ body {
     text-align: center;
     padding: 40px !important;
     color: #777;
+}
+
+/* NOTIFICATION POPUP */
+.go-header {
+    position: relative;
+    overflow: visible;
+}
+
+.go-header-button {
+    position: relative;
+}
+
+.go-notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.go-notification-popup {
+    position: fixed;
+    top: 85px;
+    right: 24px;
+    width: 350px;
+    max-width: calc(100vw - 32px);
+    max-height: 420px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.go-notification-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.go-notification-popup-header h3 {
+    margin: 0;
+    font-size: 15px;
+    color: #111827;
+}
+
+.go-notification-popup-header button {
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.go-notification-list {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.go-notification-empty {
+    padding: 24px 16px;
+    margin: 0;
+    text-align: center;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.go-notification-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.go-notification-item:hover {
+    background: #f9fafb;
+}
+
+.go-notification-item.unread {
+    background: #eff6ff;
+}
+
+.go-notification-item-content {
+    min-width: 0;
+}
+
+.go-notification-item-content strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #111827;
+    font-size: 13px;
+}
+
+.go-notification-item-content p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.go-notification-unread-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    margin-top: 5px;
+    border-radius: 50%;
+    background: #2563eb;
+}
+
+/* ========================================
+   GENERAL OFFICE NOTIFICATION DESIGN
+======================================== */
+
+.go-notification-popup {
+    position: fixed;
+    top: 85px;
+    right: 24px;
+    width: 370px;
+    max-width: calc(100vw - 32px);
+    max-height: 480px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.go-notification-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.go-notification-popup-header h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.go-notification-popup-header button {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.go-notification-popup-header button:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.go-notification-list {
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.go-notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.go-notification-item:last-child {
+    border-bottom: none;
+}
+
+.go-notification-item:hover {
+    background: #f9fafb;
+}
+
+.go-notification-item.unread {
+    background: #eff6ff;
+}
+
+.go-notification-item.unread:hover {
+    background: #dbeafe;
+}
+
+.go-notification-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.go-notification-item-content strong {
+    display: block;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.go-notification-item-content p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.go-notification-unread-dot {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    border-radius: 50%;
+    background: #2563eb;
+    margin-top: 5px;
+}
+
+.go-notification-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+.go-notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -7px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ef4444;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.go-header-button {
+    position: relative;
+}
+
+/* ========================================
+   NOTIFICATION BELL BUTTON
+======================================== */
+
+.go-header-button {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e5e7eb46;
+    border-radius: 12px;
+    background: #ffffff27;
+    color: #374151;
+    font-size: 19px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.go-header-button:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+.go-header-button:active {
+    transform: scale(0.96);
+}
+
+.go-notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ef4444;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
 }

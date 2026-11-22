@@ -1,9 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNotifications } from "../../hooks/useNotifications";
+import {
+    markNotificationRead,
+    roleAudience,
+} from "../../services/notifications";
 import "./GeneralOfficeDashboard.css";
 
 import {
     collection,
     getDocs,
+    onSnapshot,
     doc,
     updateDoc,
     addDoc,
@@ -81,6 +87,18 @@ type GeneralOfficeDashboardProps = {
 function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
     const [activePage, setActivePage] = useState("Dashboard");
+    const [showNotifications, setShowNotifications] = useState(false);
+
+    const notificationUserKey = account.email || "general-office";
+
+    const {
+        items: notifications,
+        unread: unreadNotifications,
+        loading: notificationsLoading,
+    } = useNotifications(
+        roleAudience("general_office"),
+        notificationUserKey
+    );
 
     const [requestSearch, setRequestSearch] = useState("");
     const [reservationSearch, setReservationSearch] = useState("");
@@ -108,7 +126,26 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
     const [loadingReservations, setLoadingReservations] =
         useState(false);
+    // =========================
+    // LIVE RESERVATION NOTIFICATIONS
+    // =========================
 
+    type LiveReservationNotification = {
+        id: string;
+        title: string;
+        message: string;
+        createdAt: number;
+        destination: string;
+    };
+
+    const [liveReservationNotifications, setLiveReservationNotifications] =
+        useState<LiveReservationNotification[]>([]);
+
+    const [liveUnreadCount, setLiveUnreadCount] = useState(0);
+
+    const previousReservationsRef = useRef<Map<string, any>>(new Map());
+
+    const hasInitialReservationSnapshot = useRef(false);
     // =========================
     // ADD REQUEST MODAL STATE
     // =========================
@@ -415,6 +452,124 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
             setLoadingReservations(false);
         }
     };
+    // =========================
+    // REAL-TIME RESERVATION LISTENER
+    // =========================
+
+    useEffect(() => {
+        const unsubscribe = onSnapshot(
+            collection(db, "itemReservations"),
+            (snapshot) => {
+                // First snapshot: remember existing reservations.
+                // Do not notify the user about old records.
+                if (!hasInitialReservationSnapshot.current) {
+                    const initialReservations = new Map<string, any>();
+
+                    snapshot.docs.forEach((document) => {
+                        initialReservations.set(
+                            document.id,
+                            document.data()
+                        );
+                    });
+
+                    previousReservationsRef.current = initialReservations;
+                    hasInitialReservationSnapshot.current = true;
+
+                    return;
+                }
+
+                const newNotifications: LiveReservationNotification[] = [];
+
+                snapshot.docChanges().forEach((change) => {
+                    const reservationId = change.doc.id;
+                    const newData = change.doc.data();
+                    const oldData =
+                        previousReservationsRef.current.get(reservationId);
+
+                    let title = "";
+                    let message = "";
+                    let destination = "Reservations";
+
+                    if (change.type === "added") {
+                        title = "New Item Reservation";
+                        message = `${newData.fullName || "A student"} submitted a new item reservation.`;
+                        destination = "Requests";
+                    }
+
+                    if (change.type === "modified" && oldData) {
+                        if (newData.status !== oldData.status) {
+                            const status = String(newData.status || "");
+
+                            title = status.toLowerCase().includes("cancel")
+                                ? "Reservation Cancelled"
+                                : "Reservation Status Updated";
+
+                            message = `${newData.fullName || "A student"}'s reservation status is now ${status}.`;
+                        } else if (
+                            newData.pickupDate !== oldData.pickupDate ||
+                            newData.pickupTime !== oldData.pickupTime
+                        ) {
+                            title = "Pickup Schedule Updated";
+                            message = `${newData.fullName || "A student"}'s pickup schedule has changed.`;
+                        } else if (
+                            newData.payment_status !== oldData.payment_status
+                        ) {
+                            title = "Payment Status Updated";
+                            message = `${newData.fullName || "A student"}'s payment status is now ${newData.payment_status || "updated"}.`;
+                        } else if (
+                            newData.cancellationReason !== oldData.cancellationReason
+                        ) {
+                            title = "Cancellation Details Updated";
+                            message = `${newData.fullName || "A student"} updated their cancellation details.`;
+                        }
+                    }
+
+                    if (change.type === "removed") {
+                        title = "Reservation Removed";
+                        message = `${oldData?.fullName || "A student's"} reservation was removed.`;
+                    }
+
+                    if (title && message) {
+                        newNotifications.push({
+                            id: `${reservationId}-${Date.now()}-${newNotifications.length}`,
+                            title,
+                            message,
+                            createdAt: Date.now(),
+                            destination,
+                        });
+                    }
+
+                    // Remember the latest data for the next comparison.
+                    if (change.type === "removed") {
+                        previousReservationsRef.current.delete(reservationId);
+                    } else {
+                        previousReservationsRef.current.set(
+                            reservationId,
+                            newData
+                        );
+                    }
+                });
+
+                if (newNotifications.length > 0) {
+                    setLiveReservationNotifications((previous) =>
+                        [...newNotifications, ...previous].slice(0, 20)
+                    );
+
+                    setLiveUnreadCount((previous) =>
+                        previous + newNotifications.length
+                    );
+                }
+            },
+            (error) => {
+                console.error(
+                    "Real-time reservation listener error:",
+                    error
+                );
+            }
+        );
+
+        return () => unsubscribe();
+    }, []);
 
     // =========================
     // UPDATE PICKUP DATE
@@ -1447,21 +1602,125 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                     <div className="go-header-actions">
 
-                        <button className="go-header-button">
-                            🔔
+                        <button
+                            className="go-header-button"
+                            onClick={() => {
+                                const willOpen = !showNotifications;
+
+                                setShowNotifications(willOpen);
+
+                                if (willOpen) {
+                                    setLiveUnreadCount(0);
+                                }
+                            }}
+                        >🔔
+                            {(unreadNotifications + liveUnreadCount) > 0 && (
+                                <span className="go-notification-badge">
+                                    {(unreadNotifications + liveUnreadCount) > 99
+                                        ? "99+"
+                                        : unreadNotifications + liveUnreadCount}
+                                </span>
+                            )}
                         </button>
 
-                        <button className="go-header-button">
-                            💬
-                        </button>
-
-                        <button className="go-header-button">
-                            ⚙️
-                        </button>
 
                     </div>
 
                 </header>
+                {showNotifications && (
+                    <div className="go-notification-popup">
+                        <div className="go-notification-popup-header">
+                            <h3>Notifications</h3>
+
+                            <button
+                                onClick={() => setShowNotifications(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="go-notification-list">
+                            {notificationsLoading ? (
+                                <p className="go-notification-empty">
+                                    Loading notifications...
+                                </p>
+                            ) : (
+                                <>
+                                    {liveReservationNotifications.map((notification) => (
+                                        <div
+                                            key={notification.id}
+                                            className="go-notification-item unread"
+                                            onClick={() => {
+                                                setActivePage(notification.destination);
+                                                setShowNotifications(false);
+                                            }}
+                                            role="button"
+                                            tabIndex={0}
+                                        >
+                                            <div className="go-notification-item-content">
+                                                <strong>{notification.title}</strong>
+                                                <p>{notification.message}</p>
+                                            </div>
+                                            <span className="go-notification-unread-dot" />
+                                        </div>
+                                    ))}
+
+                                    {notifications.map((notification) => {
+                                        const isUnread = !notification.readBy.includes(
+                                            notificationUserKey
+                                        );
+
+                                        return (
+                                            <div
+                                                key={notification.id}
+                                                className={`go-notification-item ${isUnread ? "unread" : ""}`}
+                                                onClick={async () => {
+                                                    let destination = "Dashboard";
+
+                                                    if (notification.type === "STOCK") {
+                                                        destination = "Inventory";
+                                                    } else if (notification.type === "SUBMITTED") {
+                                                        destination = "Requests";
+                                                    } else if (notification.kind === "ITEM") {
+                                                        destination = "Reservations";
+                                                    } else if (notification.kind === "DOCUMENT") {
+                                                        destination = "Requests";
+                                                    }
+
+                                                    if (isUnread) {
+                                                        await markNotificationRead(
+                                                            notification.id,
+                                                            notificationUserKey
+                                                        );
+                                                    }
+
+                                                    setActivePage(destination);
+                                                    setShowNotifications(false);
+                                                }}
+                                            >
+                                                <div className="go-notification-item-content">
+                                                    <strong>{notification.title}</strong>
+                                                    <p>{notification.message}</p>
+                                                </div>
+
+                                                {isUnread && (
+                                                    <span className="go-notification-unread-dot" />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+
+                                    {liveReservationNotifications.length === 0 &&
+                                        notifications.length === 0 && (
+                                            <p className="go-notification-empty">
+                                                No notifications yet.
+                                            </p>
+                                        )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* ========================= */}
                 {/* DASHBOARD PAGE */}
