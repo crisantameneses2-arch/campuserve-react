@@ -50,6 +50,7 @@ type StudentDashboardProps = {
     email?: string;
     student_id?: string;
   };
+  
 };
 
 type DashboardPage =
@@ -65,7 +66,7 @@ type DashboardPage =
   | "contact"
   | "profile"
   | "settings";
-type StudentTransaction = {
+export type StudentTransaction = {
   key: string;
   id: string;
   kind: "DOCUMENT" | "ITEM";

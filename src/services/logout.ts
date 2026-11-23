@@ -3,4 +3,5 @@ import { auth } from "../../firebase";
 
 export async function logout() {
     await signOut(auth);
+    
 }

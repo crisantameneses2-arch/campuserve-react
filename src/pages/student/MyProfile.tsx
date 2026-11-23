@@ -1,3 +1,4 @@
+import { logout } from "../../services/logout";
 import "./MyProfile.css";
 
 type MyProfileProps = {
@@ -57,6 +58,14 @@ export default function MyProfile({ account }: MyProfileProps) {
             <span>Email Address</span>
             <strong>{account.email || "Not provided"}</strong>
           </div>
+          <button
+  type="button"
+  onClick={async () => {
+    await logout();
+  }}
+>
+  Logout
+</button>
         </div>
       </div>
     </div>
