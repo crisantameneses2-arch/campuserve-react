@@ -331,7 +331,7 @@ export default function StudentDashboard({
     loading: notificationsLoading,
   } = useNotifications(notificationAudience, studentId);
 
-  const recentNotifications = useMemo(
+  /* const recentNotifications = useMemo(
     () =>
       [...notifications]
         .sort(
@@ -340,7 +340,7 @@ export default function StudentDashboard({
         )
         .slice(0, 4),
     [notifications]
-  );
+  ); */
 
   /* =========================================
      GROUP REQUESTS
@@ -2385,7 +2385,7 @@ function Icon({
       );
   }
 }
-function DefaultProfilePicture({ size = 36 }: { size?: number }) {
+/* function DefaultProfilePicture({ size = 36 }: { size?: number }) {
   return (
     <div
       className="header-profile-placeholder"
@@ -2408,4 +2408,4 @@ function DefaultProfilePicture({ size = 36 }: { size?: number }) {
       </svg>
     </div>
   );
-}
+} */
