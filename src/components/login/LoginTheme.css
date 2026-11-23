@@ -1,0 +1,793 @@
+/* =========================================================
+   CAMPUSERVE LOGIN — OWL MASCOT THEME
+   ---------------------------------------------------------
+   Every selector here is scoped to `.cs-owl-login` (the login
+   page root) or `body.cs-owl-login-body` (added only while a
+   login screen is mounted). Nothing in this file can reach
+   the student, admin, registrar, cashier or office dashboards.
+   The base rules in App.css are left untouched; these rules
+   simply win on specificity.
+   ========================================================= */
+
+body.cs-owl-login-body {
+  display: block;
+  background: #f5f8f3;
+}
+
+.campuserve-login-page.cs-owl-login {
+  --owl-forest: #243f24;
+  --owl-green: #2e602e;
+  --owl-leaf: #42a76f;
+  --owl-mint: #86d0b9;
+  --owl-blue-deep: #2d5873;
+  --owl-sun-light: #f5de57;
+
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  background: #f5f8f3;
+  color: #244c40;
+  font-family: Inter, "Aptos", "Segoe UI", system-ui, sans-serif;
+  text-align: left;
+}
+
+.cs-owl-login *,
+.cs-owl-login *::before,
+.cs-owl-login *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- Brand panel ---------- */
+
+.cs-owl-login .campuserve-brand-panel {
+  width: 50%;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 24px clamp(30px, 4.5vw, 75px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  border-radius: 0 30px 30px 0;
+  background:
+    radial-gradient(circle at 76% 32%, rgba(63, 132, 174, 0.42), transparent 36%),
+    radial-gradient(circle at 38% 70%, #367c59 0%, #2e602e 39%, #243f24 78%);
+}
+
+.cs-owl-login .campuserve-brand-panel::before {
+  width: 440px;
+  height: 440px;
+  left: -210px;
+  top: 20%;
+  background: transparent;
+  border: 1px solid rgba(134, 208, 185, 0.25);
+}
+
+.cs-owl-login .campuserve-brand-panel::after {
+  width: 370px;
+  height: 370px;
+  right: -140px;
+  bottom: 10%;
+  background: transparent;
+  border: 1px solid rgba(134, 208, 185, 0.25);
+}
+
+.cs-owl-login .login-brand-glow {
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  left: 13%;
+  top: 45%;
+  background: rgba(152, 208, 170, 0.055);
+  border-radius: 50%;
+  filter: blur(32px);
+}
+
+.cs-owl-login .campuserve-brand-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 510px;
+}
+
+.cs-owl-login .login-brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.cs-owl-login .login-brand-emblem {
+  display: grid;
+  place-items: center;
+  width: 45px;
+  height: 45px;
+  flex: 0 0 45px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(245, 222, 87, 0.48);
+  border-radius: 13px;
+  color: var(--owl-sun-light);
+}
+
+.cs-owl-login .login-brand-emblem svg {
+  width: 29px;
+  height: 29px;
+}
+
+.cs-owl-login .login-brand-lockup strong {
+  display: block;
+  font-size: 29px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -0.065em;
+  color: #fff;
+}
+
+.cs-owl-login .login-brand-dot {
+  color: #efc68b;
+}
+
+.cs-owl-login .login-brand-lockup small {
+  display: block;
+  margin-top: 7px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.19em;
+  color: #bbdbd1;
+}
+
+.cs-owl-login .login-brand-overline {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  color: #a8d4c5;
+}
+
+.cs-owl-login .login-brand-overline > span {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--owl-sun-light);
+}
+
+.cs-owl-login .campuserve-brand-content h1 {
+  margin: 15px 0 0;
+  font-size: clamp(38px, 3.65vw, 55px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.062em;
+  color: #fffdf5;
+}
+
+.cs-owl-login .campuserve-brand-content h1 em {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--owl-sun-light);
+}
+
+.cs-owl-login .campuserve-brand-content .brand-tagline {
+  max-width: 450px;
+  margin: 13px 0 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #d2e6da;
+}
+
+/* ---------- Owl scene ---------- */
+
+.cs-owl-login .login-owl-scene {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  height: 290px;
+  margin-top: 5px;
+}
+
+.cs-owl-login .login-owl-rings {
+  position: absolute;
+  z-index: 0;
+  width: 330px;
+  height: 250px;
+  bottom: 6px;
+  left: 2%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(114, 188, 231, 0.3),
+    rgba(134, 208, 185, 0.14) 62%,
+    transparent 74%
+  );
+}
+
+.cs-owl-login .owl-mascot {
+  position: relative;
+  z-index: 2;
+  align-self: flex-end;
+  display: block;
+  width: 188px;
+  margin-left: -65px;
+  padding: 0;
+  line-height: 0;
+  border: 0;
+  border-radius: 30px;
+  background: transparent;
+  cursor: pointer;
+  transform-origin: center 80%;
+  filter: drop-shadow(0 19px 14px rgba(3, 35, 35, 0.3));
+  transition: transform 0.23s;
+  animation: cs-owl-arrive 750ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.cs-owl-login .owl-mascot:hover {
+  border-color: transparent;
+  transform: translateY(-5px);
+}
+
+.cs-owl-login .owl-mascot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.cs-owl-login .owl-mascot .wing,
+.cs-owl-login .owl-mascot .eye {
+  transform-box: view-box;
+}
+
+@keyframes cs-owl-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(20px) rotate(-3deg) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
+}
+
+.cs-owl-login .login-owl-bubble {
+  position: absolute;
+  z-index: 3;
+  right: -7px;
+  top: 112px;
+  min-width: 188px;
+  padding: 17px 18px;
+  background: #fbfbea;
+  border: 1px solid #e9e5a9;
+  color: #286256;
+  border-radius: 14px 14px 14px 3px;
+  box-shadow: 0 17px 35px rgba(11, 41, 33, 0.18);
+  transform: rotate(4deg);
+}
+
+.cs-owl-login .login-owl-bubble__spark {
+  position: absolute;
+  top: -10px;
+  right: 12px;
+}
+
+.cs-owl-login .login-owl-bubble__spark::after {
+  content: "";
+  display: block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #d2a562;
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+
+.cs-owl-login .login-owl-bubble strong {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.cs-owl-login .login-owl-bubble small {
+  display: block;
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: #738c7f;
+}
+
+/* ---------- University footer ---------- */
+
+.cs-owl-login .campuserve-university {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 17px;
+  padding: 18px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.cs-owl-login .campuserve-university strong {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.015em;
+  color: #edf9f0;
+}
+
+.cs-owl-login .campuserve-university small {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  color: #9fc6bb;
+}
+
+.cs-owl-login .login-university-marker {
+  position: relative;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cs-owl-login .login-university-marker::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1.6px solid #f0d49b;
+  transform: rotate(45deg);
+}
+
+/* ---------- Login area & card ---------- */
+
+.cs-owl-login .campuserve-login-area {
+  width: 50%;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 42px clamp(30px, 5.5vw, 90px);
+  background: #f5f8f3;
+}
+
+.cs-owl-login .campuserve-login-card {
+  width: 100%;
+  max-width: 492px;
+  padding: clamp(34px, 3.3vw, 52px);
+  background: #fffefa;
+  border: 1px solid #dfe9df;
+  border-radius: 26px;
+  box-shadow:
+    0 28px 75px rgba(28, 65, 47, 0.105),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
+}
+
+.cs-owl-login .campuserve-login-heading {
+  margin-bottom: 30px;
+}
+
+.cs-owl-login .campuserve-login-heading::before {
+  content: "SECURE CAMPUS ACCESS";
+  display: block;
+  margin-bottom: 14px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #53856b;
+}
+
+.cs-owl-login .campuserve-login-heading h2 {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1.3px;
+  color: var(--owl-forest);
+}
+
+.cs-owl-login .campuserve-login-heading p {
+  margin: 9px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #73897b;
+}
+
+.cs-owl-login .campuserve-form-group {
+  margin-bottom: 18px;
+}
+
+.cs-owl-login .campuserve-form-group label {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #355746;
+}
+
+.cs-owl-login .campuserve-input {
+  height: 52px;
+  border: 1px solid #d8e7dc;
+  border-radius: 12px;
+  background: #fbfdf9;
+  color: #2f5143;
+  font-size: 14px;
+}
+
+.cs-owl-login .campuserve-input::placeholder {
+  color: #a8b6ab;
+}
+
+.cs-owl-login .campuserve-input:focus {
+  border-color: var(--owl-leaf);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(66, 167, 111, 0.13);
+}
+
+.cs-owl-login .campuserve-password-toggle {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: #698a7a;
+}
+
+.cs-owl-login .campuserve-password-toggle:hover {
+  background: #eef6f0;
+  color: var(--owl-green);
+}
+
+.cs-owl-login .campuserve-forgot-row {
+  margin-top: -2px;
+}
+
+.cs-owl-login .campuserve-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--owl-blue-deep);
+}
+
+.cs-owl-login .campuserve-primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 51px;
+  height: auto;
+  border: 1px solid var(--owl-green);
+  border-radius: 12px;
+  background: linear-gradient(125deg, var(--owl-green), var(--owl-leaf));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 820;
+  box-shadow: 0 10px 24px rgba(46, 96, 46, 0.18);
+}
+
+.cs-owl-login .campuserve-primary-button:hover:not(:disabled) {
+  border-color: var(--owl-green);
+  background: linear-gradient(125deg, #244e2a, #348a5b);
+  box-shadow: 0 14px 25px rgba(29, 101, 73, 0.22);
+  transform: translateY(-1px);
+}
+
+.cs-owl-login .campuserve-divider span {
+  font-size: 10px;
+  color: #a4aea3;
+}
+
+.cs-owl-login .campuserve-divider::before,
+.cs-owl-login .campuserve-divider::after {
+  background: #e4ebe3;
+}
+
+.cs-owl-login .campuserve-google-button {
+  height: 49px;
+  padding: 0 16px;
+  border: 1px solid #dce5dc;
+  border-radius: 12px;
+  background: #fffefa;
+  color: #405b50;
+  font-size: 12.5px;
+  font-weight: 750;
+}
+
+.cs-owl-login .campuserve-google-button:hover {
+  background: #f4f9f4;
+  border-color: #b7d3bf;
+}
+
+.cs-owl-login .campuserve-google-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.cs-owl-login .campuserve-secondary-button {
+  border: 1px solid #dce9de;
+  border-radius: 10px;
+  background: #fff;
+  color: #3d6b51;
+}
+
+.cs-owl-login .campuserve-secondary-button:hover {
+  background: #f4f9f4;
+  border-color: #c4dccb;
+}
+
+.cs-owl-login .campuserve-alumni-box {
+  margin-top: 27px;
+  padding: 18px 20px;
+  border: 1px solid #d9eae2;
+  border-radius: 15px;
+  background: #eef6f3;
+  text-align: left;
+}
+
+.cs-owl-login .campuserve-alumni-box h3 {
+  font-size: 12.5px;
+  color: #386552;
+}
+
+.cs-owl-login .campuserve-alumni-box p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #869b8b;
+}
+
+.cs-owl-login .campuserve-info-box {
+  background: #f0f8f0;
+  border-color: #d6ebd9;
+  color: #53765d;
+}
+
+.cs-owl-login .campuserve-email-badge {
+  background: #e0f1e1;
+  color: #2a7657;
+}
+
+.cs-owl-login button:focus-visible {
+  outline: 3px solid #e2af6b;
+  outline-offset: 3px;
+}
+
+/* Session-restore screen (no brand panel) */
+.campuserve-login-page.cs-owl-login.cs-owl-login--loading {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.cs-owl-login--loading .campuserve-login-card {
+  max-width: 380px;
+  text-align: center;
+}
+
+.cs-owl-login--loading .campuserve-login-card h2 {
+  margin: 0 0 8px;
+  color: var(--owl-forest);
+}
+
+.cs-owl-login--loading .campuserve-login-card p {
+  margin: 0;
+  color: #73897b;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-height: 780px) and (min-width: 851px) {
+  .cs-owl-login .campuserve-brand-panel {
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .cs-owl-login .login-brand-lockup {
+    margin-bottom: 20px;
+  }
+
+  .cs-owl-login .campuserve-brand-content h1 {
+    font-size: 39px;
+  }
+
+  .cs-owl-login .login-owl-scene {
+    height: 222px;
+  }
+
+  .cs-owl-login .owl-mascot {
+    width: 141px;
+  }
+
+  .cs-owl-login .login-owl-bubble {
+    top: 89px;
+  }
+
+  .cs-owl-login .campuserve-university {
+    margin-top: 12px;
+  }
+}
+
+@media (max-width: 850px) {
+  .campuserve-login-page.cs-owl-login {
+    display: block;
+  }
+
+  .cs-owl-login .campuserve-brand-panel {
+    width: 100%;
+    min-height: 0;
+    padding: 28px 24px 22px;
+    border-radius: 0 0 25px 25px;
+  }
+
+  .cs-owl-login .campuserve-brand-content {
+    max-width: 640px;
+    display: grid;
+    grid-template-columns: 1fr 135px;
+    column-gap: 10px;
+  }
+
+  .cs-owl-login .login-brand-lockup {
+    grid-column: 1 / -1;
+    margin-bottom: 19px;
+  }
+
+  .cs-owl-login .login-brand-overline {
+    grid-column: 1;
+  }
+
+  .cs-owl-login .campuserve-brand-content h1 {
+    grid-column: 1;
+    margin-top: 11px;
+    font-size: clamp(27px, 5.5vw, 40px);
+  }
+
+  .cs-owl-login .campuserve-brand-content .brand-tagline {
+    grid-column: 1;
+    margin-top: 8px;
+    font-size: 11.5px;
+  }
+
+  .cs-owl-login .login-owl-scene {
+    grid-column: 2;
+    grid-row: 2 / 5;
+    height: 170px;
+    margin: 0;
+    align-items: flex-end;
+  }
+
+  .cs-owl-login .owl-mascot {
+    width: 108px;
+    margin-left: 0;
+  }
+
+  .cs-owl-login .login-owl-rings {
+    width: 160px;
+    height: 160px;
+    bottom: 0;
+    left: 0;
+  }
+
+  .cs-owl-login .login-owl-bubble {
+    display: none;
+  }
+
+  .cs-owl-login .campuserve-university {
+    grid-column: 1 / -1;
+    margin-top: 15px;
+    padding-top: 12px;
+  }
+
+  .cs-owl-login .campuserve-login-area {
+    width: 100%;
+    min-height: 0;
+    padding: 26px 19px 36px;
+  }
+
+  .cs-owl-login .campuserve-login-card {
+    max-width: 640px;
+    padding: 29px 28px;
+  }
+}
+
+@media (max-width: 600px) {
+  .cs-owl-login .campuserve-login-area {
+    padding: 18px 12px 28px;
+  }
+
+  .cs-owl-login .campuserve-login-card {
+    padding: 25px 22px;
+    border-radius: 19px;
+  }
+
+  .cs-owl-login .campuserve-login-heading h2 {
+    font-size: 28px;
+  }
+
+  .cs-owl-login .login-brand-lockup strong {
+    font-size: 22px;
+  }
+
+  .cs-owl-login .campuserve-brand-content h1 {
+    font-size: 28px;
+  }
+
+  .cs-owl-login .campuserve-brand-content .brand-tagline {
+    font-size: 10.8px;
+  }
+
+  .cs-owl-login .login-owl-scene {
+    height: 144px;
+  }
+
+  .cs-owl-login .owl-mascot {
+    width: 93px;
+  }
+}
+
+@media (max-width: 450px) {
+  .cs-owl-login .campuserve-brand-panel {
+    padding: 20px 19px 17px;
+  }
+
+  .cs-owl-login .campuserve-brand-content {
+    grid-template-columns: 1fr 90px;
+  }
+
+  .cs-owl-login .login-brand-emblem {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    border-radius: 10px;
+  }
+
+  .cs-owl-login .login-brand-emblem svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .cs-owl-login .login-brand-lockup small {
+    font-size: 7px;
+  }
+
+  .cs-owl-login .login-brand-overline {
+    font-size: 8px;
+  }
+
+  .cs-owl-login .owl-mascot {
+    width: 90px;
+  }
+
+  .cs-owl-login .login-owl-rings {
+    width: 110px;
+    height: 110px;
+  }
+
+  .cs-owl-login .campuserve-university strong {
+    font-size: 10px;
+  }
+
+  .cs-owl-login .campuserve-university small {
+    font-size: 9px;
+  }
+
+  .cs-owl-login .campuserve-login-card {
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+
+  .cs-owl-login .campuserve-login-heading h2 {
+    font-size: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-owl-login *,
+  .cs-owl-login button {
+    animation: none !important;
+    transition: none !important;
+  }
+}

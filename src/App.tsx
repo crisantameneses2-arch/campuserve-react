@@ -7,8 +7,10 @@ import {
 } from "react-router-dom";
 
 import ClaimStub from "./pages/student/ClaimStub";
+import DocumentRequestList from "./pages/student/DocumentRequestList";
 
 import "./App.css";
+import LoginBrandPanel from "./components/login/LoginBrandPanel";
 
 import {/*  useEffect, */ useState } from "react";
 
@@ -828,7 +830,7 @@ function App() {
 
   if (authChecking) {
     return (
-      <div className="campuserve-login-page">
+      <div className="campuserve-login-page cs-owl-login cs-owl-login--loading">
         <div className="campuserve-login-card">
           <h2>CampuServe</h2>
           <p>Restoring your account session...</p>
@@ -848,35 +850,9 @@ function App() {
 
     if (showSetPassword) {
       return (
-        <div className="campuserve-login-page">
+        <div className="campuserve-login-page cs-owl-login">
 
-          <div className="campuserve-brand-panel">
-
-            <div className="campuserve-brand-content">
-
-              <div className="campuserve-logo">
-                C
-              </div>
-
-              <h1>CampuServe</h1>
-
-              <p className="brand-tagline">
-                One account.
-                <br />
-                All your campus services.
-              </p>
-
-              <div className="campuserve-university">
-                <strong>
-                  Pangasinan State University
-                </strong>
-                <br />
-                Lingayen Campus
-              </div>
-
-            </div>
-
-          </div>
+          <LoginBrandPanel />
 
 
           <div className="campuserve-login-area">
@@ -1081,35 +1057,9 @@ function App() {
 
     if (showForgotPassword) {
       return (
-        <div className="campuserve-login-page">
+        <div className="campuserve-login-page cs-owl-login">
 
-          <div className="campuserve-brand-panel">
-
-            <div className="campuserve-brand-content">
-
-              <div className="campuserve-logo">
-                C
-              </div>
-
-              <h1>CampuServe</h1>
-
-              <p className="brand-tagline">
-                Secure campus services,
-                <br />
-                wherever you are.
-              </p>
-
-              <div className="campuserve-university">
-                <strong>
-                  Pangasinan State University
-                </strong>
-                <br />
-                Lingayen Campus
-              </div>
-
-            </div>
-
-          </div>
+          <LoginBrandPanel />
 
 
           <div className="campuserve-login-area">
@@ -1207,44 +1157,13 @@ function App() {
     // ----------------------------------------------
 
     return (
-      <div className="campuserve-login-page">
+      <div className="campuserve-login-page cs-owl-login">
 
         {/* ============================================
         UNIVERSITY BRANDING
     ============================================ */}
 
-        <div className="campuserve-brand-panel">
-
-          <div className="campuserve-brand-content">
-
-            <div className="campuserve-logo">
-              C
-            </div>
-
-            <h1>CampuServe</h1>
-
-            <p className="brand-tagline">
-              Your campus services,
-              <br />
-              all in one place.
-            </p>
-
-            <div className="campuserve-university">
-              <strong>
-                Pangasinan State University
-              </strong>
-              <br />
-              Lingayen Campus
-              <br />
-              <span>
-                Integrated Document Request
-                and Item Reservation System
-              </span>
-            </div>
-
-          </div>
-
-        </div>
+        <LoginBrandPanel />
 
 
         {/* ============================================
@@ -1457,9 +1376,16 @@ function App() {
 
   return (
     <div>
-      <h1>CampuServe</h1>
+      {/* The student dashboard has its own branded sidebar and top bar,
+          so this generic heading is only shown for the other roles. */}
+      {account.role !== "student" &&
+        account.role !== "alumni" && (
+          <>
+            <h1>CampuServe</h1>
 
-      <hr />
+            <hr />
+          </>
+        )}
 
       <Routes>
 
@@ -1493,11 +1419,21 @@ function App() {
         <Route
           path="/student/requests"
           element={
-            account.role === "student" ||
-            account.role === "alumni" ? (
-              <Navigate to="/student" replace />
+            account.role ===
+              "student" ||
+              account.role ===
+              "alumni" ? (
+              <DocumentRequestList
+                studentId={
+                  account.student_id ||
+                  ""
+                }
+              />
             ) : (
-              <Navigate to="/student" replace />
+              <Navigate
+                to="/student"
+                replace
+              />
             )
           }
         />

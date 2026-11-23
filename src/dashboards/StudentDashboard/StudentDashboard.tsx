@@ -11,11 +11,12 @@ import { db } from "../../../firebase";
 import ItemStocks from "../../pages/student/ItemStocks";
 import ItemReservation from "../../pages/student/ItemReservation";
 import DocumentRequestWizard from "../../pages/student/DocumentRequestWizard";
+import DocumentRequestList from "../../pages/student/DocumentRequestList";
 import ClaimStubPage from "../../pages/student/ClaimStubPage";
-import { MyRequests } from "../../pages/student/StudentTransactionPages";
 import GroupRequestInvitations from "../../pages/student/GroupRequestInvitations";
 import HelpCenter from "../../pages/student/HelpCenter";
 import ContactSupport from "../../pages/student/ContactSupport";
+
 
 import { useNotifications } from "../../hooks/useNotifications";
 import {
@@ -38,6 +39,7 @@ import {
 } from "../../utils/format";
 
 import "./StudentDashboard.css";
+import "./StudentDashboardTheme.css";
 import { logout } from "../../services/logout";
 import AccountSettings from "../../pages/student/AccountSettings";
 import MyProfile from "../../pages/student/MyProfile";
@@ -63,8 +65,7 @@ type DashboardPage =
   | "contact"
   | "profile"
   | "settings";
-
-export type StudentTransaction = {
+type StudentTransaction = {
   key: string;
   id: string;
   kind: "DOCUMENT" | "ITEM";
@@ -209,12 +210,19 @@ export default function StudentDashboard({
               key: `ITEM-${document.id}`,
               id: String(data.reservationId || document.id),
               kind: "ITEM",
-              title: getItemReservationTitle(data),
+
+              title:
+                Array.isArray(data.items) && data.items.length > 0
+                  ? data.items
+                    .map((item: any) => item.itemName)
+                    .join(", ")
+                  : "Item Reservation",
+
               status: String(data.status || "PENDING"),
               payment_status: String(data.payment_status || ""),
               claimCode: String(data.claimStubId || ""),
-              date: String(data.pickupDate || data.requestedDate || ""),
-              time: String(data.pickupTime || data.requestedTime || ""),
+              date: String(data.pickupDate || ""),
+              time: String(data.pickupTime || ""),
               createdAt: data.createdAt,
 
               details: data,
@@ -404,415 +412,372 @@ export default function StudentDashboard({
   }
 
   /* =========================================
-     SUB PAGES
+     LAYOUT
+     Every page shares the same sidebar + top bar.
+     All styles live in StudentDashboardTheme.css and are
+     scoped under `.sdx`, so nothing leaks to other dashboards.
   ========================================= */
 
-  if (activePage !== "dashboard") {
-    return (
-      <div className="student-dashboard">
-        <DashboardHeader
-          studentName={studentName}
-          unreadNotifications={unreadNotifications}
-          menuOpen={menuOpen}
-          setMenuOpen={setMenuOpen}
-          onNavigate={go}
-        />
+  useStudentBodyClass();
 
-        <div className="student-page-shell">
-          <button
-            className="dashboard-back"
-            type="button"
-            onClick={() => go("dashboard")}
-          >
-            ← Back to Dashboard
-          </button>
+  useEffect(() => {
+    if (!menuOpen) return;
 
-          {activePage === "request" && (
-            <DocumentRequestWizard
-              studentId={studentId}
-              draftRequestId={selectedDraftRequestId}
-            />
-          )}
-          {activePage === "requests" && (
-            <MyRequests
-              transactions={transactions}
-              loading={transactionsLoading}
-            />
-          )}
-          {activePage === "groupInvites" && (
-            <GroupRequestInvitations
-              studentId={studentId}
-              onContinueDraft={(requestId) => {
-                setSelectedDraftRequestId(requestId);
-                go("request");
-              }}
-            />
-          )}
-          {activePage === "itemReservation" && (
-            <ItemReservation
-              studentId={studentId}
-              onBack={() => go("dashboard")}
-            />
-          )}
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
 
-          {activePage === "claimStub" && (
-            <ClaimStubPage
-              studentId={studentId}
-              onBack={() => go("dashboard")}
-            />
-          )}
+    window.addEventListener("keydown", handleEscape);
 
-          {activePage === "transactions" && (
-            <TransactionHistory
-              transactions={transactions}
-              loading={transactionsLoading}
-              onSelect={setSelectedTransaction}
-            />
-          )}
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [menuOpen]);
 
-          {activePage === "notifications" && (
-            <NotificationPage
-              notifications={notifications}
-              loading={notificationsLoading}
-              studentId={studentId}
-              onNotificationClick={handleNotificationClick}
-            />
-          )}
-          {activePage === "help" && (
-            <div className="student-page-shell">
-
-
-              <HelpCenter />
-            </div>
-          )}
-          {activePage === "contact" && (
-            <div className="student-page-shell">
-
-
-              <ContactSupport />
-            </div>
-          )}
-          {activePage === "profile" && (
-            <MyProfile account={account} />
-          )}
-        </div>
-
-        {selectedTransaction && (
-          <TransactionDetailsModal
-            transaction={selectedTransaction}
-            onClose={() => setSelectedTransaction(null)}
-          />
-        )}
-        {activePage === "settings" && (
-          <div className="student-page-shell">
-            <button
-              type="button"
-              className="back-button"
-              onClick={() => go("dashboard")}
-            >
-              ← Back to Dashboard
-            </button>
-
-            <AccountSettings />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  /* =========================================
-     MAIN DASHBOARD
-  ========================================= */
+  const pageTitle = PAGE_TITLES[activePage];
 
   return (
-    <div className="student-dashboard">
-      <DashboardHeader
-        studentName={studentName}
+    <div className={`sdx ${menuOpen ? "sdx--menu-open" : ""}`}>
+      <StudentSidebar
+        activePage={activePage}
+        open={menuOpen}
+        pendingInvites={pendingInvites.length}
         unreadNotifications={unreadNotifications}
-        menuOpen={menuOpen}
-        setMenuOpen={setMenuOpen}
         onNavigate={go}
       />
 
-      <main className="dashboard-main">
-        <div className="dashboard-content">
+      {menuOpen && (
+        <button
+          type="button"
+          className="sdx-backdrop"
+          aria-label="Close navigation menu"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
 
-          {/* GROUP REQUEST */}
+      <div className="sdx-app">
+        <StudentTopbar
+          title={pageTitle}
+          studentName={studentName}
+          studentEmail={account.email || ""}
+          unreadNotifications={unreadNotifications}
+          menuOpen={menuOpen}
+          onToggleMenu={() => setMenuOpen(!menuOpen)}
+          onNavigate={go}
+        />
 
-          {pendingInvites.length > 0 && (
-            <button
-              className="group-request-banner"
-              type="button"
-              onClick={() => go("groupInvites")}
-            >
-              <span className="banner-icon">
-                <Icon name="users" size={20} />
-              </span>
+        <main className="sdx-content">
+          {activePage === "dashboard" ? (
+            <div className="sdx-overview">
+              {/* GROUP REQUEST INVITATIONS */}
 
-              <span>
-                <strong>Group document request</strong>
+              {pendingInvites.length > 0 && (
+                <button
+                  className="sdx-invite"
+                  type="button"
+                  onClick={() => go("groupInvites")}
+                >
+                  <span className="sdx-invite__mark">
+                    <Icon name="users" size={26} />
+                  </span>
 
-                <small>
-                  You have {pendingInvites.length} request
-                  {pendingInvites.length === 1 ? "" : "s"} waiting
-                  for your response.
-                </small>
-              </span>
+                  <span className="sdx-invite__body">
+                    <span className="sdx-tag">GROUP DOCUMENT REQUEST</span>
+                    <strong>
+                      You have {pendingInvites.length} invitation
+                      {pendingInvites.length === 1 ? "" : "s"} waiting
+                    </strong>
+                    <small>
+                      Classmates added you to a group request. Review and
+                      respond to continue.
+                    </small>
+                  </span>
 
-              <span className="banner-arrow">→</span>
-            </button>
-          )}
+                  <span className="sdx-invite__cta">
+                    Review <span aria-hidden="true">↗</span>
+                  </span>
+                </button>
+              )}
 
+              {/* LIVE TRACKING */}
 
+              <section
+                className="sdx-track"
+                aria-labelledby="sdx-track-title"
+              >
+                <div className="sdx-track__head">
+                  <div>
+                    <div className="sdx-track__eyebrow">
+                      <span
+                        className="sdx-track__live"
+                        aria-hidden="true"
+                      />
+                      LIVE TRACKING
+                    </div>
 
-          {/* LIVE TRACKING */}
+                    <h1 id="sdx-track-title">
+                      Your requests, <em>in motion.</em>
+                    </h1>
 
-          <section className="tracking-card">
-            <div className="tracking-card__header">
-              <div>
-                <span className="section-kicker">
-                  LIVE TRACKING
-                </span>
+                    <p>
+                      A clear view of your active document requests and
+                      item reservations.
+                    </p>
+                  </div>
 
-                <h1>Request and Reservation Tracking</h1>
-
-                <p className="tracking-subtitle">
-                  Monitor your document requests and item reservations.
-                </p>
-              </div>
-
-              {(documentTrackingTransactions.length > 0 ||
-                itemTrackingTransactions.length > 0) && (
                   <button
                     type="button"
-                    className="tracking-history-button"
+                    className="sdx-track__history"
                     onClick={() => go("transactions")}
                   >
-                    View history →
+                    View all activity <span aria-hidden="true">↗</span>
                   </button>
-                )}
-            </div>
-
-            {transactionsLoading ? (
-              <DashboardLoading />
-            ) : (
-              <div className="tracking-columns">
-
-                {/* DOCUMENT TRACKING */}
-
-                <div className="tracking-column">
-                  <div className="tracking-column__header">
-                    <h2>Document Requests</h2>
-
-                    <span>
-                      {documentTrackingTransactions.length} active
-                    </span>
-                  </div>
-
-                  {documentTrackingTransactions.length > 0 ? (
-                    <TrackingCarousel
-                      transactions={documentTrackingTransactions}
-                      onSelect={setSelectedTransaction}
-                    />
-                  ) : (
-                    <div className="tracking-empty">
-                      <div className="tracking-empty__icon">
-                        <Icon name="file" size={26} />
-                      </div>
-
-                      <div>
-                        <strong>No Active Document Requests</strong>
-
-                        <p>
-                          You currently have no document requests
-                          being processed.
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* ITEM TRACKING */}
-
-                <div className="tracking-column">
-                  <div className="tracking-column__header">
-                    <h2>Item Reservations</h2>
-
-                    <span>
-                      {itemTrackingTransactions.length} active
-                    </span>
-                  </div>
-
-                  {itemTrackingTransactions.length > 0 ? (
-                    <TrackingCarousel
-                      transactions={itemTrackingTransactions}
-                      onSelect={setSelectedTransaction}
-                    />
-                  ) : (
-                    <div className="tracking-empty">
-                      <div className="tracking-empty__icon">
-                        <Icon name="shopping-bag" size={26} />
-                      </div>
-
-                      <div>
-                        <strong>No Active Item Reservations</strong>
-
-                        <p>
-                          You currently have no item reservations
-                          being processed.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            )}
-          </section>
-
-          {/* SERVICE GRID */}
-
-          <section className="dashboard-service-grid">
-
-            {/* UPCOMING PICKUP */}
-
-            <div className="dashboard-widget upcoming-widget">
-              <WidgetHeader
-                title="Upcoming Pick Up"
-                action="View all"
-                onAction={() => go("transactions")}
-              />
-
-              {transactionsLoading ? (
-                <DashboardLoading />
-              ) : upcomingTransactions.length === 0 ? (
-                <EmptyWidget
-                  icon="calendar"
-                  title="Nothing scheduled yet"
-                  text="Approved requests with a claiming date will appear here."
-                />
-              ) : (
-                <div className="pickup-list">
-                  {upcomingTransactions.map((transaction) => (
-                    <button
-                      className="pickup-row"
-                      type="button"
-                      key={transaction.key}
-                      onClick={() =>
-                        setSelectedTransaction(transaction)
-                      }
-                    >
-                      <div className="pickup-date">
-                        <strong>
-                          {getDayNumber(transaction.date)}
-                        </strong>
-
-                        <span>
-                          {getMonthName(transaction.date)}
-                        </span>
-                      </div>
-
-                      <div className="pickup-info">
-                        <strong>{transaction.title}</strong>
-
-                        <span>
-                          {formatClaimDate(transaction.date)}
-                        </span>
-
-                        <small>
-                          {formatClaimTime(transaction.time)} ·{" "}
-                          {getKindLabel(transaction.kind)}
-                        </small>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* SERVICES */}
-
-            <div className="dashboard-actions-widget">
-              <span className="section-kicker">SERVICES</span>
-
-              <h2>What would you like to do?</h2>
-
-              <ServiceAction
-                icon="file"
-                title="Request Document"
-                text="Request certificates, copies and other school documents."
-                onClick={() => go("request")}
-              />
-
-              <ServiceAction
-                icon="bag"
-                title="Item Reservation"
-                text="Reserve available school items online."
-                onClick={() => go("itemReservation")}
-              />
-
-              <ServiceAction
-                icon="ticket"
-                title="Claim & Release"
-                text="Enter your claim stub when you are ready to claim."
-                onClick={() => go("claimStub")}
-              />
-            </div>
-          </section>
-
-          {/* RECENT ACTIVITY */}
-
-          <section className="recent-activity-card">
-            <div className="widget-header">
-              <div>
-                <span className="section-kicker">
-                  RECENT ACTIVITY
-                </span>
-
-                <h2>Recent Transactions</h2>
-              </div>
-
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => go("transactions")}
-              >
-                View all →
-              </button>
-            </div>
-
-            {transactionsLoading ? (
-              <DashboardLoading />
-            ) : transactions.length === 0 ? (
-              <EmptyWidget
-                icon="clock"
-                title="No transactions yet"
-                text="Your requests and reservations will appear here."
-              />
-            ) : (
-              <div className="recent-transaction-list">
-                {transactions.slice(0, 4).map((transaction) => (
-                  <TransactionRow
-                    key={transaction.key}
-                    transaction={transaction}
+                <div className="sdx-track__grid">
+                  <TrackingBox
+                    variant="document"
+                    title="Document requests"
+                    loading={transactionsLoading}
+                    transactions={documentTrackingTransactions}
+                    emptyTitle="No active document requests"
+                    emptyText="Requests you submit will be tracked here."
+                    emptyAction="Request a document"
+                    onEmptyAction={() => go("request")}
                     onSelect={setSelectedTransaction}
                   />
-                ))}
+
+                  <TrackingBox
+                    variant="item"
+                    title="Item reservations"
+                    loading={transactionsLoading}
+                    transactions={itemTrackingTransactions}
+                    emptyTitle="No active item reservations"
+                    emptyText="Reservations you make will be tracked here."
+                    emptyAction="Reserve an item"
+                    onEmptyAction={() => go("itemReservation")}
+                    onSelect={setSelectedTransaction}
+                  />
+                </div>
+              </section>
+
+              {/* STUDENT SERVICES */}
+
+              <section className="sdx-section">
+                <div className="sdx-heading">
+                  <div>
+                    <span className="sdx-tag">YOUR STUDENT SERVICES</span>
+                    <h2>Your campus, simplified.</h2>
+                    <p>Three simple ways to get things done on campus.</p>
+                  </div>
+
+                  <small>QUICK ACCESS / 01—03</small>
+                </div>
+
+                <div className="sdx-services">
+                  <ServiceCard
+                    tone="green"
+                    art="document"
+                    title="Request a document"
+                    text="Certificates, records, and forms—without the long lines."
+                    onClick={() => go("request")}
+                  />
+
+                  <ServiceCard
+                    tone="sky"
+                    art="bag"
+                    title="Reserve an item"
+                    text="Find and book campus items for when you need them."
+                    onClick={() => go("itemReservation")}
+                  />
+
+                  <ServiceCard
+                    tone="sun"
+                    art="ticket"
+                    title="Claim & release"
+                    text="Have a claim stub? You're one step closer."
+                    onClick={() => go("claimStub")}
+                  />
+                </div>
+              </section>
+
+              {/* BOTTOM PANELS */}
+
+              <div className="sdx-bottom">
+                <section className="sdx-panel sdx-compact">
+                  <span className="sdx-tag">READY FOR YOU</span>
+                  <h3>Upcoming pick-up</h3>
+
+                  {transactionsLoading ? (
+                    <DashboardLoading />
+                  ) : upcomingTransactions.length === 0 ? (
+                    <EmptyWidget
+                      icon="calendar"
+                      title="Nothing scheduled yet"
+                      text="Approved requests with a claiming date will appear here."
+                    />
+                  ) : (
+                    <div className="sdx-events">
+                      {upcomingTransactions.map((transaction) => (
+                        <button
+                          className="sdx-event"
+                          type="button"
+                          key={transaction.key}
+                          onClick={() =>
+                            setSelectedTransaction(transaction)
+                          }
+                        >
+                          <span className="sdx-date-box">
+                            <strong>
+                              {getDayNumber(transaction.date)}
+                            </strong>
+                            <small>
+                              {getMonthName(transaction.date).toUpperCase()}
+                            </small>
+                          </span>
+
+                          <span className="sdx-event__copy">
+                            <strong>{transaction.title}</strong>
+                            <small>
+                              {formatClaimTime(transaction.time)} ·{" "}
+                              {getKindLabel(transaction.kind)}
+                            </small>
+                          </span>
+
+                          <StatusBadge
+                            status={normalizeStatus(transaction.status)}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    className="sdx-text-btn"
+                    type="button"
+                    onClick={() => go("claimStub")}
+                  >
+                    Open claim &amp; release{" "}
+                    <span aria-hidden="true">↗</span>
+                  </button>
+                </section>
+
+                <section className="sdx-panel sdx-compact">
+                  <span className="sdx-tag">RECENT ACTIVITY</span>
+                  <h3>Latest transactions</h3>
+
+                  {transactionsLoading ? (
+                    <DashboardLoading />
+                  ) : transactions.length === 0 ? (
+                    <EmptyWidget
+                      icon="clock"
+                      title="No transactions yet"
+                      text="Your requests and reservations will appear here."
+                    />
+                  ) : (
+                    <div className="sdx-activity">
+                      {transactions.slice(0, 4).map((transaction) => (
+                        <TransactionRow
+                          key={transaction.key}
+                          transaction={transaction}
+                          onSelect={setSelectedTransaction}
+                          compact
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    className="sdx-text-btn"
+                    type="button"
+                    onClick={() => go("transactions")}
+                  >
+                    All transactions <span aria-hidden="true">↗</span>
+                  </button>
+                </section>
               </div>
-            )}
-          </section>
+            </div>
+          ) : (
+            <div className="sdx-subpage">
+              <button
+                className="sdx-back"
+                type="button"
+                onClick={() => go("dashboard")}
+              >
+                <span aria-hidden="true">←</span> Back to Dashboard
+              </button>
 
-          {/* NOTIFICATIONS */}
+              {activePage === "request" && (
+                <DocumentRequestWizard
+                  studentId={studentId}
+                  draftRequestId={selectedDraftRequestId}
+                />
+              )}
 
+              {activePage === "requests" && (
+                <DocumentRequestList studentId={studentId} />
+              )}
 
-        </div>
-      </main>
+              {activePage === "groupInvites" && (
+                <GroupRequestInvitations
+                  studentId={studentId}
+                  onContinueDraft={(requestId) => {
+                    setSelectedDraftRequestId(requestId);
+                    go("request");
+                  }}
+                />
+              )}
+
+              {activePage === "itemReservation" && (
+                <ItemReservation
+                  studentId={studentId}
+                  onBack={() => go("dashboard")}
+                />
+              )}
+
+              {activePage === "claimStub" && (
+                <ClaimStubPage
+                  studentId={studentId}
+                  onBack={() => go("dashboard")}
+                />
+              )}
+
+              {activePage === "transactions" && (
+                <TransactionHistory
+                  transactions={transactions}
+                  loading={transactionsLoading}
+                  onSelect={setSelectedTransaction}
+                />
+              )}
+
+              {activePage === "notifications" && (
+                <NotificationPage
+                  notifications={notifications}
+                  loading={notificationsLoading}
+                  studentId={studentId}
+                  onNotificationClick={handleNotificationClick}
+                />
+              )}
+
+              {activePage === "help" && <HelpCenter />}
+
+              {activePage === "contact" && <ContactSupport />}
+
+              {activePage === "profile" && (
+                <MyProfile account={account} />
+              )}
+
+              {activePage === "settings" && <AccountSettings />}
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* STOCK MODAL */}
 
       {stocksOpen && (
         <div
-          className="stocks-modal-backdrop"
+          className="sdx-modal-backdrop"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               setStocksOpen(false);
@@ -820,22 +785,19 @@ export default function StudentDashboard({
           }}
         >
           <div
-            className="stocks-modal"
+            className="sdx-modal"
             role="dialog"
             aria-modal="true"
           >
-            <div className="stocks-modal__header">
+            <div className="sdx-modal__header">
               <div>
-                <span className="section-kicker">
-                  LIVE INVENTORY
-                </span>
-
+                <span className="sdx-tag">LIVE INVENTORY</span>
                 <h2>Item Stocks</h2>
               </div>
 
               <button
                 type="button"
-                className="modal-close"
+                className="sdx-modal__close"
                 onClick={() => setStocksOpen(false)}
                 aria-label="Close inventory"
               >
@@ -859,318 +821,513 @@ export default function StudentDashboard({
 }
 
 /* =========================================
-   HEADER
+   PAGE TITLES (top bar)
 ========================================= */
 
-function DashboardHeader({
-  studentName,
+const PAGE_TITLES: Record<DashboardPage, string> = {
+  dashboard: "Dashboard",
+  request: "Request a document",
+  requests: "Document requests",
+  groupInvites: "Group requests",
+  itemReservation: "Item reservations",
+  claimStub: "Claim & release",
+  transactions: "Transaction history",
+  notifications: "Notifications",
+  help: "Help Center & FAQs",
+  contact: "Contact support",
+  profile: "My profile",
+  settings: "Account settings",
+};
+
+/*
+ * index.css turns <body> into a centered flex container, which would
+ * shrink this full-width layout. While the student dashboard is mounted
+ * we switch the body back to block flow; the class is removed on unmount,
+ * so the other dashboards keep their current behaviour.
+ */
+function useStudentBodyClass() {
+  useEffect(() => {
+    document.body.classList.add("sdx-body");
+
+    return () => {
+      document.body.classList.remove("sdx-body");
+    };
+  }, []);
+}
+
+/* =========================================
+   SIDEBAR
+========================================= */
+
+type NavItem = {
+  page: DashboardPage;
+  label: string;
+  icon: string;
+  also?: DashboardPage[];
+};
+
+const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
+  {
+    title: "MAIN",
+    items: [
+      { page: "dashboard", label: "Dashboard", icon: "grid" },
+      {
+        page: "request",
+        label: "Document Requests",
+        icon: "file",
+        also: ["requests"],
+      },
+      { page: "groupInvites", label: "Group Requests", icon: "users" },
+      { page: "itemReservation", label: "Item Reservations", icon: "bag" },
+      { page: "claimStub", label: "Claim & Release", icon: "ticket" },
+      { page: "transactions", label: "Transaction History", icon: "clock" },
+    ],
+  },
+  {
+    title: "INFORMATION & SUPPORT",
+    items: [
+      { page: "notifications", label: "Notifications", icon: "bell" },
+      { page: "help", label: "Help Center & FAQs", icon: "help" },
+      { page: "contact", label: "Contact Support", icon: "chat" },
+    ],
+  },
+  {
+    title: "ACCOUNT",
+    items: [
+      { page: "profile", label: "My Profile", icon: "user" },
+      { page: "settings", label: "Account Settings", icon: "sliders" },
+    ],
+  },
+];
+
+function StudentSidebar({
+  activePage,
+  open,
+  pendingInvites,
   unreadNotifications,
-  menuOpen,
-  setMenuOpen,
   onNavigate,
 }: {
-  studentName: string;
+  activePage: DashboardPage;
+  open: boolean;
+  pendingInvites: number;
   unreadNotifications: number;
-  menuOpen: boolean;
-  setMenuOpen: (open: boolean) => void;
   onNavigate: (page: DashboardPage) => void;
 }) {
   return (
-    <header className="dashboard-header">
-      <div className="dashboard-header__inner">
+    <aside
+      className={`sdx-side ${open ? "is-open" : ""}`}
+      aria-label="Student navigation"
+    >
+      <button
+        type="button"
+        className="sdx-brand"
+        onClick={() => onNavigate("dashboard")}
+      >
+        <span className="sdx-logo" aria-hidden="true">
+          <svg fill="none" viewBox="0 0 44 44">
+            <path
+              d="M22 3 39 12.5v19L22 41 5 31.5v-19L22 3Z"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            />
+            <path
+              d="M12.5 17.2 22 12l9.5 5.2V27L22 32l-9.5-5V17.2Z"
+              fill="currentColor"
+              fillOpacity=".2"
+              stroke="currentColor"
+              strokeWidth="1.4"
+            />
+            <path
+              d="m17 22 3 3 7-8"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.8"
+            />
+          </svg>
+        </span>
+
+        <span className="sdx-brand__text">
+          <strong>
+            campuserve<b>.</b>
+          </strong>
+          <small>STUDENT WORKSPACE</small>
+        </span>
+      </button>
+
+      <nav className="sdx-nav" aria-label="Student workspace navigation">
+        {NAV_SECTIONS.map((section) => (
+          <div className="sdx-nav__group" key={section.title}>
+            <div className="sdx-kicker">{section.title}</div>
+
+            {section.items.map((item) => {
+              const active =
+                activePage === item.page ||
+                Boolean(item.also?.includes(activePage));
+
+              const showMark =
+                (item.page === "groupInvites" && pendingInvites > 0) ||
+                (item.page === "notifications" &&
+                  unreadNotifications > 0);
+
+              return (
+                <button
+                  key={item.page}
+                  type="button"
+                  className={`sdx-link ${active ? "is-active" : ""}`}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => onNavigate(item.page)}
+                >
+                  <span className="sdx-link__icon" aria-hidden="true">
+                    <Icon name={item.icon} size={16} />
+                  </span>
+
+                  <span className="sdx-link__label">{item.label}</span>
+
+                  {showMark && (
+                    <i className="sdx-link__mark" aria-hidden="true" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+
+      <div className="sdx-side-foot">
+        <strong>
+          Less waiting.
+          <br />
+          More doing.
+        </strong>
+        <p>All the little campus things, in one lovely place.</p>
+        <small>PSU · LINGAYEN</small>
+      </div>
+    </aside>
+  );
+}
+
+/* =========================================
+   TOP BAR
+========================================= */
+
+function StudentTopbar({
+  title,
+  studentName,
+  studentEmail,
+  unreadNotifications,
+  menuOpen,
+  onToggleMenu,
+  onNavigate,
+}: {
+  title: string;
+  studentName: string;
+  studentEmail: string;
+  unreadNotifications: number;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onNavigate: (page: DashboardPage) => void;
+}) {
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+
+    function handlePointer(event: MouseEvent) {
+      if (
+        accountRef.current &&
+        !accountRef.current.contains(event.target as Node)
+      ) {
+        setAccountOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointer);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [accountOpen]);
+
+  function openPage(page: DashboardPage) {
+    setAccountOpen(false);
+    onNavigate(page);
+  }
+
+  return (
+    <header className="sdx-topbar">
+      <div className="sdx-topbar__left">
         <button
           type="button"
-          className="header-icon-button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Open student menu"
+          className="sdx-menu-btn"
+          onClick={onToggleMenu}
+          aria-label="Open navigation"
           aria-expanded={menuOpen}
         >
-          <Icon name="menu" size={20} />
+          <Icon name="menu" size={18} />
         </button>
 
-        <button
-          type="button"
-          className="brand"
-          onClick={() => onNavigate("dashboard")}
-        >
-          CAMPUSERVE
-        </button>
-
-        <div className="header-actions">
-          <button
-            type="button"
-            className="header-icon-button notification-button"
-            onClick={() => onNavigate("notifications")}
-            aria-label="Open notifications"
-          >
-            <Icon name="bell" size={18} />
-
-            {unreadNotifications > 0 && (
-              <span className="notification-count">
-                {unreadNotifications > 9
-                  ? "9+"
-                  : unreadNotifications}
-              </span>
-            )}
-          </button>
-
-          <span className="header-user-name">
-            {studentName}
-          </span>
-          <button onClick={async () => {
-            await logout();
-          }}>Logout</button>
+        <div className="sdx-topbar__title">
+          <small>YOUR CAMPUS / STUDENT PORTAL</small>
+          <strong>{title}</strong>
         </div>
       </div>
 
-      {menuOpen && (
-        <div className="dashboard-menu">
-          <div className="menu-brand">CAMPUSERVE</div>
+      <div className="sdx-top-actions">
+        <span className="sdx-top-actions__school">
+          PANGASINAN STATE UNIVERSITY
+        </span>
 
-          {/* MAIN */}
-          <div className="menu-section-title">MAIN</div>
+        <button
+          type="button"
+          className="sdx-bell"
+          onClick={() => onNavigate("notifications")}
+          aria-label={
+            unreadNotifications > 0
+              ? `Open notifications (${unreadNotifications} unread)`
+              : "Open notifications"
+          }
+        >
+          <Icon name="bell" size={19} />
 
-          <button type="button" onClick={() => onNavigate("dashboard")}>
-            Dashboard
+          {unreadNotifications > 0 && (
+            <span className="sdx-bell__count">
+              {unreadNotifications > 9 ? "9+" : unreadNotifications}
+            </span>
+          )}
+        </button>
+
+        <div className="sdx-account" ref={accountRef}>
+          <button
+            type="button"
+            className="sdx-account__trigger"
+            aria-haspopup="menu"
+            aria-expanded={accountOpen}
+            onClick={() => setAccountOpen(!accountOpen)}
+          >
+            <span className="sdx-avatar">{getInitials(studentName)}</span>
+
+            <span className="sdx-account__copy">
+              <strong>{studentName}</strong>
+              <small>My account</small>
+            </span>
+
+            <span className="sdx-account__chevron" aria-hidden="true">
+              ⌄
+            </span>
           </button>
 
-          <button type="button" onClick={() => onNavigate("request")}>
-            Document Requests
-          </button>
+          {accountOpen && (
+            <div className="sdx-account__menu" role="menu">
+              <div className="sdx-account__user">
+                <strong>{studentName}</strong>
+                {studentEmail && <small>{studentEmail}</small>}
+              </div>
 
-          <button type="button" onClick={() => onNavigate("itemReservation")}>
-            Item Reservations
-          </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => openPage("profile")}
+              >
+                My profile
+              </button>
 
-          <button type="button" onClick={() => onNavigate("claimStub")}>
-            Claim & Release
-          </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => openPage("settings")}
+              >
+                Account settings
+              </button>
 
-          <button type="button" onClick={() => onNavigate("requests")}>
-            My Requests
-          </button>
-
-          <button type="button" onClick={() => onNavigate("groupInvites")}>
-            Group Invitations
-          </button>
-
-          <button type="button" onClick={() => onNavigate("transactions")}>
-            Transaction History
-          </button>
-
-          {/* INFORMATION & SUPPORT */}
-          <div className="menu-section-title">INFORMATION & SUPPORT</div>
-
-          <button type="button" onClick={() => onNavigate("notifications")}>
-            Notifications
-          </button>
-
-          <button type="button" onClick={() => onNavigate("help")}>
-            Help Center & FAQs
-          </button>
-
-          <button type="button" onClick={() => onNavigate("contact")}>
-            Contact Support
-          </button>
-
-          {/* ACCOUNT */}
-          <div className="menu-section-title">ACCOUNT</div>
-
-          <button type="button" onClick={() => onNavigate("profile")}>
-            My Profile
-          </button>
-
-          <button type="button" onClick={() => onNavigate("settings")}>
-            Account Settings
-          </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="sdx-account__signout"
+                onClick={async () => {
+                  setAccountOpen(false);
+                  await logout();
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
-
-      )}
+      </div>
     </header>
   );
 }
 
 /* =========================================
-   TRACKING CAROUSEL
+   LIVE TRACKING BOX + CAROUSEL
 ========================================= */
 
-function TrackingCarousel({
+function TrackingBox({
+  variant,
+  title,
+  loading,
   transactions,
+  emptyTitle,
+  emptyText,
+  emptyAction,
+  onEmptyAction,
   onSelect,
 }: {
+  variant: "document" | "item";
+  title: string;
+  loading: boolean;
   transactions: StudentTransaction[];
+  emptyTitle: string;
+  emptyText: string;
+  emptyAction: string;
+  onEmptyAction: () => void;
   onSelect: (transaction: StudentTransaction) => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
 
-  const carouselRef = useRef<HTMLDivElement>(null);
+  const count = transactions.length;
+  const safeIndex = count === 0 ? 0 : Math.min(activeIndex, count - 1);
+  const current = transactions[safeIndex];
 
-  // Automatically rotate every 5 seconds.
-  // Each tracking carousel has its own timer.
-
+  // Automatically rotate every 5 seconds (paused on hover / focus).
   useEffect(() => {
-    if (transactions.length <= 1) {
-      return;
-    }
+    if (count <= 1 || paused) return;
 
     const timer = window.setInterval(() => {
-      setActiveIndex((currentIndex) => {
-        const nextIndex =
-          (currentIndex + 1) % transactions.length;
-
-        const element = carouselRef.current;
-
-        if (element) {
-          element.scrollTo({
-            left: nextIndex * element.clientWidth,
-            behavior: "smooth",
-          });
-        }
-
-        return nextIndex;
-      });
+      setActiveIndex((index) => (index + 1) % count);
     }, 5000);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [transactions.length]);
+  }, [count, paused]);
 
+  // Reset when the number of tracked transactions changes.
   useEffect(() => {
     setActiveIndex(0);
+  }, [count]);
 
-    if (carouselRef.current) {
-      carouselRef.current.scrollTo({
-        left: 0,
-        behavior: "auto",
-      });
-    }
-  }, [transactions.length]);
-
-  function handleScroll() {
-    const element = carouselRef.current;
-
-    if (!element) return;
-
-    const index = Math.round(
-      element.scrollLeft / element.clientWidth
-    );
-
-    setActiveIndex(
-      Math.max(0, Math.min(index, transactions.length - 1))
-    );
+  function previous() {
+    setActiveIndex((index) => Math.max(0, index - 1));
   }
 
-  function goToSlide(index: number) {
-    const element = carouselRef.current;
-
-    if (!element) return;
-
-    element.scrollTo({
-      left: index * element.clientWidth,
-      behavior: "smooth",
-    });
-
-    setActiveIndex(index);
-  }
-
-  function previousSlide() {
-    if (activeIndex > 0) {
-      goToSlide(activeIndex - 1);
-    }
-  }
-
-  function nextSlide() {
-    if (activeIndex < transactions.length - 1) {
-      goToSlide(activeIndex + 1);
-    }
+  function next() {
+    setActiveIndex((index) => Math.min(count - 1, index + 1));
   }
 
   return (
-    <div className="tracking-carousel">
-      <div
-        className="tracking-carousel__viewport"
-        ref={carouselRef}
-        onScroll={handleScroll}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowLeft") {
-            previousSlide();
-          }
-
-          if (event.key === "ArrowRight") {
-            nextSlide();
-          }
-        }}
-        tabIndex={0}
-        aria-label="Transaction tracking carousel"
-      >
-        {transactions.map((transaction) => (
-          <div
-            className="tracking-carousel__slide"
-            key={transaction.key}
-          >
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelect(transaction)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onSelect(transaction);
-                }
-              }}
-              aria-label={`View details for ${transaction.title}`}
-              style={{ cursor: "pointer" }}
-            >
-              <TrackingContent transaction={transaction} />
-            </div>
-          </div>
-        ))}
+    <section
+      className={`sdx-track-box sdx-track-box--${variant}`}
+      aria-label={title}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowLeft") previous();
+        if (event.key === "ArrowRight") next();
+      }}
+    >
+      <div className="sdx-box-head">
+        <strong>{title}</strong>
+        <span>{loading ? "…" : `${count} active`}</span>
       </div>
 
-      {transactions.length > 1 && (
-        <div className="tracking-carousel__controls">
-          <button
-            type="button"
-            className="tracking-carousel__arrow"
-            onClick={previousSlide}
-            disabled={activeIndex === 0}
-            aria-label="Previous transaction"
-          >
-            ←
-          </button>
-
-          <div className="tracking-carousel__dots">
-            {transactions.map((transaction, index) => (
-              <button
-                key={transaction.key}
-                type="button"
-                className={`tracking-carousel__dot ${activeIndex === index ? "active" : ""}`}
-                onClick={() => goToSlide(index)}
-                aria-label={`Go to transaction ${index + 1}`}
-                aria-current={
-                  activeIndex === index ? "true" : undefined
-                }
-              />
-            ))}
-          </div>
-
-          <span className="tracking-carousel__counter">
-            {activeIndex + 1} of {transactions.length}
+      {loading ? (
+        <DashboardLoading />
+      ) : !current ? (
+        <div className="sdx-track-empty">
+          <span className="sdx-track-empty__icon">
+            <Icon name={variant === "document" ? "file" : "bag"} size={22} />
           </span>
 
-          <button
-            type="button"
-            className="tracking-carousel__arrow"
-            onClick={nextSlide}
-            disabled={activeIndex === transactions.length - 1}
-            aria-label="Next transaction"
-          >
-            →
-          </button>
+          <div>
+            <strong>{emptyTitle}</strong>
+            <p>{emptyText}</p>
+
+            <button
+              type="button"
+              className="sdx-text-btn"
+              onClick={onEmptyAction}
+            >
+              {emptyAction} <span aria-hidden="true">↗</span>
+            </button>
+          </div>
         </div>
+      ) : (
+        <>
+          <div
+            className="sdx-track-slide"
+            role="button"
+            tabIndex={0}
+            key={current.key}
+            onClick={() => onSelect(current)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelect(current);
+              }
+            }}
+            aria-label={`View details for ${current.title}`}
+          >
+            <TrackingContent transaction={current} />
+          </div>
+
+          <div className="sdx-box-bottom">
+            <span>
+              {count > 1
+                ? `${safeIndex + 1} of ${count}`
+                : variant === "document"
+                  ? "1 request"
+                  : "1 reservation"}
+            </span>
+
+            <div className="sdx-track-controls">
+              {count > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="sdx-mini-btn"
+                    onClick={previous}
+                    disabled={safeIndex === 0}
+                    aria-label="Previous transaction"
+                  >
+                    ←
+                  </button>
+
+                  <button
+                    type="button"
+                    className="sdx-mini-btn"
+                    onClick={next}
+                    disabled={safeIndex === count - 1}
+                    aria-label="Next transaction"
+                  >
+                    →
+                  </button>
+                </>
+              )}
+
+              <button
+                type="button"
+                className="sdx-text-btn sdx-text-btn--small"
+                onClick={() => onSelect(current)}
+              >
+                View details <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+          </div>
+        </>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -1248,140 +1405,79 @@ function TrackingContent({
     } else if (status === "UNPAID") {
       activeIndex = 0;
     }
-  } return (
-    <div className="tracking-content">
+  }
 
-      {/* TRANSACTION INFORMATION */}
+  const currentStep = toTitle(currentSteps[activeIndex]);
+  const nextStep = currentSteps[activeIndex + 1];
 
-      <div className="tracking-summary">
-        <div className="tracking-type-icon">
-          <Icon
-            name={
-              transaction.kind === "DOCUMENT"
-                ? "file"
-                : "bag"
-            }
-            size={24}
-          />
-        </div>
+  const schedule = transaction.date
+    ? `${formatClaimDate(transaction.date)}${transaction.time ? ` · ${formatClaimTime(transaction.time)}` : ""}`
+    : "";
 
-        <div className="tracking-summary__text">
-          <span>
-            {transaction.kind === "DOCUMENT"
-              ? "DOCUMENT REQUEST"
-              : "ITEM RESERVATION"}
-          </span>
-
-          <strong>{transaction.title}</strong>
-
-          <small>ID: {transaction.id}</small>
-        </div>
-
-        <StatusBadge status={status} large />
-      </div>
-
-      {/* CURRENT STATUS AND CLAIMING CODE */}
-
-      <div className="tracking-details">
-        <div className="tracking-detail-item">
-          <span>Current Status</span>
-          <strong>{status.replace(/_/g, " ")}</strong>
-        </div>
-
-        {showClaimingDetails && transaction.claimCode && (
-          <div className="tracking-detail-item">
-            <span>Claiming Code</span>
-            <strong>{transaction.claimCode}</strong>
-          </div>
-        )}
-      </div>
-
-      {/* TRACKING PROGRESS LINE */}
-
-      <div className="tracking-progress">
-        {currentSteps.map((step, index) => {
-          const complete = index < activeIndex;
-          const current = index === activeIndex;
-
-          return (
-            <div
-              className={`tracking-step ${complete ? "is-complete" : ""} ${current ? "is-current" : ""}`}
-              key={step}
-            >
-              <span className="tracking-step__dot">
-                {complete ? "✓" : index + 1}
-              </span>
-
-              <span>
-                {step.charAt(0) + step.slice(1).toLowerCase()}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* CLAIMING SCHEDULE */}
-
-      {showClaimingDetails && (
-        <div className="tracking-pickup">
-          <div>
-            <span>Claiming Schedule</span>
-
-            <strong>
-              {transaction.date
-                ? formatClaimDate(transaction.date)
-                : "Schedule pending"}
-            </strong>
-          </div>
-
-          {transaction.time && (
-            <strong>{formatClaimTime(transaction.time)}</strong>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* =========================================
-   WIDGET HEADER
-========================================= */
-
-function WidgetHeader({
-  title,
-  action,
-  onAction,
-}: {
-  title: string;
-  action: string;
-  onAction: () => void;
-}) {
   return (
-    <div className="widget-header">
-      <h2>{title}</h2>
+    <div className="sdx-doc-row">
+      <span className="sdx-row-eyebrow">
+        {isDocument ? "DOCUMENT" : "ITEM"} · {transaction.id}
+      </span>
 
-      <button
-        type="button"
-        className="text-button"
-        onClick={onAction}
+      <div className="sdx-title-line">
+        <h3>{transaction.title}</h3>
+        <StatusBadge status={status} />
+      </div>
+
+      <p>
+        {schedule
+          ? `${showClaimingDetails ? "Claiming" : "Schedule"}: ${schedule}`
+          : "Schedule pending"}
+      </p>
+
+      {showClaimingDetails && transaction.claimCode && (
+        <p className="sdx-claim-line">
+          Claiming code: <strong>{transaction.claimCode}</strong>
+        </p>
+      )}
+
+      <p className="sdx-next-line">
+        <strong>{nextStep ? "Next:" : "Status:"}</strong>{" "}
+        {nextStep ? toTitle(nextStep) : currentStep}
+      </p>
+
+      <div
+        className="sdx-steps"
+        role="img"
+        aria-label={`Step ${activeIndex + 1} of ${currentSteps.length}: ${currentStep}`}
       >
-        {action} →
-      </button>
+        {currentSteps.map((step, index) => (
+          <span
+            key={step}
+            title={toTitle(step)}
+            className={
+              index < activeIndex
+                ? "is-done"
+                : index === activeIndex
+                  ? "is-current"
+                  : ""
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
 /* =========================================
-   SERVICE ACTION
+   SERVICE CARD (illustrated)
 ========================================= */
 
-function ServiceAction({
-  icon,
+function ServiceCard({
+  tone,
+  art,
   title,
   text,
   onClick,
 }: {
-  icon: string;
+  tone: "green" | "sky" | "sun";
+  art: "document" | "bag" | "ticket";
   title: string;
   text: string;
   onClick: () => void;
@@ -1389,20 +1485,60 @@ function ServiceAction({
   return (
     <button
       type="button"
-      className="service-action"
+      className={`sdx-service sdx-service--${tone}`}
       onClick={onClick}
     >
-      <span className="service-action__icon">
-        <Icon name={icon} size={21} />
+      <span className="sdx-service__circle" aria-hidden="true">
+        ↗
       </span>
 
-      <span className="service-action__content">
-        <strong>{title}</strong>
-        <small>{text}</small>
+      <span className="sdx-service__art" aria-hidden="true">
+        <ServiceArt name={art} />
       </span>
 
-      <span className="service-action__arrow">→</span>
+      <strong>{title}</strong>
+      <p>{text}</p>
     </button>
+  );
+}
+
+function ServiceArt({ name }: { name: "document" | "bag" | "ticket" }) {
+  if (name === "document") {
+    return (
+      <svg fill="none" viewBox="0 0 190 155">
+        <ellipse cx="98" cy="132" fill="#CBE6D7" opacity=".6" rx="68" ry="12" />
+        <rect fill="#FCFFFA" height="105" rx="9" stroke="#387F68" strokeWidth="2" transform="rotate(-9 48 20)" width="82" x="48" y="20" />
+        <rect fill="#DDEFE3" height="105" rx="9" stroke="#387F68" strokeWidth="2" transform="rotate(8 77 24)" width="82" x="77" y="24" />
+        <path d="M92 54h42m-42 14h33m-33 14h42" stroke="#69A48C" strokeLinecap="round" strokeWidth="5" />
+        <circle cx="136" cy="109" fill="#F0C884" r="20" stroke="#7F6139" strokeWidth="2" />
+        <path d="m127 109 7 7 13-15" stroke="#7F6139" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+      </svg>
+    );
+  }
+
+  if (name === "bag") {
+    return (
+      <svg fill="none" viewBox="0 0 190 155">
+        <ellipse cx="102" cy="136" fill="#EED8B7" opacity=".8" rx="67" ry="11" />
+        <path d="M44 61h103l-11 64H55L44 61Z" fill="#E9B76E" stroke="#835D38" strokeLinejoin="round" strokeWidth="2.5" />
+        <path d="M65 64V51c0-21 60-21 60 0v13" stroke="#845C37" strokeLinecap="round" strokeWidth="7" />
+        <path d="M79 86h33m-33 12h25" stroke="#FFF1D8" strokeLinecap="round" strokeWidth="6" />
+        <circle cx="141" cy="43" fill="#F9F3E7" r="22" stroke="#835D38" strokeWidth="2" />
+        <path d="M132 43h18m-9-9v18" stroke="#835D38" strokeLinecap="round" strokeWidth="3" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg fill="none" viewBox="0 0 190 155">
+      <ellipse cx="96" cy="134" fill="#CDD7F0" opacity=".75" rx="69" ry="12" />
+      <g transform="translate(30 35) rotate(-9 65 45)">
+        <path d="M8 9h130v25c-12 2-12 21 0 23v25H8V57c12-2 12-21 0-23V9Z" fill="#E4EAFB" stroke="#5E76A8" strokeWidth="2.6" />
+        <path d="M92 9v73" stroke="#9DAED1" strokeDasharray="6 6" strokeWidth="2" />
+        <path d="M29 32h39m-39 14h30m-30 14h36" stroke="#8299C1" strokeLinecap="round" strokeWidth="5" />
+        <circle cx="115" cy="46" fill="#F2CD91" r="9" />
+      </g>
+    </svg>
   );
 }
 
@@ -1413,15 +1549,17 @@ function ServiceAction({
 function TransactionRow({
   transaction,
   onSelect,
+  compact = false,
 }: {
   transaction: StudentTransaction;
   onSelect: (transaction: StudentTransaction) => void;
+  compact?: boolean;
 }) {
   const status = normalizeStatus(transaction.status);
 
   return (
     <div
-      className="transaction-row"
+      className={`sdx-tx-row ${compact ? "sdx-tx-row--compact" : ""}`}
       role="button"
       tabIndex={0}
       onClick={() => onSelect(transaction)}
@@ -1432,40 +1570,34 @@ function TransactionRow({
         }
       }}
       aria-label={`View details for ${transaction.title}`}
-      style={{ cursor: "pointer" }}
     >
-      <span className="transaction-row__icon">
+      <span className="sdx-tx-row__icon">
         <Icon
-          name={
-            transaction.kind === "DOCUMENT"
-              ? "file"
-              : "bag"
-          }
-          size={18}
+          name={transaction.kind === "DOCUMENT" ? "file" : "bag"}
+          size={17}
         />
       </span>
 
-      <div className="transaction-row__main">
+      <span className="sdx-tx-row__main">
         <strong>{transaction.title}</strong>
 
-        <span>
+        <small>
           {getKindLabel(transaction.kind)} · ID {transaction.id}
-        </span>
-      </div>
+          {!compact && transaction.claimCode
+            ? ` · Claiming code: ${transaction.claimCode}`
+            : ""}
+        </small>
+      </span>
 
-      <StatusBadge status={status} />
-
-      {transaction.claimCode && (
-        <span className="transaction-claim-code">
-          Claiming Code: {transaction.claimCode}
+      {!compact && (
+        <span className="sdx-tx-row__date">
+          {transaction.date
+            ? formatClaimDate(transaction.date)
+            : timeAgo(transaction.createdAt)}
         </span>
       )}
 
-      <span className="transaction-row__date">
-        {transaction.date
-          ? formatClaimDate(transaction.date)
-          : timeAgo(transaction.createdAt)}
-      </span>
+      <StatusBadge status={status} />
     </div>
   );
 }
@@ -1484,33 +1616,35 @@ function TransactionHistory({
   onSelect: (transaction: StudentTransaction) => void;
 }) {
   return (
-    <section className="page-card">
+    <>
       <PageHeading
         eyebrow="TRANSACTIONS"
         title="Transaction History"
         text="Every document request and item reservation."
       />
 
-      {loading ? (
-        <DashboardLoading />
-      ) : transactions.length === 0 ? (
-        <EmptyWidget
-          icon="clock"
-          title="No transactions yet"
-          text="Your requests and reservations will appear here."
-        />
-      ) : (
-        <div className="recent-transaction-list">
-          {transactions.map((transaction) => (
-            <TransactionRow
-              key={transaction.key}
-              transaction={transaction}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      )}
-    </section>
+      <section className="sdx-panel">
+        {loading ? (
+          <DashboardLoading />
+        ) : transactions.length === 0 ? (
+          <EmptyWidget
+            icon="clock"
+            title="No transactions yet"
+            text="Your requests and reservations will appear here."
+          />
+        ) : (
+          <div className="sdx-activity">
+            {transactions.map((transaction) => (
+              <TransactionRow
+                key={transaction.key}
+                transaction={transaction}
+                onSelect={onSelect}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 
@@ -1549,7 +1683,7 @@ function TransactionDetailsModal({
     alignItems: "center",
     justifyContent: "center",
     padding: "20px",
-    background: "rgba(15, 23, 42, 0.62)",
+    background: "rgba(17, 46, 37, 0.52)",
   };
 
   const panelStyle: CSSProperties = {
@@ -1557,16 +1691,17 @@ function TransactionDetailsModal({
     maxHeight: "90vh",
     overflowY: "auto",
     background: "#ffffff",
-    color: "#1f2937",
-    borderRadius: "16px",
-    padding: "24px",
-    boxShadow: "0 24px 70px rgba(0,0,0,0.25)",
+    color: "#243f24",
+    borderRadius: "22px",
+    padding: "26px",
+    border: "1px solid #dce8de",
+    boxShadow: "0 25px 85px rgba(10, 37, 28, 0.27)",
   };
 
   const sectionStyle: CSSProperties = {
     marginTop: "20px",
     paddingTop: "16px",
-    borderTop: "1px solid #e5e7eb",
+    borderTop: "1px solid #e4ece4",
   };
 
   const gridStyle: CSSProperties = {
@@ -1591,7 +1726,7 @@ function TransactionDetailsModal({
         <div
           style={{
             fontSize: "12px",
-            color: "#6b7280",
+            color: "#7a9282",
             marginBottom: "5px",
           }}
         >
@@ -1651,7 +1786,7 @@ function TransactionDetailsModal({
           <div>
             <div
               style={{
-                color: "#64748b",
+                color: "#6f8b7a",
                 fontSize: "11px",
                 fontWeight: 700,
                 letterSpacing: "1px",
@@ -1667,7 +1802,7 @@ function TransactionDetailsModal({
               Transaction Details
             </h2>
 
-            <div style={{ color: "#64748b", fontSize: "13px" }}>
+            <div style={{ color: "#6f8b7a", fontSize: "13px" }}>
               Transaction ID: {transaction.id}
             </div>
           </div>
@@ -1675,9 +1810,11 @@ function TransactionDetailsModal({
           <button
             type="button"
             aria-label="Close transaction details"
+            onClick={onClose}
             style={{
               border: 0,
-              background: "rgb(241, 245, 249)",
+              background: "#eef6f0",
+              color: "#2e602e",
               borderRadius: "50%",
               width: "36px",
               height: "36px",
@@ -1944,7 +2081,7 @@ function TransactionDetailsModal({
                       key={`${item.inventoryId || item.itemName || "item"}-${index}`}
                       style={{
                         padding: "13px",
-                        border: "1px solid #e5e7eb",
+                        border: "1px solid #e1eae2",
                         borderRadius: "10px",
                       }}
                     >
@@ -2006,9 +2143,9 @@ function TransactionDetailsModal({
             onClick={onClose}
             style={{
               border: 0,
-              borderRadius: "8px",
-              padding: "10px 18px",
-              background: "#1e3a8a",
+              borderRadius: "11px",
+              padding: "11px 20px",
+              background: "linear-gradient(125deg, #2e602e, #42a76f)",
               color: "white",
               fontWeight: 600,
               cursor: "pointer",
@@ -2079,58 +2216,61 @@ function NotificationPage({
   ) => Promise<void>;
 }) {
   return (
-    <section className="page-card">
+    <>
       <PageHeading
         eyebrow="UPDATES"
         title="Notifications"
         text="Updates about your requests, reservations and claiming schedule."
       />
 
-      {loading ? (
-        <DashboardLoading />
-      ) : notifications.length === 0 ? (
-        <EmptyWidget
-          icon="bell"
-          title="You're all caught up"
-          text="New updates will appear here."
-        />
-      ) : (
-        <div className="notification-page-list">
-          {notifications.map((notification) => {
-            const unread = !notification.readBy.includes(
-              studentId
-            );
+      <section className="sdx-panel">
+        {loading ? (
+          <DashboardLoading />
+        ) : notifications.length === 0 ? (
+          <EmptyWidget
+            icon="bell"
+            title="You're all caught up"
+            text="New updates will appear here."
+          />
+        ) : (
+          <div className="sdx-notifs">
+            {notifications.map((notification) => {
+              const unread = !notification.readBy.includes(
+                studentId
+              );
 
-            return (
-              <button
-                type="button"
-                className={`notification-page-row ${unread ? "is-unread" : ""}`}
-                key={notification.id}
-                onClick={() => {
-                  void onNotificationClick(notification);
-                }}
-              >
-                <span className="notification-page-row__icon">
-                  <Icon name="bell" size={18} />
-                </span>
+              return (
+                <button
+                  type="button"
+                  className={`sdx-notif ${unread ? "is-unread" : ""}`}
+                  key={notification.id}
+                  onClick={() => {
+                    void onNotificationClick(notification);
+                  }}
+                >
+                  <span className="sdx-notif__icon">
+                    <Icon name="bell" size={17} />
+                  </span>
 
-                <span className="notification-page-row__body">
-                  <strong>{notification.title}</strong>
+                  <span className="sdx-notif__body">
+                    <strong>{notification.title}</strong>
+                    <span>{notification.message}</span>
+                    <small>{timeAgo(notification.createdAt)}</small>
+                  </span>
 
-                  <span>{notification.message}</span>
-
-                  <small>
-                    {timeAgo(notification.createdAt)}
-                  </small>
-                </span>
-
-                {unread && <span className="unread-dot" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </section>
+                  {unread && (
+                    <span
+                      className="sdx-notif__dot"
+                      aria-label="Unread"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 
@@ -2148,8 +2288,8 @@ function PageHeading({
   text: string;
 }) {
   return (
-    <div className="page-heading">
-      <span className="section-kicker">{eyebrow}</span>
+    <div className="sdx-page-head">
+      <span className="sdx-tag">{eyebrow}</span>
       <h1>{title}</h1>
       <p>{text}</p>
     </div>
@@ -2170,13 +2310,15 @@ function EmptyWidget({
   text: string;
 }) {
   return (
-    <div className="empty-widget">
-      <span className="empty-widget__icon">
-        <Icon name={icon} size={22} />
+    <div className="sdx-empty">
+      <span className="sdx-empty__icon">
+        <Icon name={icon} size={20} />
       </span>
 
-      <strong>{title}</strong>
-      <p>{text}</p>
+      <span>
+        <strong>{title}</strong>
+        <small>{text}</small>
+      </span>
     </div>
   );
 }
@@ -2187,8 +2329,8 @@ function EmptyWidget({
 
 function DashboardLoading() {
   return (
-    <div className="dashboard-loading">
-      <span className="dashboard-spinner" />
+    <div className="sdx-loading" role="status">
+      <span className="sdx-spinner" />
       <span>Loading...</span>
     </div>
   );
@@ -2198,6 +2340,25 @@ function DashboardLoading() {
    STATUS BADGE
 ========================================= */
 
+const GREEN_STATUSES = [
+  "APPROVED",
+  "PAID",
+  "READY_FOR_PICKUP",
+  "CLAIMED",
+  "COMPLETED",
+];
+
+const BLUE_STATUSES = ["PROCESSING", "RESCHEDULED"];
+
+const RED_STATUSES = [
+  "REJECTED",
+  "DECLINED",
+  "CANCELLED",
+  "CANCELED",
+  "EXPIRED",
+  "FAILED",
+];
+
 function StatusBadge({
   status,
   large = false,
@@ -2205,11 +2366,19 @@ function StatusBadge({
   status: string;
   large?: boolean;
 }) {
+  const tone = GREEN_STATUSES.includes(status)
+    ? "green"
+    : BLUE_STATUSES.includes(status)
+      ? "blue"
+      : RED_STATUSES.includes(status)
+        ? "red"
+        : "sun";
+
   return (
     <span
-      className={`status-badge status-badge--${status.toLowerCase()} ${large ? "status-badge--large" : ""}`}
+      className={`sdx-badge sdx-badge--${tone} ${large ? "sdx-badge--large" : ""}`}
     >
-      {status.replace(/_/g, " ")}
+      {toTitle(status.replace(/_/g, " "))}
     </span>
   );
 }
@@ -2217,22 +2386,6 @@ function StatusBadge({
 /* =========================================
    HELPERS
 ========================================= */
-
-function getItemReservationTitle(data: Record<string, any>) {
-  const items = Array.isArray(data.items) ? data.items : [];
-
-  if (items.length === 0) {
-    return String(data.itemName || "Item Reservation");
-  }
-
-  const firstName = String(items[0]?.itemName || "Item Reservation");
-
-  if (items.length === 1) {
-    return firstName;
-  }
-
-  return `${firstName} + ${items.length - 1} more`;
-}
 
 function getKindLabel(kind: StudentTransaction["kind"]) {
   return kind === "DOCUMENT"
@@ -2261,6 +2414,28 @@ function getTime(value: unknown): number {
   return Number.isNaN(date.getTime())
     ? 0
     : date.getTime();
+}
+
+function toTitle(value: string): string {
+  const lower = value.toLowerCase();
+
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+function getInitials(name: string): string {
+  const clean = name.includes("@") ? name.split("@")[0] : name;
+
+  const parts = clean
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "ST";
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function getDayNumber(date: string): string {
@@ -2383,6 +2558,51 @@ function Icon({
           <circle cx="9" cy="7" r="4" />
           <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
           <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      );
+
+    case "grid":
+      return (
+        <svg {...common}>
+          <rect x="3.5" y="3.5" width="7" height="7" rx="1.8" />
+          <rect x="13.5" y="3.5" width="7" height="7" rx="1.8" />
+          <rect x="3.5" y="13.5" width="7" height="7" rx="1.8" />
+          <path d="M13.5 17h7M17 13.5v7" />
+        </svg>
+      );
+
+    case "help":
+      return (
+        <svg {...common}>
+          <rect x="4" y="3.5" width="16" height="17" rx="3" />
+          <path d="M9.5 9.1a2.8 2.8 0 0 1 5 .9c0 1.5-2.5 1.9-2.5 3.7" />
+          <path d="M12 17.2h.01" />
+        </svg>
+      );
+
+    case "chat":
+      return (
+        <svg {...common}>
+          <path d="M6.5 4h11a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H10l-5.5 3v-4.2A3 3 0 0 1 3.5 15V7a3 3 0 0 1 3-3Z" />
+          <path d="M8 10h8M8 13.5h6" />
+        </svg>
+      );
+
+    case "user":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="8" r="3.4" />
+          <path d="M5 20v-1.3a7 7 0 0 1 14 0V20H5Z" />
+        </svg>
+      );
+
+    case "sliders":
+      return (
+        <svg {...common}>
+          <path d="M4 7h16M4 12h16M4 17h16" />
+          <circle cx="9" cy="7" r="2" fill="var(--sdx-surface, #fff)" />
+          <circle cx="15" cy="12" r="2" fill="var(--sdx-surface, #fff)" />
+          <circle cx="10.5" cy="17" r="2" fill="var(--sdx-surface, #fff)" />
         </svg>
       );
 
