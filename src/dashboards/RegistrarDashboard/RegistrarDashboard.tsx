@@ -23,6 +23,8 @@ import {
   logRegistrarActivity,
 } from "../../services/registrarWorkflow";
 import "./RegistrarDashboard.css";
+import MessagesPanel from "../../components/messaging/MessagesPanel";
+import UnreadMessagesBadge from "../../components/messaging/UnreadMessagesBadge";
 
 type Account = {
   email?: string;
@@ -116,6 +118,7 @@ const PAGE_TITLES: Record<string, string> = {
   reschedule: "Rescheduling",
   history: "Transaction History",
   reports: "Reports & Daily Summary",
+  messages: "Messages",
   settings: "Settings",
 };
 
@@ -2648,6 +2651,16 @@ export default function RegistrarDashboard({
         return renderHistory();
       case "reports":
         return renderReports();
+      case "messages":
+        return (
+          <section className="registrar-page">
+            <MessagesPanel
+              mode="staff"
+              office="registrar"
+              staffName={registrarName}
+            />
+          </section>
+        );
       case "settings":
         return renderSettings();
       default:
@@ -2782,6 +2795,21 @@ export default function RegistrarDashboard({
             <span>
               Reports & Daily Summary
             </span>
+          </button>
+          <button
+            className={
+              activePage === "messages"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            onClick={() =>
+              changePage("messages")
+            }
+          >
+            <span>
+              Messages
+            </span>
+            <UnreadMessagesBadge office="registrar" />
           </button>
           <button
             className={

@@ -16,6 +16,8 @@ import ClaimStubPage from "../../pages/student/ClaimStubPage";
 import GroupRequestInvitations from "../../pages/student/GroupRequestInvitations";
 import HelpCenter from "../../pages/student/HelpCenter";
 import ContactSupport from "../../pages/student/ContactSupport";
+import MessagesPanel from "../../components/messaging/MessagesPanel";
+import { useStudentUnreadMessages } from "../../components/messaging/useUnreadMessages";
 
 
 import { useNotifications } from "../../hooks/useNotifications";
@@ -61,11 +63,12 @@ type DashboardPage =
   | "claimStub"
   | "transactions"
   | "notifications"
+  | "messages"
   | "help"
   | "contact"
   | "profile"
   | "settings";
-export type StudentTransaction = {
+type StudentTransaction = {
   key: string;
   id: string;
   kind: "DOCUMENT" | "ITEM";
@@ -362,6 +365,12 @@ export default function StudentDashboard({
     );
   }, [studentId]);
 
+  /* =========================================
+     MESSAGES
+  ========================================= */
+
+  const unreadMessages = useStudentUnreadMessages(studentId);
+
   const pendingInvites = useMemo(
     () =>
       groupInvites.filter(
@@ -443,6 +452,7 @@ export default function StudentDashboard({
         open={menuOpen}
         pendingInvites={pendingInvites.length}
         unreadNotifications={unreadNotifications}
+        unreadMessages={unreadMessages}
         onNavigate={go}
       />
 
@@ -762,6 +772,14 @@ export default function StudentDashboard({
                 />
               )}
 
+              {activePage === "messages" && (
+                <MessagesPanel
+                  mode="student"
+                  studentId={studentId}
+                  studentName={studentName}
+                />
+              )}
+
               {activePage === "help" && <HelpCenter />}
 
               {activePage === "contact" && <ContactSupport />}
@@ -836,6 +854,7 @@ const PAGE_TITLES: Record<DashboardPage, string> = {
   claimStub: "Claim & release",
   transactions: "Transaction history",
   notifications: "Notifications",
+  messages: "Messages",
   help: "Help Center & FAQs",
   contact: "Contact support",
   profile: "My profile",
@@ -889,6 +908,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "INFORMATION & SUPPORT",
     items: [
+      { page: "messages", label: "Messages", icon: "chat" },
       { page: "notifications", label: "Notifications", icon: "bell" },
       { page: "help", label: "Help Center & FAQs", icon: "help" },
       { page: "contact", label: "Contact Support", icon: "chat" },
@@ -908,12 +928,14 @@ function StudentSidebar({
   open,
   pendingInvites,
   unreadNotifications,
+  unreadMessages,
   onNavigate,
 }: {
   activePage: DashboardPage;
   open: boolean;
   pendingInvites: number;
   unreadNotifications: number;
+  unreadMessages: number;
   onNavigate: (page: DashboardPage) => void;
 }) {
   return (
@@ -970,6 +992,7 @@ function StudentSidebar({
 
               const showMark =
                 (item.page === "groupInvites" && pendingInvites > 0) ||
+                (item.page === "messages" && unreadMessages > 0) ||
                 (item.page === "notifications" &&
                   unreadNotifications > 0);
 

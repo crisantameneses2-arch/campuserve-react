@@ -1,0 +1,614 @@
+/* =========================================================
+   CAMPUSERVE — MESSAGING
+   ---------------------------------------------------------
+   Shared by the student dashboard and the Registrar, Supply
+   Office and Administrator dashboards. Every selector is scoped
+   under `.msx` (the panel root) or is the `.msx-nav-badge`
+   counter, so nothing here changes the rest of those dashboards.
+   ========================================================= */
+
+.msx {
+  --msx-ink: #173f60;
+  --msx-blue: #2878a9;
+  --msx-blue-dark: #1e6896;
+  --msx-line: #dce8ef;
+  --msx-muted: #7893a7;
+  --msx-green: #2e602e;
+  --msx-leaf: #42a76f;
+
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  height: min(720px, calc(100vh - 180px));
+  min-height: 460px;
+  overflow: hidden;
+  border: 1px solid #d8e7f0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(22, 73, 109, 0.08);
+  color: var(--msx-ink);
+  font-family: Inter, "Aptos", "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.msx *,
+.msx *::before,
+.msx *::after {
+  box-sizing: border-box;
+}
+
+.msx h2,
+.msx p {
+  margin: 0;
+}
+
+/* Reset the panel's own buttons (overrides global button styles). */
+.msx .msx-btn,
+.msx .msx-thread {
+  appearance: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.msx :is(.msx-btn, .msx-thread):focus-visible {
+  outline: 3px solid #7cbadb;
+  outline-offset: 2px;
+}
+
+.msx :is(.msx-btn, .msx-thread):focus:not(:focus-visible) {
+  outline: none;
+}
+
+.msx .msx-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.msx .msx-eyebrow {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 850;
+  letter-spacing: 1.4px;
+  color: var(--msx-blue);
+}
+
+.msx .msx-muted {
+  color: var(--msx-muted);
+}
+
+.msx .msx-pad {
+  padding: 18px;
+}
+
+.msx .msx-center {
+  margin: auto;
+  text-align: center;
+}
+
+.msx .msx-error {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #a4392d;
+}
+
+/* ---------- Buttons & inputs ---------- */
+
+.msx .msx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: background 0.18s, border-color 0.18s, transform 0.18s;
+}
+
+.msx .msx-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.msx .msx-btn--primary {
+  background: linear-gradient(125deg, var(--msx-green), var(--msx-leaf));
+  border-color: var(--msx-green);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(46, 96, 46, 0.14);
+}
+
+.msx .msx-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(125deg, #244e2a, #348a5b);
+  transform: translateY(-1px);
+}
+
+.msx .msx-btn--soft {
+  min-height: 34px;
+  background: #eaf4fa;
+  border-color: #d3e5ef;
+  color: #1f5f87;
+}
+
+.msx .msx-btn--soft:hover {
+  background: #dceef8;
+}
+
+.msx .msx-btn--ghost {
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--msx-blue-dark);
+  font-size: 18px;
+}
+
+.msx .msx-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid #d4e4ed;
+  border-radius: 10px;
+  background: #fff;
+  color: #254d68;
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.msx .msx-input:focus {
+  border-color: #5ba4ca;
+  box-shadow: 0 0 0 3px rgba(57, 143, 189, 0.13);
+}
+
+.msx .msx-input::placeholder {
+  color: #a3b6c4;
+}
+
+/* ---------- Conversation list ---------- */
+
+.msx .msx-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid #e3edf3;
+  background: #f7fbfd;
+}
+
+.msx .msx-list__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 20px 18px 14px;
+}
+
+.msx .msx-list__head h2 {
+  margin-top: 5px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  color: var(--msx-ink);
+}
+
+.msx .msx-new {
+  margin: 0 18px 12px;
+  padding: 12px;
+  border: 1px solid #d6e7f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.msx .msx-new label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #285a78;
+}
+
+.msx .msx-new__row {
+  display: flex;
+  gap: 8px;
+}
+
+.msx .msx-search {
+  width: calc(100% - 36px);
+  margin: 0 18px 10px;
+}
+
+.msx .msx-threads {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 10px 12px;
+  scrollbar-width: thin;
+}
+
+.msx .msx-thread {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 2px 0;
+  padding: 11px 10px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.msx .msx-thread:hover {
+  background: #edf5fa;
+}
+
+.msx .msx-thread.is-active {
+  background: #fff;
+  border-color: #cfe3ef;
+  box-shadow: 0 4px 14px rgba(22, 73, 109, 0.07);
+}
+
+.msx .msx-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 12px;
+  background: #e2f0f8;
+  color: var(--msx-blue-dark);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.msx .msx-thread__body {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.msx .msx-thread__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.msx .msx-thread__top strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--msx-ink);
+}
+
+.msx .msx-thread__top small {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #93a9b8;
+}
+
+.msx .msx-thread__preview {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+  color: #7f97a8;
+}
+
+.msx .msx-thread.is-unread .msx-thread__top strong,
+.msx .msx-thread.is-unread .msx-thread__preview {
+  font-weight: 800;
+  color: var(--msx-ink);
+}
+
+.msx .msx-count {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--msx-leaf);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.msx .msx-empty-list {
+  padding: 26px 12px;
+  text-align: center;
+}
+
+.msx .msx-empty-list strong {
+  font-size: 13px;
+}
+
+.msx .msx-empty-list p {
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--msx-muted);
+}
+
+/* ---------- Chat area ---------- */
+
+.msx .msx-chat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.msx .msx-placeholder {
+  margin: auto;
+  max-width: 340px;
+  padding: 30px;
+  text-align: center;
+}
+
+.msx .msx-placeholder__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 14px;
+  border-radius: 20px;
+  background: #e8f3f9;
+  color: var(--msx-blue);
+}
+
+.msx .msx-placeholder strong {
+  display: block;
+  font-size: 16px;
+}
+
+.msx .msx-placeholder p {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--msx-muted);
+}
+
+.msx .msx-chat__head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e6eff4;
+}
+
+.msx .msx-chat__head strong {
+  display: block;
+  font-size: 14px;
+  color: var(--msx-ink);
+}
+
+.msx .msx-chat__head small {
+  display: block;
+  font-size: 11px;
+  color: var(--msx-muted);
+}
+
+.msx .msx-back {
+  display: none;
+}
+
+.msx .msx-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(114, 188, 231, 0.07), transparent 40%),
+    #fbfdfe;
+}
+
+.msx .msx-start {
+  margin: auto;
+  max-width: 360px;
+  text-align: center;
+}
+
+.msx .msx-start strong {
+  font-size: 14px;
+}
+
+.msx .msx-start p {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--msx-muted);
+}
+
+.msx .msx-msg-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.msx .msx-day {
+  margin: 12px 0 10px;
+  text-align: center;
+}
+
+.msx .msx-day span {
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #edf4f8;
+  color: #7f97a8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.msx .msx-msg {
+  max-width: min(72%, 520px);
+  margin: 3px 0;
+  padding: 9px 13px 7px;
+  border: 1px solid #dceaf2;
+  border-radius: 15px 15px 15px 5px;
+  background: #fff;
+  align-self: flex-start;
+  box-shadow: 0 3px 10px rgba(22, 73, 109, 0.04);
+}
+
+.msx .msx-msg.is-mine {
+  align-self: flex-end;
+  border-color: transparent;
+  border-radius: 15px 15px 5px 15px;
+  background: linear-gradient(135deg, #1e6896, #2878a9);
+  color: #fff;
+}
+
+.msx .msx-msg__name {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--msx-blue);
+}
+
+.msx .msx-msg p {
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.msx .msx-msg__ref {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #eef6fb;
+  color: #2d5873;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.msx .msx-msg.is-mine .msx-msg__ref {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.msx .msx-msg time {
+  display: block;
+  margin-top: 3px;
+  font-size: 9.5px;
+  text-align: right;
+  color: #9ab0bf;
+}
+
+.msx .msx-msg.is-mine time {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* ---------- Composer ---------- */
+
+.msx .msx-composer {
+  padding: 12px 18px 12px;
+  border-top: 1px solid #e6eff4;
+  background: #fff;
+}
+
+.msx .msx-composer .msx-error {
+  margin: 0 0 8px;
+}
+
+.msx .msx-composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.msx .msx-textarea {
+  min-height: 44px;
+  max-height: 140px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.msx .msx-send {
+  min-height: 44px;
+  min-width: 84px;
+}
+
+.msx .msx-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  color: #a0b4c2;
+}
+
+/* ---------- Staff menu badge (used outside .msx) ---------- */
+
+.msx-nav-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 8px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #42a76f;
+  color: #fff;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* ---------- Responsive: one column, list ↔ chat ---------- */
+
+@media (max-width: 760px) {
+  .msx {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(100vh - 150px);
+    min-height: 420px;
+    border-radius: 16px;
+  }
+
+  .msx .msx-list {
+    border-right: 0;
+  }
+
+  .msx .msx-chat {
+    display: none;
+  }
+
+  .msx.msx--thread-open .msx-list {
+    display: none;
+  }
+
+  .msx.msx--thread-open .msx-chat {
+    display: flex;
+  }
+
+  .msx .msx-back {
+    display: inline-flex;
+  }
+
+  .msx .msx-msg {
+    max-width: 86%;
+  }
+
+  .msx .msx-hint {
+    display: none;
+  }
+}
