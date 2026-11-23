@@ -366,6 +366,11 @@ export default function DocumentRequestWizard({
     const cleanedStudentId =
       memberStudentId.trim();
 
+    // Prevent double clicks while an invitation is being created.
+    if (sendingInvitation || creatingGroupRequest) {
+      return;
+    }
+
     setError("");
 
     if (!cleanedStudentId) {

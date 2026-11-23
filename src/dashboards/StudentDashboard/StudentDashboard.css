@@ -1367,6 +1367,27 @@
 }
 
 /* =========================================
+   MY REQUESTS / HISTORY TRANSACTIONS
+========================================= */
+.transaction-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 24px 0;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+.transaction-filter-group { display: flex; flex-direction: column; gap: 9px; }
+.transaction-filter-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #64748b; }
+.transaction-filter-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.transaction-filter { border: 1px solid #d7dce3; background: #fff; color: #475569; border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.transaction-filter.active { background: #111827; border-color: #111827; color: #fff; }
+.transaction-row__main small { display: block; margin-top: 4px; color: #64748b; font-size: 12px; }
+@media (max-width: 700px) { .transaction-filters { padding: 14px; } .transaction-filter { padding: 7px 11px; font-size: 12px; } }
+
+/* =========================================
    LIVE TRACKING CAROUSEL
 ========================================= */
 

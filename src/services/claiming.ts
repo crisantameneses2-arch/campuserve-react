@@ -58,7 +58,7 @@ type CreateClaimStubInput = {
 
   referenceId: string;
 
-  scheduleId: string;
+  scheduleId?: string;
 
   claimDate: string;
   timeSlot: string;
@@ -71,9 +71,13 @@ type CreateClaimStubInput = {
 /**
  * Creates a claim stub in Firestore.
  *
- * For DOCUMENT claims:
- * - Creates a document in claimStubs
- * - Updates document_requests.claim_code
+ * DOCUMENT:
+ * - Creates claimStubs document
+ * - Updates document_requests
+ *
+ * ITEM:
+ * - Creates claimStubs document
+ * - Updates itemReservations
  *
  * Both operations are committed together.
  */
@@ -88,9 +92,7 @@ export async function createClaimStub({
   office,
   totalAmount,
 }: CreateClaimStubInput) {
-  console.log(
-    "Creating claim stub..."
-  );
+  console.log("Creating claim stub...");
 
   console.log({
     studentId,
@@ -105,7 +107,7 @@ export async function createClaimStub({
   });
 
   // --------------------------------------------------
-  // Generate unique claim code
+  // GENERATE UNIQUE CLAIM CODE
   // --------------------------------------------------
 
   const claimCode =
@@ -117,7 +119,7 @@ export async function createClaimStub({
   );
 
   // --------------------------------------------------
-  // Create claim stub reference
+  // CREATE CLAIM STUB REFERENCE
   // --------------------------------------------------
 
   const claimStubRef = doc(
@@ -128,13 +130,13 @@ export async function createClaimStub({
     claimStubRef.id;
 
   // --------------------------------------------------
-  // Prepare Firestore batch
+  // PREPARE BATCH
   // --------------------------------------------------
 
   const batch = writeBatch(db);
 
   // --------------------------------------------------
-  // Create claimStubs document
+  // CREATE claimStubs DOCUMENT
   // --------------------------------------------------
 
   batch.set(claimStubRef, {
@@ -149,7 +151,9 @@ export async function createClaimStub({
 
     referenceId,
 
-    scheduleId,
+    ...(scheduleId
+      ? { scheduleId }
+      : {}),
 
     claimDate,
     timeSlot,
@@ -158,7 +162,8 @@ export async function createClaimStub({
 
     totalAmount,
 
-    status: "READY_FOR_PICKUP",
+    status:
+      "READY_FOR_PICKUP",
 
     createdAt:
       serverTimestamp(),
@@ -167,22 +172,14 @@ export async function createClaimStub({
       serverTimestamp(),
   });
 
-  // --------------------------------------------------
+  // ==================================================
   // DOCUMENT REQUEST
-  // --------------------------------------------------
-  //
-  // referenceId is the document request ID.
-  //
-  // Example:
-  // referenceId = DR-ABC123
-  //
-  // Update:
-  // document_requests/DR-ABC123
-  //
-  // so the student page can read claim_code.
-  // --------------------------------------------------
+  // ==================================================
 
-  if (claimType === "DOCUMENT") {
+  if (
+    claimType ===
+    "DOCUMENT"
+  ) {
     const requestRef = doc(
       db,
       "document_requests",
@@ -190,7 +187,8 @@ export async function createClaimStub({
     );
 
     batch.update(requestRef, {
-      claim_code: claimCode,
+      claim_code:
+        claimCode,
 
       status:
         "READY_FOR_PICKUP",
@@ -200,15 +198,44 @@ export async function createClaimStub({
     });
   }
 
+  // ==================================================
+  // ITEM RESERVATION
+  // ==================================================
+
+  if (
+    claimType ===
+    "ITEM"
+  ) {
+    const reservationRef =
+      doc(
+        db,
+        "itemReservations",
+        referenceId
+      );
+
+    batch.update(
+      reservationRef,
+      {
+        claimStubId,
+
+        status:
+          "READY_FOR_PICKUP",
+
+        updatedAt:
+          serverTimestamp(),
+      }
+    );
+  }
+
   // --------------------------------------------------
-  // Commit everything
+  // COMMIT BATCH
   // --------------------------------------------------
 
   try {
     await batch.commit();
 
     console.log(
-      "Claim stub successfully saved to Firestore."
+      "Claim stub successfully saved."
     );
 
     console.log(
@@ -242,9 +269,14 @@ export async function createClaimStub({
 export async function verifyClaimCode(
   claimCode: string,
   studentId: string,
-  claimType: "DOCUMENT" | "ITEM"
+  claimType:
+    | "DOCUMENT"
+    | "ITEM"
 ) {
-  const code = claimCode.trim().toUpperCase();
+  const code =
+    claimCode
+      .trim()
+      .toUpperCase();
 
   if (!code) {
     return {
@@ -255,9 +287,24 @@ export async function verifyClaimCode(
 
   const claimQuery = query(
     collection(db, "claimStubs"),
-    where("claimCode", "==", code),
-    where("studentId", "==", studentId),
-    where("claimType", "==", claimType)
+
+    where(
+      "claimCode",
+      "==",
+      code
+    ),
+
+    where(
+      "studentId",
+      "==",
+      studentId
+    ),
+
+    where(
+      "claimType",
+      "==",
+      claimType
+    )
   );
 
   const snapshot =
@@ -284,7 +331,6 @@ export async function verifyClaimCode(
   };
 }
 
-
 // ==================================================
 // CREATE CLAIM REQUEST
 // ==================================================
@@ -292,90 +338,119 @@ export async function verifyClaimCode(
 export async function createClaimRequest(
   claimStub: any
 ) {
-  const existingQuery = query(
-    collection(db, "claimRequests"),
-    where(
-      "claimStubId",
-      "==",
-      claimStub.id
-    ),
-    where(
-      "status",
-      "==",
-      "PENDING"
-    )
-  );
+  const existingQuery =
+    query(
+      collection(
+        db,
+        "claimRequests"
+      ),
+
+      where(
+        "claimStubId",
+        "==",
+        claimStub.id
+      ),
+
+      where(
+        "status",
+        "==",
+        "PENDING"
+      )
+    );
 
   const existingSnapshot =
-    await getDocs(existingQuery);
+    await getDocs(
+      existingQuery
+    );
 
   // Prevent duplicate claim requests
-  if (!existingSnapshot.empty) {
-    return existingSnapshot.docs[0].id;
+  if (
+    !existingSnapshot.empty
+  ) {
+    return existingSnapshot
+      .docs[0].id;
   }
 
-  const request = await addDoc(
-    collection(db, "claimRequests"),
-    {
-      claimStubId: claimStub.id,
+  const request =
+    await addDoc(
+      collection(
+        db,
+        "claimRequests"
+      ),
+      {
+        claimStubId:
+          claimStub.id,
 
-      claimCode:
-        claimStub.claimCode,
+        claimCode:
+          claimStub.claimCode,
 
-      claimType:
-        claimStub.claimType,
+        claimType:
+          claimStub.claimType,
 
-      referenceId:
-        claimStub.referenceId,
+        referenceId:
+          claimStub.referenceId,
 
-      studentId:
-        claimStub.studentId,
+        studentId:
+          claimStub.studentId,
 
-      studentName:
-        claimStub.studentName || "",
+        studentName:
+          claimStub.studentName ||
+          "",
 
-      office:
-        claimStub.office,
+        office:
+          claimStub.office,
 
-      status: "PENDING",
+        status:
+          "PENDING",
 
-      matched: true,
+        matched: true,
 
-      createdAt:
-        serverTimestamp(),
-    }
-  );
+        createdAt:
+          serverTimestamp(),
+      }
+    );
 
   return request.id;
 }
-
 
 // ==================================================
 // LISTEN TO CLAIM REQUESTS
 // ==================================================
 
 export function subscribeToClaimRequests(
-  callback: (claims: any[]) => void
+  callback: (
+    claims: any[]
+  ) => void
 ) {
-  const claimsQuery = query(
-    collection(db, "claimRequests"),
-    where("status", "==", "PENDING")
-  );
+  const claimsQuery =
+    query(
+      collection(
+        db,
+        "claimRequests"
+      ),
+
+      where(
+        "status",
+        "==",
+        "PENDING"
+      )
+    );
 
   return onSnapshot(
     claimsQuery,
     (snapshot) => {
       const claims =
-        snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
-        }));
+        snapshot.docs.map(
+          (item) => ({
+            id: item.id,
+            ...item.data(),
+          })
+        );
 
       callback(claims);
     }
   );
 }
-
 
 // ==================================================
 // MARK CLAIM AS DONE
@@ -386,7 +461,7 @@ export async function markClaimDone(
   registrarStaffId: string
 ) {
   // -----------------------------------------------
-  // 1. Mark claim request as DONE
+  // 1. MARK CLAIM REQUEST AS DONE
   // -----------------------------------------------
 
   await updateDoc(
@@ -406,9 +481,8 @@ export async function markClaimDone(
     }
   );
 
-
   // -----------------------------------------------
-  // 2. Mark claim stub as CLAIMED
+  // 2. MARK CLAIM STUB AS CLAIMED
   // -----------------------------------------------
 
   await updateDoc(
@@ -428,11 +502,11 @@ export async function markClaimDone(
     }
   );
 
-
   // -----------------------------------------------
-  // 3. Complete original request
+  // 3. COMPLETE ORIGINAL REQUEST
   // -----------------------------------------------
 
+  // DOCUMENT
   if (
     claim.claimType ===
     "DOCUMENT"
@@ -444,7 +518,8 @@ export async function markClaimDone(
         claim.referenceId
       ),
       {
-        status: "COMPLETED",
+        status:
+          "COMPLETED",
 
         updated_at:
           serverTimestamp(),
@@ -452,7 +527,7 @@ export async function markClaimDone(
     );
   }
 
-
+  // ITEM
   if (
     claim.claimType ===
     "ITEM"
@@ -464,7 +539,8 @@ export async function markClaimDone(
         claim.referenceId
       ),
       {
-        status: "COMPLETED",
+        status:
+          "COMPLETED",
 
         updatedAt:
           serverTimestamp(),

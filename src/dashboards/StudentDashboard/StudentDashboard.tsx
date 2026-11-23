@@ -11,12 +11,11 @@ import { db } from "../../../firebase";
 import ItemStocks from "../../pages/student/ItemStocks";
 import ItemReservation from "../../pages/student/ItemReservation";
 import DocumentRequestWizard from "../../pages/student/DocumentRequestWizard";
-import DocumentRequestList from "../../pages/student/DocumentRequestList";
 import ClaimStubPage from "../../pages/student/ClaimStubPage";
+import { MyRequests } from "../../pages/student/StudentTransactionPages";
 import GroupRequestInvitations from "../../pages/student/GroupRequestInvitations";
 import HelpCenter from "../../pages/student/HelpCenter";
 import ContactSupport from "../../pages/student/ContactSupport";
-
 
 import { useNotifications } from "../../hooks/useNotifications";
 import {
@@ -64,7 +63,8 @@ type DashboardPage =
   | "contact"
   | "profile"
   | "settings";
-type StudentTransaction = {
+
+export type StudentTransaction = {
   key: string;
   id: string;
   kind: "DOCUMENT" | "ITEM";
@@ -209,19 +209,12 @@ export default function StudentDashboard({
               key: `ITEM-${document.id}`,
               id: String(data.reservationId || document.id),
               kind: "ITEM",
-
-              title:
-                Array.isArray(data.items) && data.items.length > 0
-                  ? data.items
-                    .map((item: any) => item.itemName)
-                    .join(", ")
-                  : "Item Reservation",
-
+              title: getItemReservationTitle(data),
               status: String(data.status || "PENDING"),
               payment_status: String(data.payment_status || ""),
               claimCode: String(data.claimStubId || ""),
-              date: String(data.pickupDate || ""),
-              time: String(data.pickupTime || ""),
+              date: String(data.pickupDate || data.requestedDate || ""),
+              time: String(data.pickupTime || data.requestedTime || ""),
               createdAt: data.createdAt,
 
               details: data,
@@ -441,7 +434,10 @@ export default function StudentDashboard({
             />
           )}
           {activePage === "requests" && (
-            <DocumentRequestList studentId={studentId} />
+            <MyRequests
+              transactions={transactions}
+              loading={transactionsLoading}
+            />
           )}
           {activePage === "groupInvites" && (
             <GroupRequestInvitations
@@ -947,8 +943,12 @@ function DashboardHeader({
             Claim & Release
           </button>
 
-          <button type="button" onClick={() => onNavigate("groupInvites")}>
+          <button type="button" onClick={() => onNavigate("requests")}>
             My Requests
+          </button>
+
+          <button type="button" onClick={() => onNavigate("groupInvites")}>
+            Group Invitations
           </button>
 
           <button type="button" onClick={() => onNavigate("transactions")}>
@@ -2215,6 +2215,22 @@ function StatusBadge({
 /* =========================================
    HELPERS
 ========================================= */
+
+function getItemReservationTitle(data: Record<string, any>) {
+  const items = Array.isArray(data.items) ? data.items : [];
+
+  if (items.length === 0) {
+    return String(data.itemName || "Item Reservation");
+  }
+
+  const firstName = String(items[0]?.itemName || "Item Reservation");
+
+  if (items.length === 1) {
+    return firstName;
+  }
+
+  return `${firstName} + ${items.length - 1} more`;
+}
 
 function getKindLabel(kind: StudentTransaction["kind"]) {
   return kind === "DOCUMENT"
