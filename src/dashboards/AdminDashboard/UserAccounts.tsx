@@ -109,6 +109,17 @@ const collegePrograms: Record<string, string[]> = {
 };
 
 const collegeOptions = Object.keys(collegePrograms);
+const campusOptions = [
+  "Alaminos City Campus",
+  "Asingan Campus",
+  "Bayambang Campus",
+  "Binmaley Campus",
+  "Infanta Campus",
+  "Lingayen Campus",
+  "San Carlos City Campus",
+  "Sta. Maria Campus",
+  "Urdaneta City Campus",
+];
 
 const formatFullName = (
   firstName: string,
@@ -141,10 +152,60 @@ const getAccountDisplayName = (account: Account) => {
   );
 };
 
+const getAccountNameParts = (account: Account) => {
+  // Prefer the separate name fields if available.
+  if (account.firstName || account.lastName) {
+    return {
+      firstName: account.firstName || "",
+      middleName: account.middleName || "",
+      lastName: account.lastName || "",
+      suffix: account.suffix || "",
+    };
+  }
+
+  // Fallback for older accounts with only a full name.
+  const parts = (account.name || "").trim().split(/\s+/);
+
+  if (!parts[0]) {
+    return {
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      suffix: "",
+    };
+  }
+
+  const suffixes = ["Jr.", "Jr", "Sr.", "Sr", "II", "III", "IV"];
+  let suffix = "";
+
+  if (suffixes.includes(parts[parts.length - 1])) {
+    suffix = parts.pop() || "";
+  }
+
+  return {
+    firstName: parts[0] || "",
+    middleName: parts.length > 2
+      ? parts.slice(1, -1).join(" ")
+      : "",
+    lastName: parts.length > 1
+      ? parts[parts.length - 1]
+      : "",
+    suffix,
+  };
+};
+
 function UserAccounts() {
   // ========================================
   // CREATE ACCOUNT STATE
   // ========================================
+
+const departmentOptions = [
+  "COLLEGE OF ARTS, SCIENCES AND LETTERS / COLLEGE OF COMPUTING SCIENCES",
+  "COLLEGE OF INDUSTRIAL TECHNOLOGY / COLLEGE OF HOSPITALITY AND TOURISM MANAGEMENT",
+  "COLLEGE OF BUSINESS AND PUBLIC ADMINISTRATION",
+  "COLLEGE OF TEACHER EDUCATION",
+  "All Departments / Offices",
+];
 
   const [createStudentId, setCreateStudentId] =
     useState("");
@@ -208,6 +269,9 @@ const [createPosition, setCreatePosition] = useState("");
 
   const [hasSearched, setHasSearched] =
     useState(false);
+
+  const [selectedRole, setSelectedRole] =
+  useState("all");
 
   const [showDeletedAccounts, setShowDeletedAccounts] =
     useState(false);
@@ -350,6 +414,7 @@ const normalizedName = formatFullName(
 const isEmployeeAccount =
   createRole === "general_office" ||
   createRole === "registrar" ||
+  createRole === "cashier" ||
   createRole === "admin";
 
 // Validate student information
@@ -582,10 +647,12 @@ setCreateYearGraduated("");
       account.student_id || ""
     );
 
-    setEditLastName(account.lastName || "");
-setEditFirstName(account.firstName || "");
-setEditMiddleName(account.middleName || "");
-setEditSuffix(account.suffix || "");
+    const nameParts = getAccountNameParts(account);
+
+setEditLastName(nameParts.lastName);
+setEditFirstName(nameParts.firstName);
+setEditMiddleName(nameParts.middleName);
+setEditSuffix(nameParts.suffix);
 
     setEditEmail(
       account.email || ""
@@ -674,9 +741,10 @@ const normalizedName = formatFullName(
     editRole === "alumni";
 
   const isEmployeeAccount =
-    editRole === "general_office" ||
-    editRole === "registrar" ||
-    editRole === "admin";
+  editRole === "general_office" ||
+  editRole === "registrar" ||
+  editRole === "cashier" ||
+  editRole === "admin";
 
   // Validate common information
   if (!normalizedLastName || !normalizedFirstName) {
@@ -735,13 +803,22 @@ const normalizedName = formatFullName(
 
     const accountData = {
       // Common information
-      firebaseUid: editingAccount.firebaseUid || "",
-      role: editRole,
-      name: normalizedName,
-      email: normalizedEmail,
-      contactNumber: editContactNumber.trim(),
-      campus: editCampus.trim(),
-      status: editStatus,
+firebaseUid: editingAccount.firebaseUid || "",
+role: editRole,
+
+// Separated name information
+lastName: editLastName.trim(),
+firstName: editFirstName.trim(),
+middleName: editMiddleName.trim(),
+suffix: editSuffix.trim(),
+
+// Formatted name for compatibility
+name: normalizedName,
+
+email: normalizedEmail,
+contactNumber: editContactNumber.trim(),
+campus: editCampus.trim(),
+status: editStatus,
 
       // Remove old fields before applying the new role's data
       graduationYear: deleteField(),
@@ -919,65 +996,46 @@ const normalizedName = formatFullName(
   // ========================================
 
   const displayedAccounts = useMemo(() => {
-    let filteredAccounts = accounts;
+  let filteredAccounts = accounts;
 
-    if (!showDeletedAccounts) {
-      filteredAccounts =
-        filteredAccounts.filter(
-          (account) =>
-            account.status !== "deleted"
-        );
-    }
+  // Hide deleted accounts unless the checkbox is enabled
+  if (!showDeletedAccounts) {
+    filteredAccounts = filteredAccounts.filter(
+      (account) => account.status !== "deleted"
+    );
+  }
 
-    if (
-      hasSearched &&
-      searchTerm.trim() !== ""
-    ) {
-      const search =
-        searchTerm
-          .trim()
-          .toLowerCase();
+  // Filter by selected role
+  if (selectedRole !== "all") {
+    filteredAccounts = filteredAccounts.filter(
+      (account) => account.role === selectedRole
+    );
+  }
 
-      filteredAccounts =
-        filteredAccounts.filter(
-          (account) =>
-            getAccountDisplayName(account)
-  .toLowerCase()
-  .includes(search) ||
+  // Filter by search term
+  if (hasSearched && searchTerm.trim() !== "") {
+    const search = searchTerm.trim().toLowerCase();
 
-(account.lastName || "")
-  .toLowerCase()
-  .includes(search) ||
+    filteredAccounts = filteredAccounts.filter(
+      (account) =>
+        getAccountDisplayName(account).toLowerCase().includes(search) ||
+        (account.lastName || "").toLowerCase().includes(search) ||
+        (account.firstName || "").toLowerCase().includes(search) ||
+        (account.middleName || "").toLowerCase().includes(search) ||
+        (account.email || "").toLowerCase().includes(search) ||
+        (account.student_id || "").toLowerCase().includes(search) ||
+        (account.role || "").toLowerCase().includes(search)
+    );
+  }
 
-(account.firstName || "")
-  .toLowerCase()
-  .includes(search) ||
-
-(account.middleName || "")
-  .toLowerCase()
-  .includes(search) ||
-
-            (account.email || "")
-              .toLowerCase()
-              .includes(search) ||
-
-            (account.student_id || "")
-              .toLowerCase()
-              .includes(search) ||
-
-            (account.role || "")
-              .toLowerCase()
-              .includes(search)
-        );
-    }
-
-    return filteredAccounts;
-  }, [
-    accounts,
-    searchTerm,
-    hasSearched,
-    showDeletedAccounts,
-  ]);
+  return filteredAccounts;
+}, [
+  accounts,
+  searchTerm,
+  hasSearched,
+  showDeletedAccounts,
+  selectedRole,
+]);
 
   // ========================================
   // SUMMARY COUNTS
@@ -1030,6 +1088,14 @@ const normalizedName = formatFullName(
     ).length;
   }, [accounts]);
 
+  const cashierCount = useMemo(() => {
+  return accounts.filter(
+    (account) =>
+      account.status !== "deleted" &&
+      account.role === "cashier"
+  ).length;
+}, [accounts]);
+
   // ========================================
   // SEARCH
   // ========================================
@@ -1043,9 +1109,11 @@ const normalizedName = formatFullName(
   // ========================================
 
   const handleShowAll = () => {
-    setSearchTerm("");
-    setHasSearched(false);
-  };
+  setSearchTerm("");
+  setHasSearched(false);
+  setSelectedRole("all");
+  setShowDeletedAccounts(true);
+};
 
   // ========================================
   // PAGE
@@ -1128,6 +1196,11 @@ const normalizedName = formatFullName(
             {registrarCount}
           </strong>
         </div>
+
+        <div className="account-summary-card">
+  <span>Cashiers</span>
+  <strong>{cashierCount}</strong>
+</div>
 
         <div className="account-summary-card">
           <span>
@@ -1308,6 +1381,10 @@ const normalizedName = formatFullName(
                   Registrar
                 </option>
 
+                <option value="cashier">
+  Cashier
+</option>
+
                 <option value="admin">
                   Administrator
                 </option>
@@ -1435,7 +1512,7 @@ const normalizedName = formatFullName(
 
 {/* EMPLOYEE FIELDS */}
 
-{["general_office", "registrar", "admin"].includes(createRole) && (
+{["general_office", "registrar", "cashier", "admin"].includes(createRole) && (
   <>
     <div className="create-account-field">
       <label>Employee / Staff ID</label>
@@ -1450,16 +1527,22 @@ const normalizedName = formatFullName(
     </div>
 
     <div className="create-account-field">
-      <label>Department / Office</label>
-      <input
-        type="text"
-        placeholder="Enter department or office"
-        value={createDepartment}
-        onChange={(event) =>
-          setCreateDepartment(event.target.value)
-        }
-      />
-    </div>
+  <label>Department / Office</label>
+  <select
+    value={createDepartment}
+    onChange={(event) =>
+      setCreateDepartment(event.target.value)
+    }
+  >
+    <option value="">Select department / office</option>
+
+    {departmentOptions.map((department) => (
+      <option key={department} value={department}>
+        {department}
+      </option>
+    ))}
+  </select>
+</div>
 
     <div className="create-account-field">
       <label>Position / Job Title</label>
@@ -1479,14 +1562,31 @@ const normalizedName = formatFullName(
 
 <div className="create-account-field">
   <label>Campus</label>
-  <input
-    type="text"
-    placeholder="Enter campus"
+
+  <select
     value={createCampus}
     onChange={(event) =>
       setCreateCampus(event.target.value)
     }
-  />
+  >
+    <option value="">Select campus</option>
+
+    {campusOptions.map((campus) => (
+      <option
+        key={campus}
+        value={campus}
+        disabled={campus !== "Lingayen Campus"}
+        style={{
+          color:
+            campus === "Lingayen Campus"
+              ? "inherit"
+              : "rgba(0, 0, 0, 0.18)",
+        }}
+      >
+        {campus}
+      </option>
+    ))}
+  </select>
 </div>
 
 <div className="create-account-field">
@@ -1699,6 +1799,10 @@ const normalizedName = formatFullName(
                   Registrar
                 </option>
 
+                <option value="cashier">
+  Cashier
+</option>
+
                 <option value="admin">
                   Administrator
                 </option>
@@ -1724,28 +1828,38 @@ const normalizedName = formatFullName(
     </div>
 
     <div className="edit-account-field">
-      <label>College</label>
-      <input
-        type="text"
-        placeholder="Enter college"
-        value={editCollege}
-        onChange={(event) =>
-          setEditCollege(event.target.value)
-        }
-      />
-    </div>
+  <label>College</label>
+  <select
+    value={editCollege}
+    onChange={(event) => {
+      setEditCollege(event.target.value);
+      setEditProgram("");
+    }}
+  >
+    <option value="">Select college</option>
+    {collegeOptions.map((college) => (
+      <option key={college} value={college}>
+        {college}
+      </option>
+    ))}
+  </select>
+</div>
 
-    <div className="edit-account-field">
-      <label>Program</label>
-      <input
-        type="text"
-        placeholder="Enter program"
-        value={editProgram}
-        onChange={(event) =>
-          setEditProgram(event.target.value)
-        }
-      />
-    </div>
+<div className="edit-account-field">
+  <label>Program</label>
+  <select
+    value={editProgram}
+    onChange={(event) => setEditProgram(event.target.value)}
+    disabled={!editCollege}
+  >
+    <option value="">Select program</option>
+    {(collegePrograms[editCollege] || []).map((program) => (
+      <option key={program} value={program}>
+        {program}
+      </option>
+    ))}
+  </select>
+</div>
 
     <div className="edit-account-field">
       <label>Year Level</label>
@@ -1813,7 +1927,7 @@ const normalizedName = formatFullName(
 
 {/* EMPLOYEE FIELDS */}
 
-{["general_office", "registrar", "admin"].includes(editRole) && (
+{["general_office", "registrar", "cashier", "admin"].includes(editRole) && (
   <>
     <div className="edit-account-field">
       <label>Employee / Staff ID</label>
@@ -1828,16 +1942,22 @@ const normalizedName = formatFullName(
     </div>
 
     <div className="edit-account-field">
-      <label>Department / Office</label>
-      <input
-        type="text"
-        placeholder="Enter department or office"
-        value={editDepartment}
-        onChange={(event) =>
-          setEditDepartment(event.target.value)
-        }
-      />
-    </div>
+  <label>Department / Office</label>
+  <select
+    value={editDepartment}
+    onChange={(event) =>
+      setEditDepartment(event.target.value)
+    }
+  >
+    <option value="">Select department / office</option>
+
+    {departmentOptions.map((department) => (
+      <option key={department} value={department}>
+        {department}
+      </option>
+    ))}
+  </select>
+</div>
 
     <div className="edit-account-field">
       <label>Position / Job Title</label>
@@ -1857,14 +1977,31 @@ const normalizedName = formatFullName(
 
 <div className="edit-account-field">
   <label>Campus</label>
-  <input
-    type="text"
-    placeholder="Enter campus"
+
+  <select
     value={editCampus}
     onChange={(event) =>
       setEditCampus(event.target.value)
     }
-  />
+  >
+    <option value="">Select campus</option>
+
+    {campusOptions.map((campus) => (
+      <option
+        key={campus}
+        value={campus}
+        disabled={campus !== "Lingayen Campus"}
+        style={{
+          color:
+            campus === "Lingayen Campus"
+              ? "inherit"
+              : "rgba(0, 0, 0, 0.18)",
+        }}
+      >
+        {campus}
+      </option>
+    ))}
+  </select>
 </div>
 
 <div className="edit-account-field">
@@ -1951,65 +2088,74 @@ const normalizedName = formatFullName(
 
       <div className="user-accounts-search-section">
 
-        <div className="user-accounts-search">
+  <div className="user-accounts-search">
 
-          <input
-            type="text"
-            placeholder="Search by name, email, student ID, or role..."
-            value={searchTerm}
-            onChange={(event) =>
-              setSearchTerm(
-                event.target.value
-              )
-            }
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                handleSearch();
-              }
-            }}
-          />
+    <input
+      type="text"
+      placeholder="Search by name, email, student ID, or role..."
+      value={searchTerm}
+      onChange={(event) =>
+        setSearchTerm(event.target.value)
+      }
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          handleSearch();
+        }
+      }}
+    />
 
-          <button
-            onClick={handleSearch}
-          >
-            🔍 Search
-          </button>
+    <button onClick={handleSearch}>
+      🔍 Search
+    </button>
 
-        </div>
+  </div>
 
-        <div className="user-accounts-search-options">
+  {/* ROLE FILTER */}
 
-          <label>
+  <div className="user-accounts-search-options">
 
-            <input
-              type="checkbox"
-              checked={
-                showDeletedAccounts
-              }
-              onChange={(event) =>
-                setShowDeletedAccounts(
-                  event.target.checked
-                )
-              }
-            />
+    <label htmlFor="role-filter">
+      Filter by Role:
+    </label>
 
-            Show deleted accounts
+    <select
+      id="role-filter"
+      value={selectedRole}
+      onChange={(event) =>
+        setSelectedRole(event.target.value)
+      }
+    >
+      <option value="all">All Roles</option>
+      <option value="student">Students</option>
+      <option value="alumni">Alumni</option>
+      <option value="general_office">General Office</option>
+      <option value="registrar">Registrar</option>
+      <option value="cashier">Cashiers</option>
+      <option value="admin">Administrators</option>
+    </select>
 
-          </label>
+    <label>
+      <input
+        type="checkbox"
+        checked={showDeletedAccounts}
+        onChange={(event) =>
+          setShowDeletedAccounts(event.target.checked)
+        }
+      />
 
-          <button
-            onClick={handleShowAll}
-          >
-            Show All
-          </button>
+      Show deleted accounts
+    </label>
 
-        </div>
+    <button onClick={handleShowAll}>
+      Show All
+    </button>
 
-      </div>
+  </div>
 
-      {/* ========================================
-          ERROR
-      ======================================== */}
+</div>
+
+
+      
 
       {error && (
         <p className="user-accounts-error">

@@ -670,7 +670,7 @@ export default function StepMethod({
               }}
             >
               {canEditMembers
-                ? "Search for another student using their Student ID. Once you add them, an invitation will be sent to their registered Gmail."
+                ? "Search for another student using their Student ID. Once you add them, an invitation will be sent to their dashboards."
                 : "The students already included in this request are shown below."}
             </p>
           </div>
@@ -1141,7 +1141,7 @@ export default function StepMethod({
                 }}
               >
                 {canEditMembers
-                  ? "You can remove a student while the request is still being prepared. Students must respond to their invitation through Gmail."
+                  ? "You can remove a student while the request is still being prepared. Students can respond through their dashboard notification."
                   : "The group member list is locked because this request has already been submitted. Members can no longer be added or removed."}
               </div>
             </div>

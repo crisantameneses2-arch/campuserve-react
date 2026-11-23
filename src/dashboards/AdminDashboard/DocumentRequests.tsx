@@ -132,7 +132,7 @@ function DocumentRequests() {
                     <span
                       className={`request-status ${request.status
                         .toLowerCase()
-                        .replaceAll(" ", "-")}`}
+                          .replace(/ /g, "-")}`}
                     >
                       {request.status}
                     </span>

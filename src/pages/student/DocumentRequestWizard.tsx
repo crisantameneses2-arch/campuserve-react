@@ -1,6 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { deleteDoc, doc } from "firebase/firestore";
+import {
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
 
 import StepProgress from "../../components/document-request/StepProgress";
 import StepMethod from "../../components/document-request/StepMethod";
@@ -8,7 +15,7 @@ import StepDocuments, {
   type SelectedDocument,
 } from "../../components/document-request/StepDocuments";
 import StepDetails from "../../components/document-request/StepDetails";
-import StepSchedule from "../../components/document-request/StepSchedule";
+
 
 import {
   createDocumentDetails,
@@ -20,20 +27,23 @@ import {
   subscribeToGroupRequestMembers,
 } from "../../services/documentRequests";
 
-import { SCHEDULE } from "../../constants/schedule";
+
 import { DOCUMENTS } from "../../constants/documents";
 
-import { auth, db } from "../../../firebase";
-
+import { db } from "../../../firebase";
 /* =========================================================
    TYPES
 ========================================================= */
 
 type DocumentRequestWizardProps = {
   studentId: string;
+  draftRequestId?: string | null;
 };
 
-type GroupMemberStatus = "PENDING" | "ACCEPTED" | "DECLINED";
+type GroupMemberStatus =
+  | "PENDING"
+  | "ACCEPTED"
+  | "DECLINED";
 
 type GroupMember = {
   member_id?: string;
@@ -54,100 +64,30 @@ type RequestStatus =
   | string;
 
 /* =========================================================
-   SEND GROUP INVITATION (VERCEL API)
-
-   FIX: the API (api/send-group-invitation.ts) returns its
-   errors as { error: "..." }, but the old code only read
-   result.message, so the real reason was always replaced by
-   "The invitation could not be sent."
-
-   This helper now:
-   - reads result.error (and result.message as a fallback)
-   - explains network failures
-   - explains a 404 (the /api folder is not running)
-   - shows the HTTP status for any other unknown failure
-========================================================= */
-
-async function sendGroupInvitation(
-  requestId: string,
-  memberId: string,
-  idToken: string
-): Promise<void> {
-  let response: Response;
-
-  try {
-    response = await fetch("/api/send-group-invitation", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`,
-      },
-      body: JSON.stringify({ requestId, memberId }),
-    });
-  } catch (networkError) {
-    console.error("Invitation request failed to send:", networkError);
-
-    throw new Error(
-      "Could not reach the invitation server. Check your internet connection and try again."
-    );
-  }
-
-  let result: { error?: unknown; message?: unknown } = {};
-
-  try {
-    result = await response.json();
-  } catch {
-    // The server did not return JSON (for example, a crashed
-    // function or a 404 page). Handled below.
-  }
-
-  if (response.ok) {
-    return;
-  }
-
-  console.error("Invitation API error:", response.status, result);
-
-  if (typeof result.error === "string" && result.error) {
-    throw new Error(result.error);
-  }
-
-  if (typeof result.message === "string" && result.message) {
-    throw new Error(result.message);
-  }
-
-  if (response.status === 404) {
-    throw new Error(
-      "The invitation service was not found (404). If you are testing locally, start the app with `vercel dev` instead of `npm run dev`."
-    );
-  }
-
-  throw new Error(
-    `The invitation could not be sent (server error ${response.status}). Check the Vercel function logs and environment variables.`
-  );
-}
-
-/* =========================================================
    COMPONENT
 ========================================================= */
-
 export default function DocumentRequestWizard({
   studentId,
+  draftRequestId = null,
 }: DocumentRequestWizardProps) {
   /* =======================================================
      WIZARD STATE
   ======================================================= */
 
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] =
+    useState(1);
 
   /* =======================================================
      STEP 1 - REQUEST METHOD
   ======================================================= */
 
-  const [requestMethod, setRequestMethod] = useState<"OWN" | "WITH_OTHERS">(
-    "OWN"
-  );
+  const [requestMethod, setRequestMethod] =
+    useState<"OWN" | "WITH_OTHERS">(
+      "OWN"
+    );
 
-  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [groupMembers, setGroupMembers] =
+    useState<GroupMember[]>([]);
 
   /*
    * Actual Firestore document request ID.
@@ -159,51 +99,65 @@ export default function DocumentRequestWizard({
    *   Created as DRAFT when the first
    *   invitation is created.
    */
-  const [groupRequestId, setGroupRequestId] = useState<string | null>(null);
+  const [groupRequestId, setGroupRequestId] =
+    useState<string | null>(null);
 
   const [groupRequestStatus, setGroupRequestStatus] =
     useState<RequestStatus>("DRAFT");
+  useEffect(() => {
+    if (!draftRequestId) return;
 
-  const [creatingGroupRequest, setCreatingGroupRequest] = useState(false);
+    setRequestMethod("WITH_OTHERS");
+    setGroupRequestId(draftRequestId);
+    setGroupRequestStatus("DRAFT");
+    setCurrentStep(1);
+    setError("");
+  }, [draftRequestId]);
 
-  const [sendingInvitation, setSendingInvitation] = useState(false);
+  const [creatingGroupRequest, setCreatingGroupRequest] =
+    useState(false);
+
+  const [sendingInvitation, setSendingInvitation] =
+    useState(false);
 
   /*
    * Confirmation box shown after all
    * invitations have received a response.
    */
-  const [showGroupConfirmation, setShowGroupConfirmation] = useState(false);
+  const [showGroupConfirmation, setShowGroupConfirmation] =
+    useState(false);
 
   /* =======================================================
      STEP 2 - DOCUMENTS
   ======================================================= */
 
-  const [selectedDocuments, setSelectedDocuments] = useState<
-    SelectedDocument[]
-  >([]);
+  const [selectedDocuments, setSelectedDocuments] =
+    useState<SelectedDocument[]>([]);
 
   /* =======================================================
      STEP 3 - DETAILS
   ======================================================= */
 
-  const [purpose, setPurpose] = useState("");
+  const [purpose, setPurpose] =
+    useState("");
 
   /* =======================================================
      STEP 4 - SCHEDULE
   ======================================================= */
 
-  const [requestedDate, setRequestedDate] = useState("");
-  const [requestedTime, setRequestedTime] = useState("");
 
   /* =======================================================
      SUBMISSION STATE
   ======================================================= */
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [successRequestId, setSuccessRequestId] = useState<string | null>(
-    null
-  );
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const [successRequestId, setSuccessRequestId] =
+    useState<string | null>(null);
 
   /* =======================================================
      CALCULATED VALUES
@@ -211,14 +165,17 @@ export default function DocumentRequestWizard({
 
   const numberOfCopies = useMemo(() => {
     return selectedDocuments.reduce(
-      (total, document) => total + document.quantity,
+      (total, document) =>
+        total + document.quantity,
       0
     );
   }, [selectedDocuments]);
 
   const totalAmount = useMemo(() => {
     return selectedDocuments.reduce(
-      (total, document) => total + (document.subtotal ?? 0),
+      (total, document) =>
+        total +
+        (document.subtotal ?? 0),
       0
     );
   }, [selectedDocuments]);
@@ -227,8 +184,13 @@ export default function DocumentRequestWizard({
      DOCUMENT CATALOG
   ======================================================= */
 
-  function getCatalogDocument(documentId: string) {
-    return DOCUMENTS.find((document) => document.id === documentId);
+  function getCatalogDocument(
+    documentId: string
+  ) {
+    return DOCUMENTS.find(
+      (document) =>
+        document.id === documentId
+    );
   }
 
   /* =======================================================
@@ -241,17 +203,24 @@ export default function DocumentRequestWizard({
     }
 
     if (creatingGroupRequest) {
-      throw new Error("A group request is already being created.");
+      throw new Error(
+        "A group request is already being created."
+      );
     }
 
     if (!studentId.trim()) {
-      throw new Error("Your student account could not be identified.");
+      throw new Error(
+        "Your student account could not be identified."
+      );
     }
 
     try {
       setCreatingGroupRequest(true);
 
-      const requestId = await createDraftGroupDocumentRequest(studentId);
+      const requestId =
+        await createDraftGroupDocumentRequest(
+          studentId
+        );
 
       setGroupRequestId(requestId);
       setGroupRequestStatus("DRAFT");
@@ -267,82 +236,140 @@ export default function DocumentRequestWizard({
   ======================================================= */
 
   useEffect(() => {
-    if (requestMethod !== "WITH_OTHERS" || !groupRequestId) {
+    if (
+      requestMethod !== "WITH_OTHERS" ||
+      !groupRequestId
+    ) {
       return;
     }
 
-    const unsubscribe = subscribeToDocumentRequest(
-      groupRequestId,
-      (requestData) => {
-        if (!requestData) {
-          return;
-        }
+    const unsubscribe =
+      subscribeToDocumentRequest(
+        groupRequestId,
+        (requestData) => {
+          if (!requestData) {
+            return;
+          }
 
-        setGroupRequestStatus(String(requestData.status ?? "DRAFT"));
-      }
-    );
+          const status =
+            String(
+              requestData.status ??
+              "DRAFT"
+            );
+
+          setGroupRequestStatus(
+            status
+          );
+        }
+      );
 
     return unsubscribe;
-  }, [requestMethod, groupRequestId]);
+  }, [
+    requestMethod,
+    groupRequestId,
+  ]);
 
   /* =======================================================
      GROUP REQUEST - SUBSCRIBE TO MEMBERS
   ======================================================= */
 
   useEffect(() => {
-    if (requestMethod !== "WITH_OTHERS" || !groupRequestId) {
+    if (
+      requestMethod !== "WITH_OTHERS" ||
+      !groupRequestId
+    ) {
       return;
     }
 
-    const unsubscribe = subscribeToGroupRequestMembers(
-      groupRequestId,
-      (members) => {
-        const normalizedMembers: GroupMember[] = members.map((member) => ({
-          member_id:
-            typeof member.member_id === "string" ? member.member_id : undefined,
+    const unsubscribe =
+      subscribeToGroupRequestMembers(
+        groupRequestId,
+        (members) => {
+          const normalizedMembers =
+            members.map((member) => ({
+              member_id:
+                typeof member.member_id ===
+                  "string"
+                  ? member.member_id
+                  : undefined,
 
-          student_id: String(member.student_id ?? ""),
+              student_id:
+                String(
+                  member.student_id ??
+                  ""
+                ),
 
-          invitation_status: (member.invitation_status ??
-            "PENDING") as GroupMemberStatus,
+              invitation_status:
+                (
+                  member.invitation_status ??
+                  "PENDING"
+                ) as GroupMemberStatus,
 
-          invitation_sent: Boolean(member.invitation_sent),
+              invitation_sent:
+                Boolean(
+                  member.invitation_sent
+                ),
 
-          invited_at: member.invited_at,
+              invited_at:
+                member.invited_at,
 
-          responded_at: member.responded_at,
-        }));
+              responded_at:
+                member.responded_at,
+            }));
 
-        setGroupMembers(normalizedMembers);
-      }
-    );
+          setGroupMembers(
+            normalizedMembers
+          );
+        }
+      );
 
     return unsubscribe;
-  }, [requestMethod, groupRequestId]);
+  }, [
+    requestMethod,
+    groupRequestId,
+  ]);
 
   /* =======================================================
      GROUP REQUEST - STATUS HELPERS
   ======================================================= */
 
   const isGroupDraft =
-    requestMethod === "WITH_OTHERS" && groupRequestStatus === "DRAFT";
+    requestMethod === "WITH_OTHERS" &&
+    groupRequestStatus === "DRAFT";
 
-  const hasPendingMembers = groupMembers.some(
-    (member) => member.invitation_status === "PENDING"
-  );
+  const hasPendingMembers =
+    groupMembers.some(
+      (member) =>
+        member.invitation_status ===
+        "PENDING"
+    );
 
-  const hasAcceptedMembers = groupMembers.some(
-    (member) => member.invitation_status === "ACCEPTED"
-  );
+  const hasAcceptedMembers =
+    groupMembers.some(
+      (member) =>
+        member.invitation_status ===
+        "ACCEPTED"
+    );
 
-  const allMembersAnswered = groupMembers.length > 0 && !hasPendingMembers;
+  const allMembersAnswered =
+    groupMembers.length > 0 &&
+    !hasPendingMembers;
 
   /* =======================================================
      STEP 1 - ADD GROUP MEMBER
   ======================================================= */
 
-  async function addGroupMember(memberStudentId: string) {
-    const cleanedStudentId = memberStudentId.trim();
+
+  async function addGroupMember(
+    memberStudentId: string
+  ) {
+    const cleanedStudentId =
+      memberStudentId.trim();
+
+    // Prevent double clicks while an invitation is being created.
+    if (sendingInvitation || creatingGroupRequest) {
+      return;
+    }
 
     setError("");
 
@@ -350,23 +377,13 @@ export default function DocumentRequestWizard({
       return;
     }
 
-    /*
-     * Prevent double clicks while an
-     * invitation is already being created.
-     */
-    if (sendingInvitation || creatingGroupRequest) {
-      return;
-    }
-
     if (requestMethod !== "WITH_OTHERS") {
-      setError("Please select With Others first.");
+      setError(
+        "Please select With Others first."
+      );
       return;
     }
 
-    /*
-     * Members may only be changed
-     * while the parent request is DRAFT.
-     */
     if (!isGroupDraft) {
       setError(
         "This group request has already been submitted. Members can no longer be changed."
@@ -374,123 +391,70 @@ export default function DocumentRequestWizard({
       return;
     }
 
-    /*
-     * Prevent the host from adding
-     * themselves.
-     */
-    if (cleanedStudentId.toLowerCase() === studentId.trim().toLowerCase()) {
-      setError("You cannot add yourself to the group request.");
+    if (
+      cleanedStudentId.toLowerCase() ===
+      studentId.trim().toLowerCase()
+    ) {
+      setError(
+        "You cannot add yourself to the group request."
+      );
       return;
     }
 
-    /*
-     * Prevent duplicate members.
-     */
     if (
       groupMembers.some(
         (member) =>
-          member.student_id.toLowerCase() === cleanedStudentId.toLowerCase()
+          member.student_id.toLowerCase() ===
+          cleanedStudentId.toLowerCase()
       )
     ) {
-      setError("This student is already in the group request.");
+      setError(
+        "This student is already in the group request."
+      );
       return;
     }
-
-    /*
-     * Keep this outside the try block.
-     *
-     * If the invitation fails after the
-     * Firestore member has been created,
-     * we can delete that member.
-     */
-    let createdMemberId: string | null = null;
 
     try {
       setSendingInvitation(true);
 
-      /*
-       * 1. Make sure the real DRAFT
-       *    document request exists.
-       */
-      const requestId = await ensureGroupDraft();
+      // 1. Ensure the group DRAFT exists.
+      const requestId =
+        await ensureGroupDraft();
 
-      /*
-       * 2. Create the group member.
-       *    The member begins as PENDING.
-       */
-      createdMemberId = await createGroupMember(requestId, cleanedStudentId);
+      // 2. Create the Firestore invitation.
+      // The invitation will appear in the
+      // invited student's CampuServe dashboard.
+      await createGroupMember(
+        requestId,
+        cleanedStudentId
+      );
 
-      /*
-       * 3. Get the currently authenticated
-       *    Firebase user.
-       */
-      const currentUser = auth.currentUser;
-
-      if (!currentUser) {
-        throw new Error(
-          "Your login session could not be found. Please log in again."
-        );
-      }
-
-      /*
-       * 4. Get the Firebase ID token.
-       */
-      const idToken = await currentUser.getIdToken();
-
-      /*
-       * 5. Send the invitation through the Vercel API.
-       *
-       * The API handles:
-       * - host verification
-       * - invited student's email lookup
-       * - secure token generation
-       * - Resend email
-       *
-       * Any failure is thrown with the REAL reason.
-       */
-      await sendGroupInvitation(requestId, createdMemberId, idToken);
-
-      /*
-       * Firestore onSnapshot will update
-       * the member list automatically.
-       */
+      // Firestore subscriptions will automatically
+      // update the host's member list.
     } catch (addError) {
-      console.error("Failed to add group member:", addError);
-
-      /*
-       * IMPORTANT:
-       *
-       * If we already created the member
-       * but the email failed, remove the
-       * orphaned member while the request
-       * is still DRAFT.
-       */
-      if (createdMemberId) {
-        try {
-          await deleteDoc(doc(db, "group_request_members", createdMemberId));
-        } catch (cleanupError) {
-          console.error(
-            "Failed to clean up group member after invitation failure:",
-            cleanupError
-          );
-        }
-      }
+      console.error(
+        "Failed to add group member:",
+        addError
+      );
 
       setError(
         addError instanceof Error
           ? addError.message
-          : "The invitation could not be sent."
+          : "The invitation could not be created. Please try again."
       );
     } finally {
       setSendingInvitation(false);
     }
   }
 
+
   /* =======================================================
      STEP 1 - REMOVE GROUP MEMBER
   ======================================================= */
 
-  async function removeGroupMember(memberStudentId: string) {
+  async function removeGroupMember(
+    memberStudentId: string
+  ) {
     setError("");
 
     /*
@@ -506,29 +470,41 @@ export default function DocumentRequestWizard({
       return;
     }
 
-    const member = groupMembers.find(
-      (item) => item.student_id === memberStudentId
-    );
+    const member =
+      groupMembers.find(
+        (item) =>
+          item.student_id ===
+          memberStudentId
+      );
 
     if (!member) {
       return;
     }
 
     if (!member.member_id) {
-      setError("This group member record could not be identified.");
+      setError(
+        "This group member record could not be identified."
+      );
       return;
     }
 
-    const confirmed = window.confirm(
-      `Remove ${member.student_id} from this group request?`
-    );
+    const confirmed =
+      window.confirm(
+        `Remove ${member.student_id} from this group request?`
+      );
 
     if (!confirmed) {
       return;
     }
 
     try {
-      await deleteDoc(doc(db, "group_request_members", member.member_id));
+      await deleteDoc(
+        doc(
+          db,
+          "group_request_members",
+          member.member_id
+        )
+      );
 
       /*
        * The Firestore subscription will
@@ -537,13 +513,23 @@ export default function DocumentRequestWizard({
        * We also update local state immediately
        * so the UI responds without waiting.
        */
-      setGroupMembers((current) =>
-        current.filter((item) => item.member_id !== member.member_id)
+      setGroupMembers(
+        (current) =>
+          current.filter(
+            (item) =>
+              item.member_id !==
+              member.member_id
+          )
       );
     } catch (removeError) {
-      console.error("Failed to remove group member:", removeError);
+      console.error(
+        "Failed to remove group member:",
+        removeError
+      );
 
-      setError("The group member could not be removed. Please try again.");
+      setError(
+        "The group member could not be removed. Please try again."
+      );
     }
   }
 
@@ -551,79 +537,134 @@ export default function DocumentRequestWizard({
      STEP 2 - DOCUMENT SELECTION
   ======================================================= */
 
-  function toggleDocument(documentId: string) {
-    setSelectedDocuments((current) => {
-      const existing = current.find((item) => item.id === documentId);
+  function toggleDocument(
+    documentId: string
+  ) {
+    setSelectedDocuments(
+      (current) => {
+        const existing =
+          current.find(
+            (item) =>
+              item.id ===
+              documentId
+          );
 
-      /*
-       * If already selected, remove it.
-       */
-      if (existing) {
-        return current.filter((item) => item.id !== documentId);
-      }
-
-      /*
-       * Find the document in the central catalog.
-       */
-      const catalogDocument = getCatalogDocument(documentId);
-
-      if (!catalogDocument) {
-        return current;
-      }
-
-      /*
-       * Add the selected document.
-       */
-      return [
-        ...current,
-        {
-          id: catalogDocument.id,
-
-          document_type:
-            catalogDocument.id === "others" ? "Others" : catalogDocument.name,
-
-          custom_document_name: catalogDocument.id === "others" ? "" : null,
-
-          quantity: 1,
-
-          unit_price: catalogDocument.price,
-
-          subtotal: catalogDocument.price,
-        },
-      ];
-    });
-  }
-
-  function changeQuantity(documentId: string, quantity: number) {
-    const safeQuantity = Math.min(5, Math.max(1, quantity));
-
-    setSelectedDocuments((current) =>
-      current.map((document) => {
-        if (document.id !== documentId) {
-          return document;
+        /*
+         * If already selected,
+         * remove it.
+         */
+        if (existing) {
+          return current.filter(
+            (item) =>
+              item.id !==
+              documentId
+          );
         }
 
-        const subtotal =
-          document.unit_price === null
-            ? null
-            : document.unit_price * safeQuantity;
+        /*
+         * Find the document in
+         * the central catalog.
+         */
+        const catalogDocument =
+          getCatalogDocument(
+            documentId
+          );
 
-        return {
-          ...document,
-          quantity: safeQuantity,
-          subtotal,
-        };
-      })
+        if (!catalogDocument) {
+          return current;
+        }
+
+        /*
+         * Add the selected document.
+         */
+        return [
+          ...current,
+
+          {
+            id:
+              catalogDocument.id,
+
+            document_type:
+              catalogDocument.id ===
+                "others"
+                ? "Others"
+                : catalogDocument.name,
+
+            custom_document_name:
+              catalogDocument.id ===
+                "others"
+                ? ""
+                : null,
+
+            quantity: 1,
+
+            unit_price:
+              catalogDocument.price,
+
+            subtotal:
+              catalogDocument.price,
+          },
+        ];
+      }
     );
   }
 
-  function changeCustomName(documentId: string, customName: string) {
-    setSelectedDocuments((current) =>
-      current.map((document) =>
-        document.id === documentId
-          ? { ...document, custom_document_name: customName }
-          : document
-      )
+  function changeQuantity(
+    documentId: string,
+    quantity: number
+  ) {
+    const safeQuantity =
+      Math.min(
+        5,
+        Math.max(1, quantity)
+      );
+
+    setSelectedDocuments(
+      (current) =>
+        current.map(
+          (document) => {
+            if (
+              document.id !==
+              documentId
+            ) {
+              return document;
+            }
+
+            const subtotal =
+              document.unit_price ===
+                null
+                ? null
+                : document.unit_price *
+                safeQuantity;
+
+            return {
+              ...document,
+              quantity:
+                safeQuantity,
+              subtotal,
+            };
+          }
+        )
+    );
+  }
+
+  function changeCustomName(
+    documentId: string,
+    customName: string
+  ) {
+    setSelectedDocuments(
+      (current) =>
+        current.map(
+          (document) =>
+            document.id ===
+              documentId
+              ? {
+                ...document,
+                custom_document_name:
+                  customName,
+              }
+              : document
+        )
     );
   }
 
@@ -631,65 +672,48 @@ export default function DocumentRequestWizard({
      STEP 4 - SCHEDULE VALIDATION
   ======================================================= */
 
-  function validateSchedule(): string | null {
-    if (!requestedDate) {
-      return "Please select a claiming date.";
-    }
-
-    if (!requestedTime) {
-      return "Please select a claiming time.";
-    }
-
-    const [hourText, minuteText] = requestedTime.split(":");
-
-    const hour = Number(hourText);
-    const minute = Number(minuteText);
-
-    if (Number.isNaN(hour) || Number.isNaN(minute)) {
-      return "Please enter a valid claiming time.";
-    }
-
-    const totalMinutes = hour * 60 + minute;
-
-    const startMinutes = SCHEDULE.START_HOUR * 60;
-    const endMinutes = SCHEDULE.END_HOUR * 60;
-    const lunchStart = SCHEDULE.LUNCH_START_HOUR * 60;
-    const lunchEnd = SCHEDULE.LUNCH_END_HOUR * 60;
-
-    if (totalMinutes < startMinutes || totalMinutes > endMinutes) {
-      return "Claiming time must be between 8:00 AM and 5:00 PM.";
-    }
-
-    if (totalMinutes >= lunchStart && totalMinutes < lunchEnd) {
-      return "12:00 PM to 1:00 PM is unavailable.";
-    }
-
-    return null;
-  }
 
   /* =======================================================
      VALIDATION - METHOD
   ======================================================= */
 
   function validateMethod(): string | null {
-    if (requestMethod === "WITH_OTHERS" && groupMembers.length === 0) {
-      return "Please add at least one other student.";
+    if (
+      requestMethod ===
+      "WITH_OTHERS" &&
+      groupMembers.length === 0
+    ) {
+      return (
+        "Please add at least one other student."
+      );
     }
 
     /*
      * Every invitation must receive
-     * a Gmail response before continuing.
+     * an in-app response before continuing.
      */
-    if (requestMethod === "WITH_OTHERS" && hasPendingMembers) {
-      return "Please wait for all invited students to accept or decline the invitation.";
+    if (
+      requestMethod ===
+      "WITH_OTHERS" &&
+      hasPendingMembers
+    ) {
+      return (
+        "Please wait for all invited students to accept or decline the invitation."
+      );
     }
 
     /*
      * At least one invited student
      * must accept.
      */
-    if (requestMethod === "WITH_OTHERS" && !hasAcceptedMembers) {
-      return "At least one invited student must accept the group request.";
+    if (
+      requestMethod ===
+      "WITH_OTHERS" &&
+      !hasAcceptedMembers
+    ) {
+      return (
+        "At least one invited student must accept the group request."
+      );
     }
 
     return null;
@@ -700,20 +724,33 @@ export default function DocumentRequestWizard({
   ======================================================= */
 
   function validateDocuments(): string | null {
-    if (selectedDocuments.length === 0) {
-      return "Please select at least one document.";
+    if (
+      selectedDocuments.length ===
+      0
+    ) {
+      return (
+        "Please select at least one document."
+      );
     }
 
     for (const document of selectedDocuments) {
-      if (document.quantity < 1 || document.quantity > 5) {
-        return "Each document quantity must be between 1 and 5.";
+      if (
+        document.quantity < 1 ||
+        document.quantity > 5
+      ) {
+        return (
+          "Each document quantity must be between 1 and 5."
+        );
       }
 
       if (
-        document.document_type === "Others" &&
+        document.document_type ===
+        "Others" &&
         !document.custom_document_name?.trim()
       ) {
-        return "Please enter the custom document name for Others.";
+        return (
+          "Please enter the custom document name for Others."
+        );
       }
     }
 
@@ -726,7 +763,9 @@ export default function DocumentRequestWizard({
 
   function validateDetails(): string | null {
     if (!purpose.trim()) {
-      return "Please enter the purpose of the request.";
+      return (
+        "Please enter the purpose of the request."
+      );
     }
 
     return null;
@@ -749,10 +788,6 @@ export default function DocumentRequestWizard({
       return validateDetails();
     }
 
-    if (currentStep === 4) {
-      return validateSchedule();
-    }
-
     return null;
   }
 
@@ -761,12 +796,25 @@ export default function DocumentRequestWizard({
   ======================================================= */
 
   function validateEverything(): string | null {
-    return (
-      validateMethod() ??
-      validateDocuments() ??
-      validateDetails() ??
-      validateSchedule()
-    );
+    const methodError = validateMethod();
+
+    if (methodError) {
+      return methodError;
+    }
+
+    const documentError = validateDocuments();
+
+    if (documentError) {
+      return documentError;
+    }
+
+    const detailsError = validateDetails();
+
+    if (detailsError) {
+      return detailsError;
+    }
+
+    return null;
   }
 
   /* =======================================================
@@ -776,14 +824,18 @@ export default function DocumentRequestWizard({
   function continueFromGroupConfirmation() {
     setError("");
 
-    const methodError = validateMethod();
+    const methodError =
+      validateMethod();
 
     if (methodError) {
       setError(methodError);
       return;
     }
 
-    setShowGroupConfirmation(false);
+    setShowGroupConfirmation(
+      false
+    );
+
     setCurrentStep(2);
   }
 
@@ -798,15 +850,23 @@ export default function DocumentRequestWizard({
      * Group Step 1 has a special
      * confirmation screen.
      */
-    if (currentStep === 1 && requestMethod === "WITH_OTHERS") {
-      if (groupMembers.length === 0) {
-        setError("Please add at least one other student.");
+    if (
+      currentStep === 1 &&
+      requestMethod ===
+      "WITH_OTHERS"
+    ) {
+      if (
+        groupMembers.length === 0
+      ) {
+        setError(
+          "Please add at least one other student."
+        );
         return;
       }
 
       if (hasPendingMembers) {
         setError(
-          "Please wait for all invited students to respond through Gmail."
+          "Please wait for all invited students to respond through CampuServe."
         );
         return;
       }
@@ -818,19 +878,25 @@ export default function DocumentRequestWizard({
         return;
       }
 
-      setShowGroupConfirmation(true);
+      setShowGroupConfirmation(
+        true
+      );
+
       return;
     }
 
-    const validationError = validateCurrentStep();
+    const validationError =
+      validateCurrentStep();
 
     if (validationError) {
       setError(validationError);
       return;
     }
 
-    if (currentStep < 4) {
-      setCurrentStep((step) => step + 1);
+    if (currentStep < 3) {
+      setCurrentStep(
+        (step) => step + 1
+      );
     }
   }
 
@@ -838,19 +904,26 @@ export default function DocumentRequestWizard({
     setError("");
 
     /*
-     * If confirmation is open, close it first.
+     * If confirmation is open,
+     * close it first.
      */
     if (showGroupConfirmation) {
-      setShowGroupConfirmation(false);
+      setShowGroupConfirmation(
+        false
+      );
       return;
     }
 
     if (currentStep > 1) {
-      setCurrentStep((step) => step - 1);
+      setCurrentStep(
+        (step) => step - 1
+      );
     }
   }
 
-  function handleStepClick(step: number) {
+  function handleStepClick(
+    step: number
+  ) {
     setError("");
 
     if (showGroupConfirmation) {
@@ -873,7 +946,8 @@ export default function DocumentRequestWizard({
   async function handleSubmit() {
     setError("");
 
-    const validationError = validateEverything();
+    const validationError =
+      validateEverything();
 
     if (validationError) {
       setError(validationError);
@@ -898,41 +972,96 @@ export default function DocumentRequestWizard({
          GROUP REQUEST
       ================================================= */
 
-      if (requestMethod === "WITH_OTHERS") {
+      if (
+        requestMethod ===
+        "WITH_OTHERS"
+      ) {
         /*
          * The group request already exists
          * because it was created as DRAFT
          * when the first invitation was sent.
          */
         if (!groupRequestId) {
-          throw new Error("The group request could not be found.");
+          throw new Error(
+            "The group request could not be found."
+          );
         }
 
         /*
-         * Make sure the request is still DRAFT.
+         * Make sure the request is
+         * still DRAFT.
          */
-        if (groupRequestStatus !== "DRAFT") {
-          throw new Error("This group request has already been submitted.");
+        if (
+          groupRequestStatus !==
+          "DRAFT"
+        ) {
+          throw new Error(
+            "This group request has already been submitted."
+          );
         }
 
         /*
-         * Finalize the existing DRAFT (DRAFT -> PENDING).
+         * Finalize the existing DRAFT.
+         *
+         * DRAFT
+         *   ↓
+         * PENDING
+         *
          * Group members are NOT recreated.
          */
-        await finalizeDraftGroupDocumentRequest(groupRequestId, {
-          purpose: purpose.trim(),
-          requested_date: requestedDate,
-          requested_time: requestedTime,
-          number_of_copies: numberOfCopies,
-          total_amount: totalAmount,
-        });
+        await finalizeDraftGroupDocumentRequest(
+          groupRequestId,
+          {
+            purpose:
+              purpose.trim(),
+
+            number_of_copies:
+              numberOfCopies,
+
+            total_amount:
+              totalAmount,
+
+            details:
+              selectedDocuments.map(
+                (document) => ({
+                  document_type:
+                    document.document_type,
+
+                  custom_document_name:
+                    document.document_type ===
+                      "Others"
+                      ? document
+                        .custom_document_name
+                        ?.trim() || null
+                      : null,
+
+                  quantity:
+                    document.quantity,
+
+                  unit_price:
+                    document.unit_price,
+
+                  subtotal:
+                    document.subtotal,
+                })
+              ),
+          }
+        );
 
         /*
-         * The request is now submitted to the Registrar side.
-         * From this point onward, members cannot be added/removed.
+         * The request is now submitted
+         * to the Registrar side.
+         *
+         * From this point onward,
+         * members cannot be added/removed.
          */
-        setGroupRequestStatus("PENDING");
-        setSuccessRequestId(groupRequestId);
+        setGroupRequestStatus(
+          "PENDING"
+        );
+
+        setSuccessRequestId(
+          groupRequestId
+        );
 
         return;
       }
@@ -941,38 +1070,65 @@ export default function DocumentRequestWizard({
          OWN REQUEST
       ================================================= */
 
-      const requestId = await createDocumentRequest({
-        student_id: studentId,
-        request_method: "OWN",
-        purpose: purpose.trim(),
-        requested_date: requestedDate,
-        requested_time: requestedTime,
-        number_of_copies: numberOfCopies,
-        total_amount: totalAmount,
-      });
+      const requestId =
+        await createDocumentRequest(
+          {
+            student_id:
+              studentId,
+
+            request_method:
+              "OWN",
+
+            purpose:
+              purpose.trim(),
+
+            number_of_copies:
+              numberOfCopies,
+
+            total_amount:
+              totalAmount,
+          }
+        );
 
       /*
        * Create document detail records.
        */
       await createDocumentDetails(
         requestId,
-        selectedDocuments.map((document) => ({
-          document_type: document.document_type,
+        selectedDocuments.map(
+          (document) => ({
+            document_type:
+              document.document_type,
 
-          custom_document_name:
-            document.document_type === "Others"
-              ? document.custom_document_name?.trim() || null
-              : null,
+            custom_document_name:
+              document.document_type ===
+                "Others"
+                ? document
+                  .custom_document_name
+                  ?.trim() ||
+                null
+                : null,
 
-          quantity: document.quantity,
-          unit_price: document.unit_price,
-          subtotal: document.subtotal,
-        }))
+            quantity:
+              document.quantity,
+
+            unit_price:
+              document.unit_price,
+
+            subtotal:
+              document.subtotal,
+          })
+        )
       );
 
-      setSuccessRequestId(requestId);
+      setSuccessRequestId(
+        requestId
+      );
     } catch (submitError) {
-      console.error("Document request submission error:", submitError);
+      console.error(
+        "Document request submission error:",
+        submitError
+      );
 
       setError(
         submitError instanceof Error
@@ -990,20 +1146,40 @@ export default function DocumentRequestWizard({
 
   function resetForm() {
     setCurrentStep(1);
+
     setRequestMethod("OWN");
+
     setGroupMembers([]);
+
     setGroupRequestId(null);
-    setGroupRequestStatus("DRAFT");
-    setCreatingGroupRequest(false);
-    setSendingInvitation(false);
-    setShowGroupConfirmation(false);
+
+    setGroupRequestStatus(
+      "DRAFT"
+    );
+
+    setCreatingGroupRequest(
+      false
+    );
+
+    setSendingInvitation(
+      false
+    );
+
+    setShowGroupConfirmation(
+      false
+    );
+
     setSelectedDocuments([]);
+
     setPurpose("");
-    setRequestedDate("");
-    setRequestedTime("");
+
     setLoading(false);
+
     setError("");
-    setSuccessRequestId(null);
+
+    setSuccessRequestId(
+      null
+    );
   }
 
   /* =======================================================
@@ -1019,72 +1195,113 @@ export default function DocumentRequestWizard({
           padding: "24px",
         }}
       >
-        <h1>Successfully Sent!</h1>
+        <h1>
+          Successfully Sent!
+        </h1>
 
-        <p>Your document request has been submitted successfully.</p>
+        <p>
+          Your document request has
+          been submitted successfully.
+        </p>
 
         <div
           style={{
-            border: "1px solid #ddd",
+            border:
+              "1px solid #ddd",
             borderRadius: "8px",
             padding: "16px",
             marginTop: "16px",
           }}
         >
           <p>
-            <strong>Request ID:</strong> {successRequestId}
+            <strong>
+              Request ID:
+            </strong>{" "}
+            {successRequestId}
           </p>
 
           <p>
-            <strong>Student ID:</strong> {studentId}
+            <strong>
+              Student ID:
+            </strong>{" "}
+            {studentId}
           </p>
 
           <p>
-            <strong>Status:</strong> Pending
+            <strong>
+              Status:
+            </strong>{" "}
+            Pending
           </p>
 
-          <p>
-            <strong>Date:</strong> {requestedDate}
-          </p>
+          {requestMethod ===
+            "WITH_OTHERS" && (
+              <div
+                style={{
+                  marginTop:
+                    "20px",
+                  padding:
+                    "16px",
+                  border:
+                    "1px solid #e5e7eb",
+                  borderRadius:
+                    "8px",
+                }}
+              >
+                <strong>
+                  Group Members
+                </strong>
 
-          <p>
-            <strong>Time:</strong> {requestedTime}
-          </p>
+                <div
+                  style={{
+                    marginTop:
+                      "12px",
+                  }}
+                >
+                  {groupMembers.map(
+                    (member) => (
+                      <div
+                        key={
+                          member.member_id ??
+                          member.student_id
+                        }
+                        style={{
+                          display:
+                            "flex",
+                          justifyContent:
+                            "space-between",
+                          padding:
+                            "8px 0",
+                        }}
+                      >
+                        <span>
+                          {
+                            member.student_id
+                          }
+                        </span>
 
-          {requestMethod === "WITH_OTHERS" && (
-            <div
-              style={{
-                marginTop: "20px",
-                padding: "16px",
-                border: "1px solid #e5e7eb",
-                borderRadius: "8px",
-              }}
-            >
-              <strong>Group Members</strong>
-
-              <div style={{ marginTop: "12px" }}>
-                {groupMembers.map((member) => (
-                  <div
-                    key={member.member_id ?? member.student_id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: "8px 0",
-                    }}
-                  >
-                    <span>{member.student_id}</span>
-                    <span>{member.invitation_status}</span>
-                  </div>
-                ))}
+                        <span>
+                          {
+                            member.invitation_status
+                          }
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
 
         <button
           type="button"
-          onClick={resetForm}
-          style={{ marginTop: "20px" }}
+          onClick={
+            resetForm
+          }
+          style={{
+            marginTop:
+              "20px",
+          }}
         >
           Create Another Request
         </button>
@@ -1104,11 +1321,17 @@ export default function DocumentRequestWizard({
         padding: "24px",
       }}
     >
-      <h1>Online Document Request</h1>
+      <h1>
+        Online Document Request
+      </h1>
 
       <StepProgress
-        currentStep={currentStep}
-        onStepClick={handleStepClick}
+        currentStep={
+          currentStep
+        }
+        onStepClick={
+          handleStepClick
+        }
       />
 
       {/* =================================================
@@ -1117,13 +1340,16 @@ export default function DocumentRequestWizard({
 
       {error && (
         <div
-          role="alert"
           style={{
             padding: "12px",
-            marginBottom: "16px",
-            border: "1px solid #cc0000",
-            borderRadius: "8px",
-            color: "#cc0000",
+            marginBottom:
+              "16px",
+            border:
+              "1px solid #cc0000",
+            borderRadius:
+              "8px",
+            color:
+              "#cc0000",
           }}
         >
           {error}
@@ -1153,40 +1379,68 @@ export default function DocumentRequestWizard({
               GROUP REQUEST STATUS
           ================================================= */}
 
-          {requestMethod === "WITH_OTHERS" && groupMembers.length > 0 && (
-            <div
-              style={{
-                marginTop: "24px",
-                padding: "16px",
-                border: "1px solid #ddd",
-                borderRadius: "10px",
-              }}
-            >
-              <h3>Group Request</h3>
+          {requestMethod ===
+            "WITH_OTHERS" &&
+            groupMembers.length >
+            0 && (
+              <div
+                style={{
+                  marginTop:
+                    "24px",
+                  padding:
+                    "16px",
+                  border:
+                    "1px solid #ddd",
+                  borderRadius:
+                    "10px",
+                }}
+              >
+                <h3>
+                  Group Request
+                </h3>
 
-              <p>
-                Request status: <strong>{groupRequestStatus}</strong>
-              </p>
+                <p>
+                  Request status:{" "}
+                  <strong>
+                    {groupRequestStatus}
+                  </strong>
+                </p>
 
-              {sendingInvitation && <p>Sending invitation...</p>}
-
-              {creatingGroupRequest && <p>Creating group request...</p>}
-
-              {hasPendingMembers && (
-                <p>Waiting for invited students to respond through Gmail.</p>
-              )}
-
-              {allMembersAnswered &&
-                hasAcceptedMembers &&
-                !showGroupConfirmation && (
+                {sendingInvitation && (
                   <p>
-                    All invitations have been answered. Click{" "}
-                    <strong>Next</strong> to review the group before
-                    continuing.
+                    Sending invitation...
                   </p>
                 )}
-            </div>
-          )}
+
+                {creatingGroupRequest && (
+                  <p>
+                    Creating group request...
+                  </p>
+                )}
+
+                {hasPendingMembers && (
+                  <p>
+                    Waiting for invited
+                    students to respond
+                    through CampuServe.
+                  </p>
+                )}
+
+                {allMembersAnswered &&
+                  hasAcceptedMembers &&
+                  !showGroupConfirmation && (
+                    <p>
+                      All invitations have
+                      been answered. Click{" "}
+                      <strong>
+                        Next
+                      </strong>{" "}
+                      to review the group
+                      before continuing.
+                    </p>
+                  )}
+              </div>
+            )}
 
           {/* =================================================
               GROUP CONFIRMATION
@@ -1195,86 +1449,143 @@ export default function DocumentRequestWizard({
           {showGroupConfirmation && (
             <div
               style={{
-                marginTop: "24px",
-                padding: "20px",
-                border: "2px solid #2563eb",
-                borderRadius: "10px",
-                background: "#f8fbff",
+                marginTop:
+                  "24px",
+                padding:
+                  "20px",
+                border:
+                  "2px solid #2563eb",
+                borderRadius:
+                  "10px",
+                background:
+                  "#f8fbff",
               }}
             >
-              <h2>Confirm Group Request</h2>
+              <h2>
+                Confirm Group Request
+              </h2>
 
               <p>
-                Please review the students included in this group request
-                before continuing.
+                Please review the students
+                included in this group
+                request before continuing.
               </p>
 
-              <div style={{ marginTop: "16px" }}>
-                {groupMembers.map((member) => (
-                  <div
-                    key={member.member_id ?? member.student_id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "12px",
-                      marginBottom: "8px",
-                      border: "1px solid #ddd",
-                      borderRadius: "8px",
-                      background: "white",
-                    }}
-                  >
-                    <strong>{member.student_id}</strong>
-
-                    <span>
-                      {member.invitation_status === "ACCEPTED"
-                        ? "Accepted"
-                        : member.invitation_status === "DECLINED"
-                          ? "Declined"
-                          : "Pending"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
               <div
                 style={{
-                  marginTop: "16px",
-                  padding: "12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
+                  marginTop:
+                    "16px",
                 }}
               >
-                <strong>Accepted:</strong>{" "}
+                {groupMembers.map(
+                  (member) => (
+                    <div
+                      key={
+                        member.member_id ??
+                        member.student_id
+                      }
+                      style={{
+                        display:
+                          "flex",
+                        justifyContent:
+                          "space-between",
+                        alignItems:
+                          "center",
+                        padding:
+                          "12px",
+                        marginBottom:
+                          "8px",
+                        border:
+                          "1px solid #ddd",
+                        borderRadius:
+                          "8px",
+                        background:
+                          "white",
+                      }}
+                    >
+                      <strong>
+                        {
+                          member.student_id
+                        }
+                      </strong>
+
+                      <span>
+                        {member.invitation_status ===
+                          "ACCEPTED"
+                          ? "Accepted"
+                          : member.invitation_status ===
+                            "DECLINED"
+                            ? "Declined"
+                            : "Pending"}
+                      </span>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div
+                style={{
+                  marginTop:
+                    "16px",
+                  padding:
+                    "12px",
+                  border:
+                    "1px solid #ddd",
+                  borderRadius:
+                    "8px",
+                }}
+              >
+                <strong>
+                  Accepted:
+                </strong>{" "}
                 {
                   groupMembers.filter(
-                    (member) => member.invitation_status === "ACCEPTED"
+                    (member) =>
+                      member.invitation_status ===
+                      "ACCEPTED"
                   ).length
                 }
+
                 {"  "}
-                <strong>Declined:</strong>{" "}
+
+                <strong>
+                  Declined:
+                </strong>{" "}
                 {
                   groupMembers.filter(
-                    (member) => member.invitation_status === "DECLINED"
+                    (member) =>
+                      member.invitation_status ===
+                      "DECLINED"
                   ).length
                 }
               </div>
 
               <div
                 style={{
-                  display: "flex",
+                  display:
+                    "flex",
                   gap: "12px",
-                  marginTop: "20px",
+                  marginTop:
+                    "20px",
                 }}
               >
                 <button
                   type="button"
-                  onClick={() => setShowGroupConfirmation(false)}
+                  onClick={() =>
+                    setShowGroupConfirmation(
+                      false
+                    )
+                  }
                 >
                   Back
                 </button>
 
-                <button type="button" onClick={continueFromGroupConfirmation}>
+                <button
+                  type="button"
+                  onClick={
+                    continueFromGroupConfirmation
+                  }
+                >
                   Confirm & Continue
                 </button>
               </div>
@@ -1289,10 +1600,18 @@ export default function DocumentRequestWizard({
 
       {currentStep === 2 && (
         <StepDocuments
-          selectedDocuments={selectedDocuments}
-          onToggleDocument={toggleDocument}
-          onQuantityChange={changeQuantity}
-          onCustomNameChange={changeCustomName}
+          selectedDocuments={
+            selectedDocuments
+          }
+          onToggleDocument={
+            toggleDocument
+          }
+          onQuantityChange={
+            changeQuantity
+          }
+          onCustomNameChange={
+            changeCustomName
+          }
         />
       )}
 
@@ -1302,11 +1621,21 @@ export default function DocumentRequestWizard({
 
       {currentStep === 3 && (
         <StepDetails
-          purpose={purpose}
-          onPurposeChange={setPurpose}
-          selectedDocuments={selectedDocuments}
-          numberOfCopies={numberOfCopies}
-          totalAmount={totalAmount}
+          purpose={
+            purpose
+          }
+          onPurposeChange={
+            setPurpose
+          }
+          selectedDocuments={
+            selectedDocuments
+          }
+          numberOfCopies={
+            numberOfCopies
+          }
+          totalAmount={
+            totalAmount
+          }
         />
       )}
 
@@ -1314,14 +1643,6 @@ export default function DocumentRequestWizard({
           STEP 4 - SCHEDULE
       ================================================= */}
 
-      {currentStep === 4 && (
-        <StepSchedule
-          requestedDate={requestedDate}
-          requestedTime={requestedTime}
-          onDateChange={setRequestedDate}
-          onTimeChange={setRequestedTime}
-        />
-      )}
 
       {/* =================================================
           NAVIGATION
@@ -1330,19 +1651,25 @@ export default function DocumentRequestWizard({
       {!showGroupConfirmation && (
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
+            display:
+              "flex",
+            justifyContent:
+              "space-between",
             gap: "12px",
-            marginTop: "24px",
+            marginTop:
+              "24px",
           }}
         >
           {/* BACK */}
 
           <button
             type="button"
-            onClick={handleBack}
+            onClick={
+              handleBack
+            }
             disabled={
-              currentStep === 1 ||
+              currentStep ===
+              1 ||
               loading ||
               sendingInvitation ||
               creatingGroupRequest
@@ -1353,11 +1680,17 @@ export default function DocumentRequestWizard({
 
           {/* NEXT */}
 
-          {currentStep < 4 && (
+          {currentStep < 3 && (
             <button
               type="button"
-              onClick={handleNext}
-              disabled={loading || sendingInvitation || creatingGroupRequest}
+              onClick={
+                handleNext
+              }
+              disabled={
+                loading ||
+                sendingInvitation ||
+                creatingGroupRequest
+              }
             >
               Next
             </button>
@@ -1365,9 +1698,19 @@ export default function DocumentRequestWizard({
 
           {/* SUBMIT */}
 
-          {currentStep === 4 && (
-            <button type="button" onClick={handleSubmit} disabled={loading}>
-              {loading ? "Submitting..." : "Submit Request"}
+          {currentStep === 3 && (
+            <button
+              type="button"
+              onClick={
+                handleSubmit
+              }
+              disabled={
+                loading
+              }
+            >
+              {loading
+                ? "Submitting..."
+                : "Submit Request"}
             </button>
           )}
         </div>

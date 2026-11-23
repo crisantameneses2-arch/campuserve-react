@@ -1,9 +1,11 @@
+
 import {
   collection,
   doc,
   getDocs,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -20,8 +22,6 @@ interface CreateDocumentRequestInput {
   student_id: string;
   request_method: "OWN" | "WITH_OTHERS";
   purpose: string;
-  requested_date: string;
-  requested_time: string;
   number_of_copies: number;
   total_amount: number;
 }
@@ -129,6 +129,10 @@ export async function createDraftGroupDocumentRequest(
 
     total_amount: 0,
 
+    /*
+     * Schedule will be assigned later
+     * by the Registrar or General Office.
+     */
     requested_date: "",
 
     requested_time: "",
@@ -178,48 +182,138 @@ export async function finalizeDraftGroupDocumentRequest(
   request_id: string,
   input: {
     purpose: string;
-    requested_date: string;
-    requested_time: string;
     number_of_copies: number;
     total_amount: number;
+    details: DocumentDetailInput[];
+  },
+) {
+  if (!input.details || input.details.length === 0) {
+    throw new Error("Select at least one document before submitting.");
   }
-): Promise<void> {
-  const requestRef = doc(
-    db,
-    "document_requests",
-    request_id
+
+  if (!input.purpose.trim()) {
+    throw new Error("Please provide the purpose of the request.");
+  }
+
+  const calculatedCopies = input.details.reduce(
+    (total, detail) => total + Number(detail.quantity || 0),
+    0,
   );
 
-  await updateDoc(
-    requestRef,
-    {
-      purpose:
-        input.purpose,
+  const calculatedAmount = input.details.reduce(
+    (total, detail) => total + Number(detail.subtotal || 0),
+    0,
+  );
 
-      requested_date:
-        input.requested_date,
+  if (
+    input.details.some(
+      (detail) =>
+        !Number.isInteger(Number(detail.quantity)) ||
+        Number(detail.quantity) < 1
+    )
+  ) {
+    throw new Error("Each document must have at least one copy.");
+  }
 
-      requested_time:
-        input.requested_time,
+  if (calculatedCopies !== input.number_of_copies) {
+    throw new Error("The total number of copies does not match the selected documents.");
+  }
 
-      number_of_copies:
-        input.number_of_copies,
+  if (
+    Math.round(calculatedAmount * 100) !==
+    Math.round(input.total_amount * 100)
+  ) {
+    throw new Error("The total amount does not match the selected documents.");
+  }
 
-      total_amount:
-        input.total_amount,
+  const requestRef = doc(db, "document_requests", request_id);
 
-      /*
-       * The group request is now officially
-       * submitted.
-       */
-      status: "PENDING",
+  const membersQuery = query(
+    collection(db, "group_request_members"),
+    where("request_id", "==", request_id),
+  );
 
-      finalized_at:
-        serverTimestamp(),
+  // Get the group member document references.
+  const membersSnapshot = await getDocs(membersQuery);
+
+  const memberRefs = membersSnapshot.docs.map(
+    (member) => member.ref,
+  );
+
+  // Prepare document detail records.
+  const detailRecords = input.details.map((detail) => {
+    const detailRef = doc(
+      collection(db, "document_request_details"),
+    );
+
+    return {
+      ref: detailRef,
+      data: {
+        detail_id: detailRef.id,
+        request_id,
+        document_type: detail.document_type,
+        custom_document_name: detail.custom_document_name,
+        quantity: detail.quantity,
+        unit_price: detail.unit_price,
+        subtotal: detail.subtotal,
+      },
+    };
+  });
+
+  await runTransaction(db, async (transaction) => {
+    // All reads must happen before writes.
+    const requestSnapshot = await transaction.get(requestRef);
+
+    if (!requestSnapshot.exists()) {
+      throw new Error("The group request could not be found.");
     }
-  );
-}
 
+    if (requestSnapshot.data().status !== "DRAFT") {
+      throw new Error("This group request has already been submitted.");
+    }
+
+    // Read each member document individually.
+    const memberDocuments = await Promise.all(
+      memberRefs.map((memberRef) => transaction.get(memberRef)),
+    );
+
+    const acceptedMembers = memberDocuments.filter(
+      (member) =>
+        member.exists() &&
+        String(member.data()?.invitation_status || "").toUpperCase() === "ACCEPTED",
+    );
+
+    const pendingMembers = memberDocuments.filter(
+      (member) =>
+        member.exists() &&
+        String(member.data()?.invitation_status || "").toUpperCase() === "PENDING",
+    );
+
+    if (acceptedMembers.length === 0) {
+      throw new Error("At least one group member must accept the invitation.");
+    }
+
+    if (pendingMembers.length > 0) {
+      throw new Error("Wait until all group invitations have been answered.");
+    }
+
+    // Save all selected document details.
+    for (const detail of detailRecords) {
+      transaction.set(detail.ref, detail.data);
+    }
+
+    // Submit the consolidated group request.
+    transaction.update(requestRef, {
+      purpose: input.purpose.trim(),
+      number_of_copies: input.number_of_copies,
+      total_amount: input.total_amount,
+      status: "PENDING",
+      finalized_at: serverTimestamp(),
+      submitted_at: serverTimestamp(),
+      updated_at: serverTimestamp(),
+    });
+  });
+}
 /* =========================================================
    CREATE DOCUMENT REQUEST
 ========================================================= */
@@ -258,13 +352,18 @@ export async function createDocumentRequest(
     total_amount:
       input.total_amount,
 
-    requested_date:
-      input.requested_date,
+    /*
+     * Schedule will be assigned later
+     * by the Registrar or General Office.
+     */
+    requested_date: "",
 
-    requested_time:
-      input.requested_time,
+    requested_time: "",
 
     created_at:
+      serverTimestamp(),
+
+    submitted_at:
       serverTimestamp(),
 
     /*
@@ -532,38 +631,171 @@ export function subscribeToDocumentRequest(
    GET STUDENT'S DOCUMENT REQUESTS
 ========================================================= */
 
+
 export function subscribeToStudentDocumentRequests(
   student_id: string,
   callback: (
     data: Record<string, unknown>[]
   ) => void
 ): () => void {
-  const requestsQuery =
-    query(
-      collection(
-        db,
-        "document_requests"
-      ),
-      where(
-        "student_id",
-        "==",
-        student_id
-      )
-    );
+  // Requests created by the student.
+  const ownRequests = new Map<
+    string,
+    Record<string, unknown>
+  >();
 
-  return onSnapshot(
-    requestsQuery,
+  // Requests shared with the student.
+  const sharedRequests = new Map<
+    string,
+    Record<string, unknown>
+  >();
+
+  // Active listeners for shared parent requests.
+  const requestListeners = new Map<
+    string,
+    () => void
+  >();
+
+  let isActive = true;
+
+  const emitRequests = () => {
+    if (!isActive) return;
+
+    // Own requests take priority if a request appears
+    // in both collections.
+    const combined = new Map(sharedRequests);
+
+    ownRequests.forEach((request, requestId) => {
+      combined.set(requestId, {
+        ...request,
+        is_group_member: false,
+      });
+    });
+
+    callback(Array.from(combined.values()));
+  };
+
+  // Listen to requests created by this student.
+  const ownRequestsQuery = query(
+    collection(db, "document_requests"),
+    where("student_id", "==", student_id)
+  );
+
+  const unsubscribeOwn = onSnapshot(
+    ownRequestsQuery,
     (snapshot) => {
-      const requests =
-        snapshot.docs.map(
-          (item) => ({
-            ...item.data(),
-          })
-        );
+      ownRequests.clear();
 
-      callback(requests);
+      snapshot.docs.forEach((item) => {
+        ownRequests.set(item.id, {
+          ...item.data(),
+          is_group_member: false,
+        });
+      });
+
+      emitRequests();
     }
   );
+
+  // Listen to group memberships belonging to this student.
+  const membershipsQuery = query(
+    collection(db, "group_request_members"),
+    where("student_id", "==", student_id)
+  );
+
+  const unsubscribeMemberships = onSnapshot(
+    membershipsQuery,
+    (snapshot) => {
+      if (!isActive) return;
+
+      const acceptedRequestIds = new Set<string>();
+
+      snapshot.docs.forEach((member) => {
+        const data = member.data();
+
+        if (
+          String(data.invitation_status || "")
+            .toUpperCase() === "ACCEPTED" &&
+          typeof data.request_id === "string"
+        ) {
+          acceptedRequestIds.add(data.request_id);
+        }
+      });
+
+      // Remove listeners for memberships that are no
+      // longer accepted or no longer exist.
+      for (const [requestId, unsubscribe] of requestListeners) {
+        if (!acceptedRequestIds.has(requestId)) {
+          unsubscribe();
+          requestListeners.delete(requestId);
+          sharedRequests.delete(requestId);
+        }
+      }
+
+      // Subscribe to each newly accepted shared request.
+      acceptedRequestIds.forEach((requestId) => {
+        if (requestListeners.has(requestId)) return;
+
+        const requestRef = doc(
+          db,
+          "document_requests",
+          requestId
+        );
+
+        const unsubscribe = onSnapshot(
+          requestRef,
+          (requestSnapshot) => {
+            if (!isActive) return;
+
+            if (!requestSnapshot.exists()) {
+              sharedRequests.delete(requestId);
+              emitRequests();
+              return;
+            }
+
+            const requestData = requestSnapshot.data();
+
+            // A shared request should not appear until
+            // the original requester submits it.
+            if (
+              String(requestData.status || "")
+                .toUpperCase() === "DRAFT"
+            ) {
+              sharedRequests.delete(requestId);
+            } else {
+              sharedRequests.set(requestId, {
+                ...requestData,
+                is_group_member: true,
+              });
+            }
+
+            emitRequests();
+          }
+        );
+
+        requestListeners.set(requestId, unsubscribe);
+      });
+
+      emitRequests();
+    }
+  );
+
+  // Clean up all listeners when the component unmounts
+  // or the student ID changes.
+  return () => {
+    isActive = false;
+
+    unsubscribeOwn();
+    unsubscribeMemberships();
+
+    requestListeners.forEach((unsubscribe) => {
+      unsubscribe();
+    });
+
+    requestListeners.clear();
+    ownRequests.clear();
+    sharedRequests.clear();
+  };
 }
 
 /* =========================================================
@@ -602,6 +834,28 @@ export function subscribeToDocumentRequestDetails(
       callback(details);
     }
   );
+}
+
+export function subscribeToStudentDraftGroupRequests(
+  student_id: string,
+  callback: (
+    data: Record<string, unknown>[]
+  ) => void
+): () => void {
+  const draftsQuery = query(
+    collection(db, "document_requests"),
+    where("student_id", "==", student_id),
+    where("request_method", "==", "WITH_OTHERS"),
+    where("status", "==", "DRAFT")
+  );
+
+  return onSnapshot(draftsQuery, (snapshot) => {
+    const drafts = snapshot.docs.map((item) => ({
+      ...item.data(),
+    }));
+
+    callback(drafts);
+  });
 }
 
 /* =========================================================
