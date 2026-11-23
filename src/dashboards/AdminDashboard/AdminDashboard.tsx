@@ -122,7 +122,7 @@ function AdminDashboard({
       // ==============================
 
       const requestsSnapshot = await getDocs(
-        collection(db, "documentRequests")
+        collection(db, "document_requests")
       );
 
       const pendingRequests =

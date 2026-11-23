@@ -50,7 +50,6 @@ type StudentDashboardProps = {
     email?: string;
     student_id?: string;
   };
-  
 };
 
 type DashboardPage =
@@ -608,6 +607,9 @@ export default function StudentDashboard({
                 <section className="sdx-panel sdx-compact">
                   <span className="sdx-tag">READY FOR YOU</span>
                   <h3>Upcoming pick-up</h3>
+                  <p className="sdx-panel-note">
+                    Claiming dates are set by the Registrar.
+                  </p>
 
                   {transactionsLoading ? (
                     <DashboardLoading />
@@ -1426,10 +1428,12 @@ function TrackingContent({
         <StatusBadge status={status} />
       </div>
 
+      {/* Claiming schedules are assigned by Registrar / office
+          staff, so a date is only shown once staff have set it. */}
       <p>
-        {schedule
-          ? `${showClaimingDetails ? "Claiming" : "Schedule"}: ${schedule}`
-          : "Schedule pending"}
+        {showClaimingDetails && schedule
+          ? `Claiming: ${schedule}`
+          : `Submitted ${timeAgo(transaction.createdAt)}`}
       </p>
 
       {showClaimingDetails && transaction.claimCode && (

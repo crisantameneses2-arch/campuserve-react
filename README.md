@@ -1,21 +1,25 @@
-# React + TypeScript + Vite
+# CampuServe
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Campus services portal for students, alumni and university offices: document requests, item reservations, claiming schedules, payments and notifications.
 
-While this project uses React, Vite supports many popular JS frameworks. [See all the supported frameworks](https://vitejs.dev/guide/#scaffolding-your-first-vite-project).
+Roles: student, alumni, registrar, general office, cashier, admin. Each signs in and lands on its own dashboard.
 
-## Deploy Your Own
+## Stack
 
-Deploy your own Vite project with Vercel.
+- React + TypeScript, built with Vite
+- React Router (`BrowserRouter`)
+- Firebase Authentication and Cloud Firestore
+- Vercel hosting, with serverless functions in `api/`
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/vercel/examples/tree/main/framework-boilerplates/vite-react&template=vite-react)
+## Development
 
-_Live Example: https://vite-react-example.vercel.app_
-
-### Deploying From Your Terminal
-
-You can deploy your new Vite project with a single command from your terminal using [Vercel CLI](https://vercel.com/download):
-
-```shell
-$ vercel
+```bash
+npm install
+npm run dev      # start the dev server
+npm run build    # type-check and build to dist/
+npm run lint
 ```
+
+## Deployment
+
+Deployed on Vercel. `vercel.json` rewrites every non-`/api` path to `index.html`, so refreshing a deep link such as `/student/requests` loads the app instead of returning a 404.

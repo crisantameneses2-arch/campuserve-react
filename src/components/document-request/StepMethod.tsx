@@ -432,716 +432,251 @@ export default function StepMethod({
   // RENDER
   // ======================================================
 
+  function selectMethod(method: "OWN" | "WITH_OTHERS") {
+    onRequestMethodChange(method);
+
+    setSearchError("");
+    setSearchedStudent(null);
+  }
+
   return (
-    <section
-      className="step-method"
-      style={{
-        width: "100%",
-      }}
-    >
-      {/* ==================================================
-          TITLE
-      ================================================== */}
-
-      <div
-        style={{
-          marginBottom:
-            "24px",
-        }}
-      >
-        <h2>
-          Request Method
-        </h2>
-
-        <p
-          style={{
-            color:
-              "#666",
-            marginTop:
-              "6px",
-          }}
-        >
-          Choose whether this request is
-          only for you or shared with
-          other students.
-        </p>
-      </div>
-
-      {/* ==================================================
-          METHOD OPTIONS
-      ================================================== */}
-
-      <div
-        style={{
-          display:
-            "grid",
-          gridTemplateColumns:
-            "repeat(2, minmax(0, 1fr))",
-          gap:
-            "16px",
-          marginBottom:
-            "28px",
-        }}
-      >
-        {/* -----------------------------------------------
-            OWN REQUEST
-        ----------------------------------------------- */}
-
-        <button
-          type="button"
-          onClick={() => {
-            onRequestMethodChange(
-              "OWN"
-            );
-
-            setSearchError("");
-            setSearchedStudent(
-              null
-            );
-          }}
-          style={{
-            textAlign:
-              "left",
-            padding:
-              "20px",
-            border:
-              requestMethod ===
-              "OWN"
-                ? "2px solid #2563eb"
-                : "1px solid #ddd",
-            borderRadius:
-              "12px",
-            background:
-              requestMethod ===
-              "OWN"
-                ? "#eff6ff"
-                : "#fff",
-            cursor:
-              "pointer",
-          }}
-        >
-          <strong
-            style={{
-              display:
-                "block",
-              marginBottom:
-                "6px",
-            }}
-          >
-            Own Request
-          </strong>
-
-          <span
-            style={{
-              color:
-                "#666",
-              fontSize:
-                "14px",
-            }}
-          >
-            Request documents only
-            for yourself.
-          </span>
-        </button>
-
-        {/* -----------------------------------------------
-            WITH OTHERS
-        ----------------------------------------------- */}
-
-        <button
-          type="button"
-          onClick={() => {
-            onRequestMethodChange(
-              "WITH_OTHERS"
-            );
-
-            setSearchError("");
-            setSearchedStudent(
-              null
-            );
-          }}
-          style={{
-            textAlign:
-              "left",
-            padding:
-              "20px",
-            border:
-              requestMethod ===
-              "WITH_OTHERS"
-                ? "2px solid #2563eb"
-                : "1px solid #ddd",
-            borderRadius:
-              "12px",
-            background:
-              requestMethod ===
-              "WITH_OTHERS"
-                ? "#eff6ff"
-                : "#fff",
-            cursor:
-              "pointer",
-          }}
-        >
-          <strong
-            style={{
-              display:
-                "block",
-              marginBottom:
-                "6px",
-            }}
-          >
-            With Others
-          </strong>
-
-          <span
-            style={{
-              color:
-                "#666",
-              fontSize:
-                "14px",
-            }}
-          >
-            Invite other students
-            to join this request.
-          </span>
-        </button>
-      </div>
-
-      {/* ==================================================
-          GROUP REQUEST
-      ================================================== */}
-
-      {requestMethod ===
-        "WITH_OTHERS" && (
+    <section className="rwx-screen">
+      <div className="rwx-screen-heading">
         <div>
-          {/* ---------------------------------------------
-              LOCKED NOTICE
-          --------------------------------------------- */}
+          <span className="rwx-eyebrow">
+            STEP 01 · REQUEST METHOD
+          </span>
 
+          <h2>How would you like to request?</h2>
+
+          <p>
+            Choose whether this request is only for you or shared
+            with other students.
+          </p>
+        </div>
+      </div>
+
+      {/* METHOD OPTIONS */}
+
+      <div className="rwx-choice-grid">
+        <button
+          type="button"
+          className="rwx-choice"
+          aria-pressed={requestMethod === "OWN"}
+          onClick={() => selectMethod("OWN")}
+        >
+          <span className="rwx-choice__art" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="19" r="9" stroke="currentColor" strokeWidth="2.5" />
+              <path d="M13 52c1.8-11 8.2-17 19-17s17.2 6 19 17H13Z" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
+              <path d="M25 44h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+          </span>
+
+          <span className="rwx-choice__copy">
+            <strong>Solo request</strong>
+            <small>Request documents only for yourself.</small>
+          </span>
+
+          <span className="rwx-radio" aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          className="rwx-choice"
+          aria-pressed={requestMethod === "WITH_OTHERS"}
+          onClick={() => selectMethod("WITH_OTHERS")}
+        >
+          <span className="rwx-choice__art" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none">
+              <circle cx="24" cy="21" r="8" stroke="currentColor" strokeWidth="2.5" />
+              <circle cx="43" cy="24" r="7" stroke="currentColor" strokeWidth="2.5" />
+              <path d="M7 52c1.5-10 7-15 17-15s15.5 5 17 15H7Z" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
+              <path d="M39 39c9-1 15 4 17 13H43" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+
+          <span className="rwx-choice__copy">
+            <strong>Group request</strong>
+            <small>Invite other students to join this request.</small>
+          </span>
+
+          <span className="rwx-radio" aria-hidden="true" />
+        </button>
+      </div>
+
+      {requestMethod === "OWN" && (
+        <p className="rwx-note">
+          Click <strong>Next</strong> to choose your documents.
+        </p>
+      )}
+
+      {/* GROUP REQUEST */}
+
+      {requestMethod === "WITH_OTHERS" && (
+        <div className="rwx-group">
           {!canEditMembers && (
-            <div
-              style={{
-                marginBottom:
-                  "20px",
-                padding:
-                  "12px 14px",
-                background:
-                  "#fff7ed",
-                border:
-                  "1px solid #fed7aa",
-                borderRadius:
-                  "8px",
-                color:
-                  "#9a3412",
-                fontSize:
-                  "13px",
-                lineHeight:
-                  "1.5",
-              }}
-            >
-              This group request has already
-              been submitted. The participant
-              list is now locked and cannot be
-              changed.
+            <div className="rwx-notice rwx-notice--warn">
+              This group request has already been submitted. The
+              participant list is now locked and cannot be changed.
             </div>
           )}
 
-          {/* ---------------------------------------------
-              DESCRIPTION
-          --------------------------------------------- */}
+          <div className="rwx-group__head">
+            <h3>Add students</h3>
 
-          <div
-            style={{
-              marginBottom:
-                "20px",
-            }}
-          >
-            <h3>
-              Add Students
-            </h3>
-
-            <p
-              style={{
-                color:
-                  "#666",
-                fontSize:
-                  "14px",
-                lineHeight:
-                  "1.5",
-              }}
-            >
+            <p>
               {canEditMembers
-                ? "Search for another student using their Student ID. Once you add them, an invitation will be sent to their dashboards."
+                ? "Search for another student using their Student ID. Once you add them, an invitation will be sent to their dashboard."
                 : "The students already included in this request are shown below."}
             </p>
           </div>
 
-          {/* ---------------------------------------------
-              SEARCH AREA
-          --------------------------------------------- */}
+          {/* SEARCH AREA */}
 
           {canEditMembers && (
-            <div
-              style={{
-                display:
-                  "flex",
-                gap:
-                  "10px",
-                alignItems:
-                  "stretch",
-                marginBottom:
-                  "12px",
-              }}
-            >
+            <div className="rwx-search">
+              <label
+                className="rwx-visually-hidden"
+                htmlFor="rwx-student-search"
+              >
+                Student ID
+              </label>
+
               <input
+                id="rwx-student-search"
+                className="rwx-input"
                 type="text"
-                value={
-                  studentIdInput
-                }
-                onChange={(
-                  event
-                ) => {
-                  setStudentIdInput(
-                    event.target
-                      .value
-                  );
-
-                  setSearchError(
-                    ""
-                  );
-
-                  setSearchedStudent(
-                    null
-                  );
+                value={studentIdInput}
+                onChange={(event) => {
+                  setStudentIdInput(event.target.value);
+                  setSearchError("");
+                  setSearchedStudent(null);
                 }}
-                onKeyDown={
-                  handleStudentIdKeyDown
-                }
+                onKeyDown={handleStudentIdKeyDown}
                 placeholder="Enter Student ID"
-                disabled={
-                  isSearching ||
-                  isAdding
-                }
-                style={{
-                  flex:
-                    1,
-                  minWidth:
-                    0,
-                  padding:
-                    "12px 14px",
-                  border:
-                    "1px solid #ccc",
-                  borderRadius:
-                    "8px",
-                  fontSize:
-                    "14px",
-                }}
+                disabled={isSearching || isAdding}
               />
 
               {!searchedStudent ? (
                 <button
                   type="button"
-                  onClick={() =>
-                    void handleSearchStudent()
-                  }
+                  className="rwx-btn rwx-btn--secondary"
+                  onClick={() => void handleSearchStudent()}
                   disabled={
                     isSearching ||
                     isAdding ||
                     !studentIdInput.trim()
                   }
-                  style={{
-                    padding:
-                      "0 20px",
-                    border:
-                      "none",
-                    borderRadius:
-                      "8px",
-                    cursor:
-                      isSearching ||
-                      isAdding ||
-                      !studentIdInput.trim()
-                        ? "not-allowed"
-                        : "pointer",
-                  }}
                 >
-                  {isSearching
-                    ? "Searching..."
-                    : "Search"}
+                  {isSearching ? "Searching..." : "Search"}
                 </button>
               ) : (
                 <button
                   type="button"
-                  onClick={() =>
-                    void handleEnterStudent()
-                  }
-                  disabled={
-                    isAdding
-                  }
-                  style={{
-                    padding:
-                      "0 20px",
-                    border:
-                      "none",
-                    borderRadius:
-                      "8px",
-                    cursor:
-                      isAdding
-                        ? "not-allowed"
-                        : "pointer",
-                  }}
+                  className="rwx-btn rwx-btn--primary"
+                  onClick={() => void handleEnterStudent()}
+                  disabled={isAdding}
                 >
-                  {isAdding
-                    ? "Adding..."
-                    : "Enter"}
+                  {isAdding ? "Adding..." : "Add & invite"}
                 </button>
               )}
             </div>
           )}
 
-          {/* ---------------------------------------------
-              SEARCH ERROR
-          --------------------------------------------- */}
-
           {searchError && (
-            <div
-              style={{
-                color:
-                  "#b91c1c",
-                background:
-                  "#fef2f2",
-                border:
-                  "1px solid #fecaca",
-                borderRadius:
-                  "8px",
-                padding:
-                  "10px 12px",
-                marginBottom:
-                  "16px",
-                fontSize:
-                  "14px",
-              }}
-            >
+            <div className="rwx-notice rwx-notice--error" role="alert">
               {searchError}
             </div>
           )}
 
-          {/* ---------------------------------------------
-              SEARCHED STUDENT
-          --------------------------------------------- */}
+          {/* SEARCHED STUDENT */}
 
-          {searchedStudent &&
-            canEditMembers && (
-              <div
-                style={{
-                  border:
-                    "1px solid #dbeafe",
-                  background:
-                    "#eff6ff",
-                  borderRadius:
-                    "12px",
-                  padding:
-                    "16px",
-                  marginBottom:
-                    "24px",
-                }}
-              >
-                <div
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <strong>
-                    Student Found
-                  </strong>
-                </div>
+          {searchedStudent && canEditMembers && (
+            <div className="rwx-found">
+              <span className="rwx-avatar">
+                {getInitials(searchedStudent.name || searchedStudent.studentId)}
+              </span>
 
-                <div
-                  style={{
-                    display:
-                      "grid",
-                    gap:
-                      "6px",
-                    fontSize:
-                      "14px",
-                  }}
-                >
-                  <div>
-                    <strong>
-                      Name:
-                    </strong>{" "}
-                    {
-                      searchedStudent.name
-                    }
-                  </div>
-
-                  <div>
-                    <strong>
-                      Student ID:
-                    </strong>{" "}
-                    {
-                      searchedStudent.studentId
-                    }
-                  </div>
-
-                  <div>
-                    <strong>
-                      Email:
-                    </strong>{" "}
-                    {
-                      searchedStudent.email
-                    }
-                  </div>
-                </div>
-
-                <p
-                  style={{
-                    marginTop:
-                      "12px",
-                    marginBottom:
-                      "0",
-                    fontSize:
-                      "13px",
-                    color:
-                      "#555",
-                  }}
-                >
-                  Click{" "}
-                  <strong>
-                    Enter
-                  </strong>{" "}
-                  to add this student
-                  and send the invitation.
-                </p>
+              <div className="rwx-found__copy">
+                <span className="rwx-eyebrow">STUDENT FOUND</span>
+                <strong>{searchedStudent.name}</strong>
+                <small>
+                  {searchedStudent.studentId}
+                  {searchedStudent.email
+                    ? ` · ${searchedStudent.email}`
+                    : ""}
+                </small>
               </div>
-            )}
 
-          {/* ---------------------------------------------
-              INVITED STUDENTS
-          --------------------------------------------- */}
+              <p>
+                Click <strong>Add &amp; invite</strong> (or press
+                Enter) to send the invitation.
+              </p>
+            </div>
+          )}
 
-          {groupMembers.length >
-            0 && (
-            <div>
-              <h3
-                style={{
-                  marginBottom:
-                    "12px",
-                }}
-              >
-                Group Members
-              </h3>
+          {/* INVITED STUDENTS */}
 
-              <div
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    "10px",
-                }}
-              >
-                {groupMembers.map(
-                  (
-                    member
-                  ) => (
-                    <div
-                      key={
-                        member.student_id
-                      }
-                      style={{
-                        display:
-                          "flex",
-                        justifyContent:
-                          "space-between",
-                        alignItems:
-                          "center",
-                        gap:
-                          "16px",
-                        padding:
-                          "14px 16px",
-                        border:
-                          "1px solid #ddd",
-                        borderRadius:
-                          "10px",
-                        background:
-                          "#fff",
-                      }}
-                    >
-                      <div
-                        style={{
-                          minWidth:
-                            0,
-                          flex:
-                            1,
-                        }}
-                      >
-                        <strong
-                          style={{
-                            display:
-                              "block",
-                          }}
-                        >
-                          {
-                            member.student_id
-                          }
-                        </strong>
+          {groupMembers.length > 0 && (
+            <div className="rwx-members">
+              <h3>Group members</h3>
 
-                        <span
-                          style={{
-                            fontSize:
-                              "13px",
-                            color:
-                              "#666",
-                          }}
-                        >
-                          Gmail invitation
-                          {member.invitation_status ===
-                          "PENDING"
-                            ? " sent — waiting for response"
-                            : " sent"}
-                        </span>
-                      </div>
+              {groupMembers.map((member) => {
+                const removing =
+                  removingStudentId === member.student_id;
 
-                      <div
-                        style={{
-                          display:
-                            "flex",
-                          alignItems:
-                            "center",
-                          gap:
-                            "8px",
-                          flexShrink:
-                            0,
-                        }}
-                      >
-                        <span
-                          className={`group-member-status ${getStatusClass(
-                            member.invitation_status
-                          )}`}
-                          style={{
-                            padding:
-                              "5px 10px",
-                            borderRadius:
-                              "999px",
-                            fontSize:
-                              "12px",
-                            fontWeight:
-                              600,
-                            background:
-                              member.invitation_status ===
-                              "ACCEPTED"
-                                ? "#dbeafe"
-                                : member.invitation_status ===
-                                  "DECLINED"
-                                ? "#fee2e2"
-                                : "#f3f4f6",
-                            color:
-                              member.invitation_status ===
-                              "ACCEPTED"
-                                ? "#1d4ed8"
-                                : member.invitation_status ===
-                                  "DECLINED"
-                                ? "#b91c1c"
-                                : "#4b5563",
-                          }}
-                        >
-                          {getStatusLabel(
-                            member.invitation_status
-                          )}
-                        </span>
+                return (
+                  <div
+                    className="rwx-member"
+                    key={member.student_id}
+                  >
+                    <span className="rwx-avatar" aria-hidden="true">
+                      <PersonIcon />
+                    </span>
 
-                        {/* --------------------------------
-                            REMOVE BUTTON
-
-                            Only visible while the request
-                            is still DRAFT.
-                        --------------------------------- */}
-
-                        {canEditMembers && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void handleRemoveStudent(
-                                member.student_id
-                              )
-                            }
-                            disabled={
-                              removingStudentId ===
-                                member.student_id ||
-                              isAdding
-                            }
-                            style={{
-                              padding:
-                                "6px 10px",
-                              border:
-                                "1px solid #fecaca",
-                              borderRadius:
-                                "7px",
-                              background:
-                                "#fff",
-                              color:
-                                "#b91c1c",
-                              cursor:
-                                removingStudentId ===
-                                  member.student_id ||
-                                isAdding
-                                  ? "not-allowed"
-                                  : "pointer",
-                              fontSize:
-                                "12px",
-                              fontWeight:
-                                600,
-                              opacity:
-                                removingStudentId ===
-                                  member.student_id ||
-                                isAdding
-                                  ? 0.6
-                                  : 1,
-                            }}
-                          >
-                            {removingStudentId ===
-                            member.student_id
-                              ? "Removing..."
-                              : "Remove"}
-                          </button>
-                        )}
-                      </div>
+                    <div className="rwx-member__copy">
+                      <strong>{member.student_id}</strong>
+                      <small>
+                        Invitation
+                        {member.invitation_status === "PENDING"
+                          ? " sent — waiting for response"
+                          : " sent"}
+                      </small>
                     </div>
-                  )
-                )}
-              </div>
 
-              {/* -------------------------------------------
-                  GROUP INVITATION NOTE
-              ------------------------------------------- */}
+                    <span
+                      className={`rwx-status rwx-status--${getStatusClass(
+                        member.invitation_status
+                      )}`}
+                    >
+                      {getStatusLabel(member.invitation_status)}
+                    </span>
+
+                    {/* Only visible while the request is still DRAFT. */}
+                    {canEditMembers && (
+                      <button
+                        type="button"
+                        className="rwx-btn rwx-btn--danger rwx-btn--small"
+                        onClick={() =>
+                          void handleRemoveStudent(
+                            member.student_id
+                          )
+                        }
+                        disabled={removing || isAdding}
+                      >
+                        {removing ? "Removing..." : "Remove"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
 
               <div
-                style={{
-                  marginTop:
-                    "16px",
-                  padding:
-                    "12px 14px",
-                  background:
-                    canEditMembers
-                      ? "#f9fafb"
-                      : "#fff7ed",
-                  border:
-                    canEditMembers
-                      ? "1px solid #e5e7eb"
-                      : "1px solid #fed7aa",
-                  borderRadius:
-                    "8px",
-                  fontSize:
-                    "13px",
-                  color:
-                    canEditMembers
-                      ? "#666"
-                      : "#9a3412",
-                  lineHeight:
-                    "1.5",
-                }}
+                className={`rwx-notice ${canEditMembers ? "" : "rwx-notice--warn"}`}
               >
                 {canEditMembers
-                  ? "You can remove a student while the request is still being prepared. Students can respond through their dashboard notification."
+                  ? "You can remove a student while the request is still being prepared. Students respond through their dashboard notification."
                   : "The group member list is locked because this request has already been submitted. Members can no longer be added or removed."}
               </div>
             </div>
@@ -1150,4 +685,37 @@ export default function StepMethod({
       )}
     </section>
   );
+}
+
+function PersonIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="8" r="3.4" />
+      <path d="M5 20v-1.3a7 7 0 0 1 14 0V20H5Z" />
+    </svg>
+  );
+}
+
+function getInitials(value: string) {
+  const parts = value
+    .trim()
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "?";
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }

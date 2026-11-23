@@ -15,6 +15,8 @@ import StepDocuments, {
   type SelectedDocument,
 } from "../../components/document-request/StepDocuments";
 import StepDetails from "../../components/document-request/StepDetails";
+import { formatPeso } from "../../components/document-request/formatPeso";
+import "../../components/document-request/DocumentRequestWizard.css";
 
 
 import {
@@ -76,6 +78,20 @@ export default function DocumentRequestWizard({
 
   const [currentStep, setCurrentStep] =
     useState(1);
+
+  /*
+   * The furthest step the student has reached.
+   * Lets students go back to an earlier step to review
+   * their choices, then jump straight back again.
+   */
+  const [furthestStep, setFurthestStep] =
+    useState(1);
+
+  useEffect(() => {
+    setFurthestStep((step) =>
+      Math.max(step, currentStep)
+    );
+  }, [currentStep]);
 
   /* =======================================================
      STEP 1 - REQUEST METHOD
@@ -140,11 +156,6 @@ export default function DocumentRequestWizard({
 
   const [purpose, setPurpose] =
     useState("");
-
-  /* =======================================================
-     STEP 4 - SCHEDULE
-  ======================================================= */
-
 
   /* =======================================================
      SUBMISSION STATE
@@ -355,6 +366,28 @@ export default function DocumentRequestWizard({
     groupMembers.length > 0 &&
     !hasPendingMembers;
 
+  /*
+   * Remembers which group (members + responses) the
+   * student already confirmed, so going back to Step 1
+   * and pressing Next again does not ask a second time.
+   * Any change to the members resets it.
+   */
+  const groupSignature = groupMembers
+    .map(
+      (member) =>
+        `${member.student_id}:${member.invitation_status}`
+    )
+    .sort()
+    .join("|");
+
+  const [confirmedGroupSignature, setConfirmedGroupSignature] =
+    useState<string | null>(null);
+
+  const isGroupConfirmed =
+    requestMethod === "WITH_OTHERS" &&
+    confirmedGroupSignature !== null &&
+    confirmedGroupSignature === groupSignature;
+
   /* =======================================================
      STEP 1 - ADD GROUP MEMBER
   ======================================================= */
@@ -365,11 +398,6 @@ export default function DocumentRequestWizard({
   ) {
     const cleanedStudentId =
       memberStudentId.trim();
-
-    // Prevent double clicks while an invitation is being created.
-    if (sendingInvitation || creatingGroupRequest) {
-      return;
-    }
 
     setError("");
 
@@ -540,6 +568,8 @@ export default function DocumentRequestWizard({
   function toggleDocument(
     documentId: string
   ) {
+    setError("");
+
     setSelectedDocuments(
       (current) => {
         const existing =
@@ -652,6 +682,8 @@ export default function DocumentRequestWizard({
     documentId: string,
     customName: string
   ) {
+    setError("");
+
     setSelectedDocuments(
       (current) =>
         current.map(
@@ -667,11 +699,6 @@ export default function DocumentRequestWizard({
         )
     );
   }
-
-  /* =======================================================
-     STEP 4 - SCHEDULE VALIDATION
-  ======================================================= */
-
 
   /* =======================================================
      VALIDATION - METHOD
@@ -836,6 +863,10 @@ export default function DocumentRequestWizard({
       false
     );
 
+    setConfirmedGroupSignature(
+      groupSignature
+    );
+
     setCurrentStep(2);
   }
 
@@ -875,6 +906,12 @@ export default function DocumentRequestWizard({
         setError(
           "At least one invited student must accept the group request."
         );
+        return;
+      }
+
+      // Already confirmed this exact group: go straight on.
+      if (isGroupConfirmed) {
+        setCurrentStep(2);
         return;
       }
 
@@ -931,12 +968,56 @@ export default function DocumentRequestWizard({
     }
 
     /*
-     * Only allow going backward
-     * or staying on the current step.
+     * Going backward (or staying) is always allowed.
      */
     if (step <= currentStep) {
       setCurrentStep(step);
+      return;
     }
+
+    /*
+     * Going forward is allowed only to steps the student
+     * already reached, and only if every step in between
+     * is still valid.
+     */
+    if (step > furthestStep) {
+      return;
+    }
+
+    for (let check = currentStep; check < step; check += 1) {
+      if (check === 1) {
+        const methodError = validateMethod();
+
+        if (methodError) {
+          setCurrentStep(1);
+          setError(methodError);
+          return;
+        }
+
+        if (
+          requestMethod === "WITH_OTHERS" &&
+          !isGroupConfirmed
+        ) {
+          setCurrentStep(1);
+          setError(
+            "Your group changed. Please click Next to review and confirm it again."
+          );
+          return;
+        }
+      }
+
+      if (check === 2) {
+        const documentError = validateDocuments();
+
+        if (documentError) {
+          setCurrentStep(2);
+          setError(documentError);
+          return;
+        }
+      }
+    }
+
+    setCurrentStep(step);
   }
 
   /* =======================================================
@@ -1147,6 +1228,10 @@ export default function DocumentRequestWizard({
   function resetForm() {
     setCurrentStep(1);
 
+    setFurthestStep(1);
+
+    setConfirmedGroupSignature(null);
+
     setRequestMethod("OWN");
 
     setGroupMembers([]);
@@ -1183,128 +1268,115 @@ export default function DocumentRequestWizard({
   }
 
   /* =======================================================
+     DISPLAY HELPERS
+  ======================================================= */
+
+  const acceptedCount = groupMembers.filter(
+    (member) => member.invitation_status === "ACCEPTED"
+  ).length;
+
+  const declinedCount = groupMembers.filter(
+    (member) => member.invitation_status === "DECLINED"
+  ).length;
+
+  const footerHint =
+    currentStep === 1
+      ? requestMethod === "WITH_OTHERS"
+        ? `Group request · ${groupMembers.length} invited · ${acceptedCount} accepted`
+        : "Solo request"
+      : selectedDocuments.length === 0
+        ? "No documents selected yet"
+        : `${selectedDocuments.length} document${selectedDocuments.length === 1 ? "" : "s"} · ${numberOfCopies} cop${numberOfCopies === 1 ? "y" : "ies"} · ${formatPeso(totalAmount)}`;
+
+  /* =======================================================
      SUCCESS SCREEN
   ======================================================= */
 
   if (successRequestId) {
     return (
-      <div
-        style={{
-          maxWidth: "800px",
-          margin: "0 auto",
-          padding: "24px",
-        }}
-      >
-        <h1>
-          Successfully Sent!
-        </h1>
+      <div className="rwx">
+        <section className="rwx-shell">
+          <div className="rwx-success">
+            <span className="rwx-success__mark" aria-hidden="true">
+              <svg viewBox="0 0 76 76" fill="none">
+                <circle cx="38" cy="38" r="35" fill="currentColor" opacity=".12" />
+                <circle cx="38" cy="38" r="26" fill="currentColor" />
+                <path d="m27 38.5 7.5 7.5L50 30.5" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
 
-        <p>
-          Your document request has
-          been submitted successfully.
-        </p>
+            <span className="rwx-eyebrow">REQUEST SUBMITTED</span>
 
-        <div
-          style={{
-            border:
-              "1px solid #ddd",
-            borderRadius: "8px",
-            padding: "16px",
-            marginTop: "16px",
-          }}
-        >
-          <p>
-            <strong>
-              Request ID:
-            </strong>{" "}
-            {successRequestId}
-          </p>
+            <h2>Successfully sent!</h2>
 
-          <p>
-            <strong>
-              Student ID:
-            </strong>{" "}
-            {studentId}
-          </p>
+            <p>
+              Your document request has been submitted to the
+              Registrar. You can follow its progress from your
+              dashboard.
+            </p>
 
-          <p>
-            <strong>
-              Status:
-            </strong>{" "}
-            Pending
-          </p>
+            <div className="rwx-success__ref">
+              <span>REQUEST ID</span>
+              <strong>{successRequestId}</strong>
+            </div>
 
-          {requestMethod ===
-            "WITH_OTHERS" && (
-              <div
-                style={{
-                  marginTop:
-                    "20px",
-                  padding:
-                    "16px",
-                  border:
-                    "1px solid #e5e7eb",
-                  borderRadius:
-                    "8px",
-                }}
-              >
-                <strong>
-                  Group Members
-                </strong>
+            <dl className="rwx-success__details">
+              <div>
+                <dt>Student ID</dt>
+                <dd>{studentId}</dd>
+              </div>
 
-                <div
-                  style={{
-                    marginTop:
-                      "12px",
-                  }}
-                >
-                  {groupMembers.map(
-                    (member) => (
-                      <div
-                        key={
-                          member.member_id ??
-                          member.student_id
-                        }
-                        style={{
-                          display:
-                            "flex",
-                          justifyContent:
-                            "space-between",
-                          padding:
-                            "8px 0",
-                        }}
-                      >
-                        <span>
-                          {
-                            member.student_id
-                          }
-                        </span>
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <span className="rwx-status rwx-status--pending">
+                    Pending
+                  </span>
+                </dd>
+              </div>
 
-                        <span>
-                          {
-                            member.invitation_status
-                          }
-                        </span>
-                      </div>
-                    )
-                  )}
-                </div>
+              <div>
+                <dt>Request type</dt>
+                <dd>
+                  {requestMethod === "WITH_OTHERS"
+                    ? "Group request"
+                    : "Solo request"}
+                </dd>
+              </div>
+            </dl>
+
+            {requestMethod === "WITH_OTHERS" && (
+              <div className="rwx-members rwx-members--success">
+                <h3>Group members</h3>
+
+                {groupMembers.map((member) => (
+                  <div
+                    className="rwx-member"
+                    key={member.member_id ?? member.student_id}
+                  >
+                    <div className="rwx-member__copy">
+                      <strong>{member.student_id}</strong>
+                    </div>
+
+                    <span
+                      className={`rwx-status rwx-status--${member.invitation_status.toLowerCase()}`}
+                    >
+                      {getMemberStatusLabel(member.invitation_status)}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
-        </div>
 
-        <button
-          type="button"
-          onClick={
-            resetForm
-          }
-          style={{
-            marginTop:
-              "20px",
-          }}
-        >
-          Create Another Request
-        </button>
+            <button
+              type="button"
+              className="rwx-btn rwx-btn--primary"
+              onClick={resetForm}
+            >
+              Create another request
+            </button>
+          </div>
+        </section>
       </div>
     );
   }
@@ -1314,407 +1386,355 @@ export default function DocumentRequestWizard({
   ======================================================= */
 
   return (
-    <div
-      style={{
-        maxWidth: "800px",
-        margin: "0 auto",
-        padding: "24px",
-      }}
-    >
-      <h1>
-        Online Document Request
-      </h1>
+    <div className="rwx">
+      <div className="rwx-page-head">
+        <span className="rwx-eyebrow rwx-eyebrow--muted">
+          DOCUMENT SERVICES
+        </span>
 
-      <StepProgress
-        currentStep={
-          currentStep
-        }
-        onStepClick={
-          handleStepClick
-        }
-      />
+        <h1>Request a document</h1>
 
-      {/* =================================================
-          ERROR
-      ================================================= */}
+        <p>
+          Choose how you want to request, pick your documents, and
+          tell us what they're for.
+        </p>
+      </div>
 
-      {error && (
-        <div
-          style={{
-            padding: "12px",
-            marginBottom:
-              "16px",
-            border:
-              "1px solid #cc0000",
-            borderRadius:
-              "8px",
-            color:
-              "#cc0000",
-          }}
-        >
-          {error}
-        </div>
-      )}
+      <section className="rwx-shell">
+        <StepProgress
+          currentStep={currentStep}
+          furthestStep={furthestStep}
+          onStepClick={handleStepClick}
+        />
 
-      {/* =================================================
-          STEP 1 - METHOD
-      ================================================= */}
+        <div className="rwx-content">
+          {/* ERROR */}
 
-      {currentStep === 1 && (
-        <>
-          <StepMethod
-            requestMethod={requestMethod}
-            onRequestMethodChange={(method) => {
-              setRequestMethod(method);
-              setError("");
-            }}
-            groupMembers={groupMembers}
-            onAddMember={addGroupMember}
-            onRemoveMember={removeGroupMember}
-            currentStudentId={studentId}
-            canEditMembers={isGroupDraft}
-          />
-
-          {/* =================================================
-              GROUP REQUEST STATUS
-          ================================================= */}
-
-          {requestMethod ===
-            "WITH_OTHERS" &&
-            groupMembers.length >
-            0 && (
-              <div
-                style={{
-                  marginTop:
-                    "24px",
-                  padding:
-                    "16px",
-                  border:
-                    "1px solid #ddd",
-                  borderRadius:
-                    "10px",
-                }}
-              >
-                <h3>
-                  Group Request
-                </h3>
-
-                <p>
-                  Request status:{" "}
-                  <strong>
-                    {groupRequestStatus}
-                  </strong>
-                </p>
-
-                {sendingInvitation && (
-                  <p>
-                    Sending invitation...
-                  </p>
-                )}
-
-                {creatingGroupRequest && (
-                  <p>
-                    Creating group request...
-                  </p>
-                )}
-
-                {hasPendingMembers && (
-                  <p>
-                    Waiting for invited
-                    students to respond
-                    through CampuServe.
-                  </p>
-                )}
-
-                {allMembersAnswered &&
-                  hasAcceptedMembers &&
-                  !showGroupConfirmation && (
-                    <p>
-                      All invitations have
-                      been answered. Click{" "}
-                      <strong>
-                        Next
-                      </strong>{" "}
-                      to review the group
-                      before continuing.
-                    </p>
-                  )}
-              </div>
-            )}
-
-          {/* =================================================
-              GROUP CONFIRMATION
-          ================================================= */}
-
-          {showGroupConfirmation && (
-            <div
-              style={{
-                marginTop:
-                  "24px",
-                padding:
-                  "20px",
-                border:
-                  "2px solid #2563eb",
-                borderRadius:
-                  "10px",
-                background:
-                  "#f8fbff",
-              }}
-            >
-              <h2>
-                Confirm Group Request
-              </h2>
-
-              <p>
-                Please review the students
-                included in this group
-                request before continuing.
-              </p>
-
-              <div
-                style={{
-                  marginTop:
-                    "16px",
-                }}
-              >
-                {groupMembers.map(
-                  (member) => (
-                    <div
-                      key={
-                        member.member_id ??
-                        member.student_id
-                      }
-                      style={{
-                        display:
-                          "flex",
-                        justifyContent:
-                          "space-between",
-                        alignItems:
-                          "center",
-                        padding:
-                          "12px",
-                        marginBottom:
-                          "8px",
-                        border:
-                          "1px solid #ddd",
-                        borderRadius:
-                          "8px",
-                        background:
-                          "white",
-                      }}
-                    >
-                      <strong>
-                        {
-                          member.student_id
-                        }
-                      </strong>
-
-                      <span>
-                        {member.invitation_status ===
-                          "ACCEPTED"
-                          ? "Accepted"
-                          : member.invitation_status ===
-                            "DECLINED"
-                            ? "Declined"
-                            : "Pending"}
-                      </span>
-                    </div>
-                  )
-                )}
-              </div>
-
-              <div
-                style={{
-                  marginTop:
-                    "16px",
-                  padding:
-                    "12px",
-                  border:
-                    "1px solid #ddd",
-                  borderRadius:
-                    "8px",
-                }}
-              >
-                <strong>
-                  Accepted:
-                </strong>{" "}
-                {
-                  groupMembers.filter(
-                    (member) =>
-                      member.invitation_status ===
-                      "ACCEPTED"
-                  ).length
-                }
-
-                {"  "}
-
-                <strong>
-                  Declined:
-                </strong>{" "}
-                {
-                  groupMembers.filter(
-                    (member) =>
-                      member.invitation_status ===
-                      "DECLINED"
-                  ).length
-                }
-              </div>
-
-              <div
-                style={{
-                  display:
-                    "flex",
-                  gap: "12px",
-                  marginTop:
-                    "20px",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowGroupConfirmation(
-                      false
-                    )
-                  }
-                >
-                  Back
-                </button>
-
-                <button
-                  type="button"
-                  onClick={
-                    continueFromGroupConfirmation
-                  }
-                >
-                  Confirm & Continue
-                </button>
-              </div>
+          {error && (
+            <div className="rwx-notice rwx-notice--error" role="alert">
+              {error}
             </div>
           )}
-        </>
-      )}
 
-      {/* =================================================
-          STEP 2 - DOCUMENTS
-      ================================================= */}
+          {/* RECAP — shown when the student went back to review */}
 
-      {currentStep === 2 && (
-        <StepDocuments
-          selectedDocuments={
-            selectedDocuments
-          }
-          onToggleDocument={
-            toggleDocument
-          }
-          onQuantityChange={
-            changeQuantity
-          }
-          onCustomNameChange={
-            changeCustomName
-          }
-        />
-      )}
+          {currentStep < furthestStep &&
+            !showGroupConfirmation && (
+              <RequestRecap
+                requestMethod={requestMethod}
+                acceptedCount={acceptedCount}
+                selectedDocuments={selectedDocuments}
+                numberOfCopies={numberOfCopies}
+                totalAmount={totalAmount}
+                purpose={purpose}
+                furthestStep={furthestStep}
+                onContinue={() => handleStepClick(furthestStep)}
+              />
+            )}
 
-      {/* =================================================
-          STEP 3 - DETAILS
-      ================================================= */}
+          {/* STEP 1 - METHOD */}
 
-      {currentStep === 3 && (
-        <StepDetails
-          purpose={
-            purpose
-          }
-          onPurposeChange={
-            setPurpose
-          }
-          selectedDocuments={
-            selectedDocuments
-          }
-          numberOfCopies={
-            numberOfCopies
-          }
-          totalAmount={
-            totalAmount
-          }
-        />
-      )}
+          {currentStep === 1 && (
+            <>
+              <StepMethod
+                requestMethod={requestMethod}
+                onRequestMethodChange={(method) => {
+                  setRequestMethod(method);
+                  setError("");
+                }}
+                groupMembers={groupMembers}
+                onAddMember={addGroupMember}
+                onRemoveMember={removeGroupMember}
+                currentStudentId={studentId}
+                canEditMembers={isGroupDraft}
+              />
 
-      {/* =================================================
-          STEP 4 - SCHEDULE
-      ================================================= */}
+              {/* GROUP REQUEST STATUS */}
 
+              {requestMethod === "WITH_OTHERS" &&
+                groupMembers.length > 0 && (
+                  <div className="rwx-group-status">
+                    <div className="rwx-group-status__head">
+                      <h3>Group request</h3>
 
-      {/* =================================================
-          NAVIGATION
-      ================================================= */}
+                      <span className="rwx-chip">
+                        {String(groupRequestStatus).replace(/_/g, " ")}
+                      </span>
+                    </div>
 
-      {!showGroupConfirmation && (
-        <div
-          style={{
-            display:
-              "flex",
-            justifyContent:
-              "space-between",
-            gap: "12px",
-            marginTop:
-              "24px",
-          }}
-        >
-          {/* BACK */}
+                    {sendingInvitation && (
+                      <p className="rwx-busy">Sending invitation...</p>
+                    )}
 
-          <button
-            type="button"
-            onClick={
-              handleBack
-            }
-            disabled={
-              currentStep ===
-              1 ||
-              loading ||
-              sendingInvitation ||
-              creatingGroupRequest
-            }
-          >
-            Back
-          </button>
+                    {creatingGroupRequest && (
+                      <p className="rwx-busy">Creating group request...</p>
+                    )}
 
-          {/* NEXT */}
+                    {hasPendingMembers && (
+                      <p>
+                        Waiting for invited students to respond
+                        through CampuServe.
+                      </p>
+                    )}
 
-          {currentStep < 3 && (
+                    {allMembersAnswered &&
+                      hasAcceptedMembers &&
+                      !showGroupConfirmation && (
+                        <p>
+                          All invitations have been answered. Click{" "}
+                          <strong>Next</strong> to review the group
+                          before continuing.
+                        </p>
+                      )}
+                  </div>
+                )}
+
+              {/* GROUP CONFIRMATION */}
+
+              {showGroupConfirmation && (
+                <div className="rwx-confirm">
+                  <span className="rwx-eyebrow">ALMOST THERE</span>
+
+                  <h2>Confirm group request</h2>
+
+                  <p>
+                    Please review the students included in this
+                    group request before continuing.
+                  </p>
+
+                  <div className="rwx-members">
+                    {groupMembers.map((member) => (
+                      <div
+                        className="rwx-member"
+                        key={member.member_id ?? member.student_id}
+                      >
+                        <div className="rwx-member__copy">
+                          <strong>{member.student_id}</strong>
+                        </div>
+
+                        <span
+                          className={`rwx-status rwx-status--${member.invitation_status.toLowerCase()}`}
+                        >
+                          {getMemberStatusLabel(
+                            member.invitation_status
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rwx-confirm__counts">
+                    <div>
+                      <strong>{acceptedCount}</strong>
+                      <small>Accepted</small>
+                    </div>
+
+                    <div>
+                      <strong>{declinedCount}</strong>
+                      <small>Declined</small>
+                    </div>
+                  </div>
+
+                  <div className="rwx-confirm__actions">
+                    <button
+                      type="button"
+                      className="rwx-btn rwx-btn--secondary"
+                      onClick={() => setShowGroupConfirmation(false)}
+                    >
+                      Back
+                    </button>
+
+                    <button
+                      type="button"
+                      className="rwx-btn rwx-btn--primary"
+                      onClick={continueFromGroupConfirmation}
+                    >
+                      Confirm &amp; continue{" "}
+                      <span aria-hidden="true">→</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* STEP 2 - DOCUMENTS */}
+
+          {currentStep === 2 && (
+            <StepDocuments
+              selectedDocuments={selectedDocuments}
+              onToggleDocument={toggleDocument}
+              onQuantityChange={changeQuantity}
+              onCustomNameChange={changeCustomName}
+            />
+          )}
+
+          {/* STEP 3 - DETAILS */}
+
+          {currentStep === 3 && (
+            <StepDetails
+              purpose={purpose}
+              onPurposeChange={(value) => {
+                setPurpose(value);
+                setError("");
+              }}
+              selectedDocuments={selectedDocuments}
+              numberOfCopies={numberOfCopies}
+              totalAmount={totalAmount}
+            />
+          )}
+        </div>
+
+        {/* NAVIGATION */}
+
+        {!showGroupConfirmation && (
+          <div className="rwx-footer">
             <button
               type="button"
-              onClick={
-                handleNext
-              }
+              className="rwx-btn rwx-btn--secondary"
+              onClick={handleBack}
               disabled={
+                currentStep === 1 ||
                 loading ||
                 sendingInvitation ||
                 creatingGroupRequest
               }
             >
-              Next
+              <span aria-hidden="true">←</span> Back
             </button>
-          )}
 
-          {/* SUBMIT */}
+            <span className="rwx-footer__hint">{footerHint}</span>
 
-          {currentStep === 3 && (
-            <button
-              type="button"
-              onClick={
-                handleSubmit
-              }
-              disabled={
-                loading
-              }
-            >
-              {loading
-                ? "Submitting..."
-                : "Submit Request"}
-            </button>
-          )}
-        </div>
-      )}
+            {currentStep < 3 && (
+              <button
+                type="button"
+                className="rwx-btn rwx-btn--primary"
+                onClick={handleNext}
+                disabled={
+                  loading ||
+                  sendingInvitation ||
+                  creatingGroupRequest
+                }
+              >
+                Next <span aria-hidden="true">→</span>
+              </button>
+            )}
+
+            {currentStep === 3 && (
+              <button
+                type="button"
+                className="rwx-btn rwx-btn--primary"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? "Submitting..." : "Submit request"}
+              </button>
+            )}
+          </div>
+        )}
+      </section>
     </div>
+  );
+}
+
+function getMemberStatusLabel(status: GroupMemberStatus) {
+  if (status === "ACCEPTED") return "Accepted";
+  if (status === "DECLINED") return "Declined";
+  return "Pending";
+}
+
+/* =========================================================
+   RECAP — "Your request so far"
+========================================================= */
+
+const STEP_NAMES = ["Method", "Documents", "Details"];
+
+function RequestRecap({
+  requestMethod,
+  acceptedCount,
+  selectedDocuments,
+  numberOfCopies,
+  totalAmount,
+  purpose,
+  furthestStep,
+  onContinue,
+}: {
+  requestMethod: "OWN" | "WITH_OTHERS";
+  acceptedCount: number;
+  selectedDocuments: SelectedDocument[];
+  numberOfCopies: number;
+  totalAmount: number;
+  purpose: string;
+  furthestStep: number;
+  onContinue: () => void;
+}) {
+  return (
+    <aside className="rwx-recap" aria-label="Your request so far">
+      <div className="rwx-recap__head">
+        <div>
+          <span className="rwx-eyebrow">YOUR REQUEST SO FAR</span>
+          <p>
+            Reviewing an earlier step. Your choices are saved.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="rwx-btn rwx-btn--secondary rwx-btn--small"
+          onClick={onContinue}
+        >
+          Back to {STEP_NAMES[furthestStep - 1]}{" "}
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
+
+      <dl className="rwx-recap__grid">
+        <div>
+          <dt>Request type</dt>
+          <dd>
+            {requestMethod === "WITH_OTHERS"
+              ? `Group request · ${acceptedCount} accepted`
+              : "Solo request"}
+          </dd>
+        </div>
+
+        <div>
+          <dt>Documents</dt>
+          <dd>
+            {selectedDocuments.length === 0 ? (
+              <span className="rwx-recap__empty">None yet</span>
+            ) : (
+              <span className="rwx-recap__chips">
+                {selectedDocuments.map((document) => (
+                  <span className="rwx-recap__chip" key={document.id}>
+                    {document.document_type === "Others"
+                      ? document.custom_document_name || "Others"
+                      : document.document_type}{" "}
+                    <b>×{document.quantity}</b>
+                  </span>
+                ))}
+              </span>
+            )}
+          </dd>
+        </div>
+
+        {selectedDocuments.length > 0 && (
+          <div>
+            <dt>Total</dt>
+            <dd>
+              {numberOfCopies} cop{numberOfCopies === 1 ? "y" : "ies"} ·{" "}
+              {formatPeso(totalAmount)}
+            </dd>
+          </div>
+        )}
+
+        {purpose.trim() && (
+          <div>
+            <dt>Purpose</dt>
+            <dd className="rwx-recap__purpose">{purpose.trim()}</dd>
+          </div>
+        )}
+      </dl>
+    </aside>
   );
 }
