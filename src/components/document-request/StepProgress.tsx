@@ -6,8 +6,7 @@ interface StepProgressProps {
 const steps = [
   "Method",
   "Documents",
-  "Details",
-  "Schedule",
+  "Details"
 ];
 
 export default function StepProgress({

@@ -831,13 +831,7 @@ export default function ItemReservation({
       {/* HEADER */}
 
       <div className="reservation-header">
-        <button
-          type="button"
-          className="back-button"
-          onClick={onBack}
-        >
-          ← Back
-        </button>
+      
 
         <h1>Item Reservation</h1>
       </div>

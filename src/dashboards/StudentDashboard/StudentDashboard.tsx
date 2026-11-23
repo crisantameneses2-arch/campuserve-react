@@ -14,6 +14,9 @@ import DocumentRequestWizard from "../../pages/student/DocumentRequestWizard";
 import DocumentRequestList from "../../pages/student/DocumentRequestList";
 import ClaimStubPage from "../../pages/student/ClaimStubPage";
 import GroupRequestInvitations from "../../pages/student/GroupRequestInvitations";
+import HelpCenter from "../../pages/student/HelpCenter";
+import ContactSupport from "../../pages/student/ContactSupport";
+
 
 import { useNotifications } from "../../hooks/useNotifications";
 import {
@@ -36,6 +39,9 @@ import {
 } from "../../utils/format";
 
 import "./StudentDashboard.css";
+import { logout } from "../../services/logout";
+import AccountSettings from "../../pages/student/AccountSettings";
+import MyProfile from "../../pages/student/MyProfile";
 
 type StudentDashboardProps = {
   account: {
@@ -53,8 +59,11 @@ type DashboardPage =
   | "itemReservation"
   | "claimStub"
   | "transactions"
-  | "notifications";
-
+  | "notifications"
+  | "help"
+  | "contact"
+  | "profile"
+  | "settings";
 type StudentTransaction = {
   key: string;
   id: string;
@@ -473,6 +482,23 @@ export default function StudentDashboard({
               onNotificationClick={handleNotificationClick}
             />
           )}
+          {activePage === "help" && (
+            <div className="student-page-shell">
+
+
+              <HelpCenter />
+            </div>
+          )}
+          {activePage === "contact" && (
+            <div className="student-page-shell">
+
+
+              <ContactSupport />
+            </div>
+          )}
+          {activePage === "profile" && (
+            <MyProfile account={account} />
+          )}
         </div>
 
         {selectedTransaction && (
@@ -480,6 +506,19 @@ export default function StudentDashboard({
             transaction={selectedTransaction}
             onClose={() => setSelectedTransaction(null)}
           />
+        )}
+        {activePage === "settings" && (
+          <div className="student-page-shell">
+            <button
+              type="button"
+              className="back-button"
+              onClick={() => go("dashboard")}
+            >
+              ← Back to Dashboard
+            </button>
+
+            <AccountSettings />
+          </div>
         )}
       </div>
     );
@@ -769,58 +808,7 @@ export default function StudentDashboard({
 
           {/* NOTIFICATIONS */}
 
-          <section className="notification-strip">
-            <div className="notification-strip__title">
-              <span className="notification-strip__icon">
-                <Icon name="bell" size={19} />
-              </span>
 
-              <div>
-                <strong>Notifications</strong>
-
-                <span>
-                  {unreadNotifications > 0
-                    ? `${unreadNotifications} unread update${unreadNotifications === 1 ? "" : "s"}`
-                    : "You're all caught up"}
-                </span>
-              </div>
-            </div>
-
-            <div className="notification-strip__items">
-              {notificationsLoading ? (
-                <span>Loading...</span>
-              ) : recentNotifications.length === 0 ? (
-                <span>No new updates.</span>
-              ) : (
-                recentNotifications.slice(0, 2).map(
-                  (notification) => (
-                    <button
-                      key={notification.id}
-                      type="button"
-                      onClick={() => {
-                        void handleNotificationClick(notification);
-                        go("notifications");
-                      }}
-                    >
-                      <strong>{notification.title}</strong>
-
-                      <small>
-                        {timeAgo(notification.createdAt)}
-                      </small>
-                    </button>
-                  )
-                )
-              )}
-            </div>
-
-            <button
-              type="button"
-              className="notification-view-button"
-              onClick={() => go("notifications")}
-            >
-              View notifications →
-            </button>
-          </section>
         </div>
       </main>
 
@@ -933,59 +921,70 @@ function DashboardHeader({
           <span className="header-user-name">
             {studentName}
           </span>
+          <button onClick={async () => {
+            await logout();
+          }}>Logout</button>
         </div>
       </div>
 
       {menuOpen && (
         <div className="dashboard-menu">
-          <button
-            type="button"
-            onClick={() => onNavigate("dashboard")}
-          >
+          <div className="menu-brand">CAMPUSERVE</div>
+
+          {/* MAIN */}
+          <div className="menu-section-title">MAIN</div>
+
+          <button type="button" onClick={() => onNavigate("dashboard")}>
             Dashboard
           </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate("request")}
-          >
-            Request Document
-          </button>
-          <button
-            type="button"
-            onClick={() => onNavigate("groupInvites")}
-          >
-            Group Request Invitations
+          <button type="button" onClick={() => onNavigate("request")}>
+            Document Requests
           </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate("itemReservation")}
-          >
-            Item Reservation
+          <button type="button" onClick={() => onNavigate("itemReservation")}>
+            Item Reservations
           </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate("claimStub")}
-          >
+          <button type="button" onClick={() => onNavigate("claimStub")}>
             Claim & Release
           </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate("transactions")}
-          >
+          <button type="button" onClick={() => onNavigate("groupInvites")}>
+            My Requests
+          </button>
+
+          <button type="button" onClick={() => onNavigate("transactions")}>
             Transaction History
           </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate("notifications")}
-          >
+          {/* INFORMATION & SUPPORT */}
+          <div className="menu-section-title">INFORMATION & SUPPORT</div>
+
+          <button type="button" onClick={() => onNavigate("notifications")}>
             Notifications
           </button>
+
+          <button type="button" onClick={() => onNavigate("help")}>
+            Help Center & FAQs
+          </button>
+
+          <button type="button" onClick={() => onNavigate("contact")}>
+            Contact Support
+          </button>
+
+          {/* ACCOUNT */}
+          <div className="menu-section-title">ACCOUNT</div>
+
+          <button type="button" onClick={() => onNavigate("profile")}>
+            My Profile
+          </button>
+
+          <button type="button" onClick={() => onNavigate("settings")}>
+            Account Settings
+          </button>
         </div>
+
       )}
     </header>
   );
@@ -1675,17 +1674,21 @@ function TransactionDetailsModal({
 
           <button
             type="button"
-            onClick={onClose}
             aria-label="Close transaction details"
             style={{
               border: 0,
-              background: "#f1f5f9",
+              background: "rgb(241, 245, 249)",
               borderRadius: "50%",
               width: "36px",
               height: "36px",
               fontSize: "23px",
               cursor: "pointer",
               flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+              lineHeight: 1,
             }}
           >
             ×
@@ -2381,4 +2384,28 @@ function Icon({
         </svg>
       );
   }
+}
+function DefaultProfilePicture({ size = 36 }: { size?: number }) {
+  return (
+    <div
+      className="header-profile-placeholder"
+      style={{ width: size, height: size }}
+      aria-label="Default profile picture"
+    >
+      <svg
+        viewBox="0 0 40 40"
+        width={size}
+        height={size}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle cx="20" cy="20" r="20" fill="#E5E7EB" />
+        <circle cx="20" cy="14" r="7" fill="#9CA3AF" />
+        <path
+          d="M7 35C7 27.82 12.82 22 20 22C27.18 22 33 27.82 33 35"
+          fill="#9CA3AF"
+        />
+      </svg>
+    </div>
+  );
 }

@@ -206,8 +206,8 @@
 .tracking-card {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 20px 22px 18px;
+  border-radius: 8px;
+  padding: 10px 14px;
   box-shadow: 0 2px 8px rgba(25, 45, 70, .035);
 }
 
@@ -1771,82 +1771,347 @@
 /* =========================================
    SEPARATE DOCUMENT AND ITEM TRACKING
 ========================================= */
+/* =========================================
+   COMPACT HORIZONTAL TRACKING
+========================================= */
 
 .tracking-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 20px;
-  align-items: stretch;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: start;
 }
 
 .tracking-column {
   min-width: 0;
-  padding: 16px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
 }
 
 .tracking-column__title {
-  margin: 0 0 16px;
-  font-size: 15px;
+  margin: 0 0 10px;
+  font-size: 13px;
   font-weight: 700;
-  line-height: 1.4;
   color: var(--ink);
 }
 
-.tracking-column .tracking-carousel {
-  width: 100%;
-  min-width: 0;
-}
-
-.tracking-column .tracking-carousel__viewport {
-  width: 100%;
-  min-width: 0;
-}
-
-.tracking-column .tracking-carousel__slide {
-  width: 100%;
-  min-width: 0;
-}
-
 .tracking-column__empty {
-  min-height: 180px;
-  padding: 20px 12px;
+  min-height: 65px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   border: 1px dashed #cbd3dc;
-  border-radius: 9px;
+  border-radius: 8px;
   background: #fafbfc;
-  color: #8993a1;
   text-align: center;
 }
 
 .tracking-column__empty strong {
   color: var(--ink);
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .tracking-column__empty p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 10px;
 }
 
-/* Stack the two tracking columns on smaller screens */
+.tracking-column .tracking-details {
+  gap: 8px 16px;
+  padding: 9px 0;
+  margin-top: 8px;
+}
+
+.tracking-column .tracking-progress {
+  margin: 14px 0;
+}
+
+.tracking-column .tracking-step {
+  font-size: 9px;
+  gap: 5px;
+}
+
+.tracking-column .tracking-step__dot {
+  width: 22px;
+  height: 22px;
+}
+
+.tracking-column .tracking-pickup {
+  margin-top: 8px;
+  padding: 8px;
+}
 
 @media (max-width: 768px) {
   .tracking-columns {
     grid-template-columns: 1fr;
-    gap: 14px;
+  }
+}
+
+/* =========================================
+   EXTRA COMPACT TRACKING OVERRIDES
+========================================= */
+
+.tracking-card {
+  padding: 8px 12px;
+}
+
+.tracking-card__header {
+  gap: 6px;
+}
+
+.tracking-card h1 {
+  font-size: 15px;
+}
+
+.tracking-subtitle {
+  font-size: 10px;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.tracking-columns {
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tracking-column {
+  padding: 6px 8px;
+  border-radius: 7px;
+}
+
+.tracking-column__header {
+  margin-bottom: 6px;
+}
+
+.tracking-column__header h2,
+.tracking-column__title {
+  font-size: 11px;
+}
+
+.tracking-column__header span {
+  font-size: 9px;
+}
+
+.tracking-content {
+  margin-top: 6px;
+}
+
+.tracking-summary {
+  gap: 7px;
+  padding: 7px 8px;
+  border-radius: 7px;
+}
+
+.tracking-type-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+.tracking-summary__text {
+  gap: 1px;
+}
+
+.tracking-summary__text > span {
+  font-size: 8px;
+}
+
+.tracking-summary__text strong {
+  font-size: 11px;
+}
+
+.tracking-summary__text small {
+  font-size: 9px;
+}
+
+.tracking-details {
+  gap: 6px 12px;
+  padding: 7px 0;
+  margin-top: 6px;
+}
+
+.tracking-detail-item {
+  gap: 2px;
+}
+
+.tracking-detail-item span {
+  font-size: 9px;
+}
+
+.tracking-detail-item strong {
+  font-size: 10px;
+}
+
+.tracking-progress {
+  margin: 10px 0;
+  gap: 2px;
+}
+
+.tracking-step {
+  font-size: 8px;
+  gap: 4px;
+}
+
+.tracking-step__dot {
+  width: 20px;
+  height: 20px;
+  font-size: 8px;
+}
+
+.tracking-step::before {
+  top: 9px;
+}
+
+.tracking-step:not(:last-child)::after {
+  top: 9px;
+}
+
+.tracking-pickup {
+  margin-top: 6px;
+  padding: 6px 8px;
+  gap: 6px;
+}
+
+.tracking-pickup span {
+  font-size: 8px;
+}
+
+.tracking-pickup strong {
+  font-size: 10px;
+}
+
+.tracking-empty {
+  min-height: 65px;
+  margin-top: 6px;
+  padding: 8px;
+  gap: 8px;
+}
+
+.tracking-empty__icon {
+  width: 28px;
+  height: 28px;
+}
+
+.tracking-empty strong {
+  font-size: 11px;
+}
+
+.tracking-empty p {
+  font-size: 10px;
+}
+
+.tracking-column__empty {
+  min-height: 55px;
+  padding: 6px;
+  gap: 3px;
+}
+
+.tracking-column__empty strong {
+  font-size: 10px;
+}
+
+.tracking-column__empty p {
+  font-size: 9px;
+}
+
+.tracking-column .tracking-details {
+  padding: 6px 0;
+  margin-top: 5px;
+  gap: 5px 10px;
+}
+
+.tracking-column .tracking-progress {
+  margin: 9px 0;
+}
+
+.tracking-column .tracking-step {
+  font-size: 8px;
+  gap: 3px;
+}
+
+.tracking-column .tracking-step__dot {
+  width: 19px;
+  height: 19px;
+}
+
+.tracking-column .tracking-pickup {
+  margin-top: 5px;
+  padding: 6px;
+}
+
+.tracking-carousel__controls {
+  margin-top: 8px;
+  gap: 8px;
+}
+
+.tracking-carousel__arrow {
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+}
+
+.tracking-carousel__dots {
+  gap: 5px;
+}
+
+.tracking-carousel__dot {
+  width: 6px;
+  height: 6px;
+}
+
+.tracking-carousel__dot.active {
+  width: 16px;
+}
+
+.tracking-carousel__counter {
+  font-size: 9px;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .tracking-card {
+    padding: 8px 10px;
+  }
+
+  .tracking-columns {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .tracking-column {
-    padding: 14px;
+    padding: 6px 8px;
   }
-}
+
+  .tracking-card__header h1 {
+    font-size: 14px;
+  }
+
+  .tracking-progress {
+    margin: 9px 0;
+  }
+
+  .tracking-step {
+    font-size: 7px;
+    gap: 3px;
+  }
+
+  .tracking-step__dot {
+    width: 18px;
+    height: 18px;
+  }
+
+  .tracking-step:not(:last-child)::after {
+    top: 8px;
+  }
+
+  .tracking-carousel__controls {
+    margin-top: 6px;
+  }
+} 
