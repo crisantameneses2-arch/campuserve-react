@@ -39,7 +39,6 @@ import {
 } from "../../utils/format";
 
 import "./StudentDashboard.css";
-import { logout } from "../../services/logout";
 import AccountSettings from "../../pages/student/AccountSettings";
 import MyProfile from "../../pages/student/MyProfile";
 
@@ -49,6 +48,7 @@ type StudentDashboardProps = {
     email?: string;
     student_id?: string;
   };
+  
 };
 
 type DashboardPage =
@@ -921,9 +921,6 @@ function DashboardHeader({
           <span className="header-user-name">
             {studentName}
           </span>
-          <button onClick={async () => {
-            await logout();
-          }}>Logout</button>
         </div>
       </div>
 
@@ -979,7 +976,8 @@ function DashboardHeader({
           <button type="button" onClick={() => onNavigate("profile")}>
             My Profile
           </button>
-
+          
+          
           <button type="button" onClick={() => onNavigate("settings")}>
             Account Settings
           </button>

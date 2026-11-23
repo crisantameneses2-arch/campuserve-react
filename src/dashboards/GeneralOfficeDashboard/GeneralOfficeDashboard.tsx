@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
+import { logout } from "../../services/logout";
 
 
 // =========================
@@ -1622,7 +1623,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                 </span>
                             )}
                         </button>
-
+<button
+    className="go-header-button"
+    onClick={() => setActivePage("Profile")}
+>
+    👤
+</button>
 
                     </div>
 
@@ -1718,7 +1724,9 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                         )}
                                 </>
                             )}
+                            
                         </div>
+                        
                     </div>
                 )}
 
@@ -1963,6 +1971,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                         </div>
 
+
                     </section>
 
                 )}
@@ -2123,6 +2132,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 {/* ========================= */}
                 {/* REQUESTS PAGE */}
                 {/* ========================= */}
+
 
                 {activePage === "Requests" && (
 
@@ -3888,7 +3898,8 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                             <section className="go-panel">
 
-                                <h2>{activePage}</h2>
+                                <h2>My Profile
+                                </h2>
 
                                 <p
                                     style={{
@@ -3896,7 +3907,84 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                         color: "#71849a",
                                     }}
                                 >
-                                    This section will be built next.
+                                    {activePage === "Profile" && (
+    <section className="go-content">
+        <div className="go-profile-card">
+
+            <div className="go-profile-picture">
+                <svg
+                    viewBox="0 0 40 40"
+                    width="150"
+                    height="150"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+                    <circle
+                        cx="20"
+                        cy="20"
+                        r="20"
+                        fill="#E5E7EB"
+                    />
+                    <circle
+                        cx="20"
+                        cy="14"
+                        r="7"
+                        fill="#9CA3AF"
+                    />
+                    <path
+                        d="M7 35C7 27.82 12.82 22 20 22C27.18 22 33 27.82 33 35"
+                        fill="#9CA3AF"
+                    />
+                </svg>
+            </div>
+
+            <h2>
+                {account.name || "General Office Name"}
+            </h2>
+
+            <p className="go-profile-email">
+                {account.email || "email@something.com"}
+            </p>
+
+            <div className="go-profile-details">
+
+                <div className="go-profile-row">
+                    <span>Full Name</span>
+                    <strong>
+                        {account.name || "General Office Name"}
+                    </strong>
+                </div>
+
+                <div className="go-profile-row">
+                    <span>Email Address</span>
+                    <strong>
+                        {account.email || "email@something.com"}
+                    </strong>
+                </div>
+
+                <div className="go-profile-row">
+                    <span>Role</span>
+                    <strong>
+                        {account.role || "General Office"}
+                    </strong>
+                </div>
+
+            </div>
+
+            <button
+                type="button"
+                className="go-profile-logout"
+                onClick={async () => {
+                    await logout();
+                }}
+            >
+                Logout
+            </button>
+
+        </div>
+    </section>
+)}
+
                                 </p>
 
                             </section>
