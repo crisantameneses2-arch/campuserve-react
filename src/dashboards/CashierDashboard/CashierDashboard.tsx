@@ -237,6 +237,12 @@ function CashierDashboard({ account }: CashierDashboardProps) {
         const updates: Record<string, any> = {
           payment_confirmed_at: serverTimestamp(),
           payment_confirmed_by: account.firebaseUid || "",
+          // Shown on the student's digital receipt.
+          payment_confirmed_by_name: account.name || account.email || "Cashier",
+          receipt_number: currentData.receipt_number || generateCode("OR"),
+          amount_paid: Number(
+            currentData.total_amount ?? currentData.totalAmount ?? 0
+          ),
         };
 
         let claimingCode = "";

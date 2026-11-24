@@ -16,6 +16,9 @@ import ClaimStubPage from "../../pages/student/ClaimStubPage";
 import HelpCenter from "../../pages/student/HelpCenter";
 import ContactSupport from "../../pages/student/ContactSupport";
 import MessagesPanel from "../../components/messaging/MessagesPanel";
+import DigitalReceipt, {
+  type ReceiptData,
+} from "../../components/receipt/DigitalReceipt";
 import { useStudentUnreadMessages } from "../../components/messaging/useUnreadMessages";
 
 
@@ -255,6 +258,68 @@ export default function StudentDashboard({
 
   const transactionsLoading =
     documentsLoading || itemsLoading;
+
+  /* =========================================
+     DIGITAL RECEIPTS
+     Opens by itself the first time the student sees a payment the
+     Cashier confirmed in the last 7 days; can be reopened from the
+     transaction details.
+  ========================================= */
+
+  const [receiptTransaction, setReceiptTransaction] =
+    useState<StudentTransaction | null>(null);
+
+  const receiptSeenKey = `campuserve-receipts-seen-${studentId}`;
+
+  useEffect(() => {
+    if (!studentId || transactionsLoading || receiptTransaction) return;
+
+    let seen: string[] = [];
+
+    try {
+      seen = JSON.parse(localStorage.getItem(receiptSeenKey) || "[]");
+    } catch {
+      seen = [];
+    }
+
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+    const fresh = transactions
+      .filter(
+        (transaction) =>
+          isPaidTransaction(transaction) &&
+          !seen.includes(transaction.key) &&
+          getTime(transaction.details?.payment_confirmed_at) > weekAgo
+      )
+      .sort(
+        (a, b) =>
+          getTime(b.details?.payment_confirmed_at) -
+          getTime(a.details?.payment_confirmed_at)
+      );
+
+    if (fresh.length > 0) setReceiptTransaction(fresh[0]);
+  }, [studentId, transactions, transactionsLoading, receiptTransaction, receiptSeenKey]);
+
+  function closeReceipt() {
+    if (receiptTransaction) {
+      try {
+        const seen: string[] = JSON.parse(
+          localStorage.getItem(receiptSeenKey) || "[]"
+        );
+
+        if (!seen.includes(receiptTransaction.key)) {
+          localStorage.setItem(
+            receiptSeenKey,
+            JSON.stringify([...seen, receiptTransaction.key].slice(-200))
+          );
+        }
+      } catch {
+        // Storage unavailable: the receipt may show again next visit.
+      }
+    }
+
+    setReceiptTransaction(null);
+  }
 
   const activeTransactions = useMemo(
     () =>
@@ -514,27 +579,16 @@ export default function StudentDashboard({
               {/* LIVE TRACKING */}
 
               <section
-                className="sdx-track"
+                className="sdx-track sdx-track--compact"
                 aria-labelledby="sdx-track-title"
               >
                 <div className="sdx-track__head">
-                  <div>
-                    <div className="sdx-track__eyebrow">
-                      <span
-                        className="sdx-track__live"
-                        aria-hidden="true"
-                      />
-                      LIVE TRACKING
-                    </div>
-
-                    <h1 id="sdx-track-title">
-                      Your requests, <em>in motion.</em>
-                    </h1>
-
-                    <p>
-                      A clear view of your active document requests and
-                      item reservations.
-                    </p>
+                  <div className="sdx-track__eyebrow">
+                    <span
+                      className="sdx-track__live"
+                      aria-hidden="true"
+                    />
+                    <h2 id="sdx-track-title">Live tracking</h2>
                   </div>
 
                   <button
@@ -542,7 +596,7 @@ export default function StudentDashboard({
                     className="sdx-track__history"
                     onClick={() => go("transactions")}
                   >
-                    View all activity <span aria-hidden="true">↗</span>
+                    All activity <span aria-hidden="true">↗</span>
                   </button>
                 </div>
 
@@ -832,6 +886,21 @@ export default function StudentDashboard({
         <TransactionDetailsModal
           transaction={selectedTransaction}
           onClose={() => setSelectedTransaction(null)}
+          onViewReceipt={
+            isPaidTransaction(selectedTransaction)
+              ? () => {
+                  setReceiptTransaction(selectedTransaction);
+                  setSelectedTransaction(null);
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {receiptTransaction && (
+        <DigitalReceipt
+          receipt={toReceipt(receiptTransaction, studentName, studentId)}
+          onClose={closeReceipt}
         />
       )}
     </div>
@@ -1300,51 +1369,48 @@ function TrackingBox({
             }}
             aria-label={`View details for ${current.title}`}
           >
-            <TrackingContent transaction={current} />
+            <TrackingContent
+              transaction={current}
+              position={{ index: safeIndex + 1, count }}
+            />
           </div>
 
-          <div className="sdx-box-bottom">
-            <span>
-              {count > 1
-                ? `${safeIndex + 1} of ${count}`
-                : variant === "document"
-                  ? "1 request"
-                  : "1 reservation"}
-            </span>
-
-            <div className="sdx-track-controls">
-              {count > 1 && (
-                <>
-                  <button
-                    type="button"
-                    className="sdx-mini-btn"
-                    onClick={previous}
-                    disabled={safeIndex === 0}
-                    aria-label="Previous transaction"
-                  >
-                    ←
-                  </button>
-
-                  <button
-                    type="button"
-                    className="sdx-mini-btn"
-                    onClick={next}
-                    disabled={safeIndex === count - 1}
-                    aria-label="Next transaction"
-                  >
-                    →
-                  </button>
-                </>
-              )}
-
+          <div className="sdx-box-bottom sdx-box-bottom--center">
+            {count > 1 ? (
               <button
                 type="button"
-                className="sdx-text-btn sdx-text-btn--small"
-                onClick={() => onSelect(current)}
+                className="sdx-mini-btn"
+                onClick={previous}
+                disabled={safeIndex === 0}
+                aria-label="Previous transaction"
               >
-                View details <span aria-hidden="true">↗</span>
+                ←
               </button>
-            </div>
+            ) : (
+              <span className="sdx-mini-spacer" />
+            )}
+
+            <button
+              type="button"
+              className="sdx-text-btn sdx-text-btn--small sdx-view-more"
+              onClick={() => onSelect(current)}
+            >
+              View more <span aria-hidden="true">↗</span>
+            </button>
+
+            {count > 1 ? (
+              <button
+                type="button"
+                className="sdx-mini-btn"
+                onClick={next}
+                disabled={safeIndex === count - 1}
+                aria-label="Next transaction"
+              >
+                →
+              </button>
+            ) : (
+              <span className="sdx-mini-spacer" />
+            )}
           </div>
         </>
       )}
@@ -1354,8 +1420,10 @@ function TrackingBox({
 
 function TrackingContent({
   transaction,
+  position,
 }: {
   transaction: StudentTransaction;
+  position?: { index: number; count: number };
 }) {
   const status = normalizeStatus(transaction.status);
   const paymentStatus = normalizeStatus(transaction.payment_status);
@@ -1428,64 +1496,310 @@ function TrackingContent({
     }
   }
 
-  const currentStep = toTitle(currentSteps[activeIndex]);
-  const nextStep = currentSteps[activeIndex + 1];
+  const isFinished = status === "CLAIMED" || status === "COMPLETED";
+  const isStopped = STOPPED_STATUSES.includes(status);
+
+  // Friendly names for the stage pictures.
+  const stageLabel = (step: string) => STAGE_LABELS[step] ?? toTitle(step);
+
+  let previousLabel = activeIndex > 0
+    ? stageLabel(currentSteps[activeIndex - 1])
+    : "Submitted";
+  let currentLabel = stageLabel(currentSteps[activeIndex]);
+  let nextLabel: string | null = currentSteps[activeIndex + 1]
+    ? stageLabel(currentSteps[activeIndex + 1])
+    : isDocument
+      ? "Claimed"
+      : null;
+
+  if (isFinished) {
+    previousLabel = stageLabel(currentSteps[currentSteps.length - 1]);
+    currentLabel = "Claimed";
+    nextLabel = null;
+  }
+
+  if (isStopped) {
+    previousLabel = "Submitted";
+    currentLabel = toTitle(status.replace(/_/g, " "));
+    nextLabel = null;
+  }
+
+  const currentStage: StageKey = isStopped
+    ? "stopped"
+    : isFinished
+      ? "claimed"
+      : stageKey(currentSteps[activeIndex]);
 
   const schedule = transaction.date
     ? `${formatClaimDate(transaction.date)}${transaction.time ? ` · ${formatClaimTime(transaction.time)}` : ""}`
     : "";
 
   return (
-    <div className="sdx-doc-row">
-      <span className="sdx-row-eyebrow">
-        {isDocument ? "DOCUMENT" : "ITEM"} · {transaction.id}
-      </span>
+    <div className={`sdx-tl ${isStopped ? "is-stopped" : ""}`}>
+      {/* HEADER — item name tab + position counter */}
 
-      <div className="sdx-title-line">
-        <h3>{transaction.title}</h3>
-        <StatusBadge status={status} />
+      <div className="sdx-tl__head">
+        <div className="sdx-tl__tab">
+          <span className="sdx-row-eyebrow">
+            {isDocument ? "DOCUMENT" : "ITEM"} · {transaction.id}
+          </span>
+          <h3 title={transaction.title}>{transaction.title}</h3>
+        </div>
+
+        {position && position.count > 1 && (
+          <span
+            className="sdx-tl__count"
+            aria-label={`${position.index} of ${position.count}`}
+          >
+            {position.index}/{position.count}
+          </span>
+        )}
       </div>
 
-      {/* Claiming schedules are assigned by Registrar / office
-          staff, so a date is only shown once staff have set it. */}
-      <p>
-        {showClaimingDetails && schedule
-          ? `Claiming: ${schedule}`
-          : `Submitted ${timeAgo(transaction.createdAt)}`}
-      </p>
-
-      {showClaimingDetails && transaction.claimCode && (
-        <p className="sdx-claim-line">
-          Claiming code: <strong>{transaction.claimCode}</strong>
-        </p>
-      )}
-
-      <p className="sdx-next-line">
-        <strong>{nextStep ? "Next:" : "Status:"}</strong>{" "}
-        {nextStep ? toTitle(nextStep) : currentStep}
-      </p>
+      {/* STAGE — previous · CURRENT (animated) · next */}
 
       <div
-        className="sdx-steps"
+        className="sdx-tl__stage"
         role="img"
-        aria-label={`Step ${activeIndex + 1} of ${currentSteps.length}: ${currentStep}`}
+        aria-label={`Status: ${currentLabel}. Step ${Math.min(activeIndex + 1, currentSteps.length)} of ${currentSteps.length}.`}
       >
-        {currentSteps.map((step, index) => (
-          <span
-            key={step}
-            title={toTitle(step)}
-            className={
-              index < activeIndex
-                ? "is-done"
-                : index === activeIndex
-                  ? "is-current"
-                  : ""
-            }
-          />
-        ))}
+        <div className="sdx-tl__side is-prev" aria-hidden="true">
+          <span className="sdx-tl__mini">
+            <StageArt stage={stageKey(previousLabel)} />
+            <i className="sdx-tl__tick">✓</i>
+          </span>
+          <small>{previousLabel}</small>
+        </div>
+
+        <div className="sdx-tl__now" aria-hidden="true">
+          <span className={`sdx-tl__hero is-${currentStage}`} key={currentStage}>
+            <StageArt stage={currentStage} animated />
+          </span>
+          <strong>{currentLabel}</strong>
+        </div>
+
+        <div
+          className={`sdx-tl__side is-next ${nextLabel ? "" : "is-empty"}`}
+          aria-hidden="true"
+        >
+          {nextLabel ? (
+            <>
+              <span className="sdx-tl__mini">
+                <StageArt stage={stageKey(nextLabel)} />
+              </span>
+              <small>{nextLabel}</small>
+            </>
+          ) : (
+            <>
+              <span className="sdx-tl__mini sdx-tl__mini--flag">
+                <StageArt stage="claimed" />
+              </span>
+              <small>{isStopped ? "—" : "Finished"}</small>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Claiming details appear only once staff have set them. */}
+
+      {showClaimingDetails && (schedule || transaction.claimCode) && (
+        <p className="sdx-tl__claim">
+          {schedule && <span>{schedule}</span>}
+          {transaction.claimCode && (
+            <span>
+              Code <b>{transaction.claimCode}</b>
+            </span>
+          )}
+        </p>
+      )}
     </div>
   );
+}
+
+/* =========================================
+   TRACKING STAGES (pictures + wording)
+========================================= */
+
+type StageKey =
+  | "submitted"
+  | "pending"
+  | "approved"
+  | "unpaid"
+  | "paid"
+  | "processing"
+  | "ready"
+  | "claimed"
+  | "stopped";
+
+const STOPPED_STATUSES = [
+  "REJECTED",
+  "DECLINED",
+  "CANCELLED",
+  "CANCELED",
+  "EXPIRED",
+];
+
+const STAGE_LABELS: Record<string, string> = {
+  "NEW REQUEST": "Pending",
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  PAID: "Paid",
+  UNPAID: "Unpaid",
+  "IN PROCESSING": "Processing",
+  "READY FOR PICKUP": "Ready for pickup",
+  CLAIMED: "Claimed",
+};
+
+function stageKey(label: string): StageKey {
+  const value = label.toUpperCase();
+
+  if (value.includes("SUBMIT")) return "submitted";
+  if (value.includes("UNPAID")) return "unpaid";
+  if (value.includes("PAID")) return "paid";
+  if (value.includes("APPROV")) return "approved";
+  if (value.includes("PROCESS")) return "processing";
+  if (value.includes("READY")) return "ready";
+  if (value.includes("CLAIM") || value.includes("FINISH")) return "claimed";
+  if (STOPPED_STATUSES.some((status) => value.includes(status))) {
+    return "stopped";
+  }
+
+  return "pending";
+}
+
+/** Small original illustrations; `animated` (current stage only) adds a looping motion. */
+function StageArt({
+  stage,
+  animated = false,
+}: {
+  stage: StageKey;
+  animated?: boolean;
+}) {
+  const a = animated ? " sdx-anim" : "";
+
+  const common = {
+    viewBox: "0 0 64 64",
+    fill: "none",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (stage) {
+    case "submitted":
+      return (
+        <svg {...common}>
+          <g className={`sdx-anim-fly${a}`}>
+            <path d="M10 31 54 12 44 52 31 39 10 31Z" fill="#E6F2EA" stroke="#2E602E" strokeWidth="3" />
+            <path d="M54 12 31 39v12l7-8" stroke="#2E602E" strokeWidth="3" />
+          </g>
+        </svg>
+      );
+
+    case "pending":
+      // Clock with a sweeping hand + waiting dots
+      return (
+        <svg {...common}>
+          <circle cx="32" cy="30" r="20" fill="#FFF9DA" stroke="#B49B2A" strokeWidth="3" />
+          <path d="M32 17v3M32 40v3M19 30h3M42 30h3" stroke="#D8C46A" strokeWidth="2.5" />
+          <g className={`sdx-anim-sweep${a}`}>
+            <path d="M32 30V19" stroke="#2E602E" strokeWidth="3.4" />
+          </g>
+          <g className={`sdx-anim-hour${a}`}>
+            <path d="M32 30h7" stroke="#2E602E" strokeWidth="3.4" />
+          </g>
+          <circle cx="32" cy="30" r="2.6" fill="#2E602E" />
+          <g className={`sdx-anim-dots${a}`}>
+            <circle cx="24" cy="58" r="2.4" fill="#B49B2A" />
+            <circle cx="32" cy="58" r="2.4" fill="#B49B2A" />
+            <circle cx="40" cy="58" r="2.4" fill="#B49B2A" />
+          </g>
+        </svg>
+      );
+
+    case "approved":
+      // Rubber stamp pressing a check
+      return (
+        <svg {...common}>
+          <rect x="12" y="42" width="40" height="14" rx="3" fill="#E6F2EA" stroke="#2E602E" strokeWidth="2.5" />
+          <path className={`sdx-anim-ink${a}`} d="m24 49 5 4 11-9" stroke="#42A76F" strokeWidth="3.4" />
+          <g className={`sdx-anim-stamp${a}`}>
+            <path d="M26 8h12v14H26z" fill="#F5DE57" stroke="#8A7A12" strokeWidth="2.5" />
+            <path d="M20 22h24l3 9H17l3-9Z" fill="#2E602E" stroke="#1E4A2A" strokeWidth="2.5" />
+          </g>
+        </svg>
+      );
+
+    case "unpaid":
+      return (
+        <svg {...common}>
+          <rect x="9" y="18" width="46" height="32" rx="6" fill="#FFF3EC" stroke="#B5603A" strokeWidth="3" />
+          <path d="M9 27h46" stroke="#B5603A" strokeWidth="3" />
+          <circle className={`sdx-anim-pulse${a}`} cx="46" cy="40" r="5" fill="#E0703F" />
+          <path d="M18 40h12" stroke="#D69373" strokeWidth="3" />
+        </svg>
+      );
+
+    case "paid":
+      // Peso coin flipping over a card
+      return (
+        <svg {...common}>
+          <rect x="8" y="34" width="40" height="22" rx="5" fill="#E6F2EA" stroke="#2E602E" strokeWidth="2.6" />
+          <path d="M8 42h40" stroke="#2E602E" strokeWidth="2.6" />
+          <g className={`sdx-anim-coin${a}`}>
+            <circle cx="44" cy="20" r="13" fill="#F5DE57" stroke="#8A7A12" strokeWidth="2.6" />
+            <path d="M40 27V13h5a4 4 0 0 1 0 8h-5M37 16h12M37 19h12" stroke="#8A7A12" strokeWidth="2.2" />
+          </g>
+        </svg>
+      );
+
+    case "processing":
+      // Two gears turning
+      return (
+        <svg {...common}>
+          <g className={`sdx-anim-gear${a}`} style={{ transformOrigin: "25px 27px" }}>
+            <path d="M25 11v6M25 37v6M9 27h6M35 27h6M13.7 15.7l4.2 4.2M32.1 34.1l4.2 4.2M13.7 38.3l4.2-4.2M32.1 19.9l4.2-4.2" stroke="#2D5873" strokeWidth="4" />
+            <circle cx="25" cy="27" r="10" fill="#DFEEF7" stroke="#2D5873" strokeWidth="3" />
+            <circle cx="25" cy="27" r="3.5" fill="#2D5873" />
+          </g>
+          <g className={`sdx-anim-gear-rev${a}`} style={{ transformOrigin: "45px 45px" }}>
+            <path d="M45 34v4M45 52v4M34 45h4M52 45h4M37.2 37.2l2.8 2.8M50 50l2.8 2.8M37.2 52.8l2.8-2.8M50 40l2.8-2.8" stroke="#42A76F" strokeWidth="3.4" />
+            <circle cx="45" cy="45" r="7" fill="#E6F2EA" stroke="#42A76F" strokeWidth="2.8" />
+            <circle cx="45" cy="45" r="2.4" fill="#42A76F" />
+          </g>
+        </svg>
+      );
+
+    case "ready":
+      // Bag with bouncing sparkles
+      return (
+        <svg {...common}>
+          <path d="M14 24h36l-3 32H17l-3-32Z" fill="#E6F2EA" stroke="#2E602E" strokeWidth="3" />
+          <path d="M24 26v-6a8 8 0 0 1 16 0v6" stroke="#2E602E" strokeWidth="3" />
+          <path d="m26 40 5 5 9-10" stroke="#42A76F" strokeWidth="3.4" />
+          <g className={`sdx-anim-spark${a}`}>
+            <path d="M54 8v8M50 12h8" stroke="#D8C43A" strokeWidth="2.8" />
+            <path d="M9 12v6M6 15h6" stroke="#D8C43A" strokeWidth="2.4" />
+          </g>
+        </svg>
+      );
+
+    case "claimed":
+      return (
+        <svg {...common}>
+          <circle cx="32" cy="32" r="22" fill="#42A76F" />
+          <path className={`sdx-anim-draw${a}`} d="m21 33 8 8 15-17" stroke="#fff" strokeWidth="5" />
+        </svg>
+      );
+
+    case "stopped":
+      return (
+        <svg {...common}>
+          <circle className={`sdx-anim-shake${a}`} cx="32" cy="32" r="22" fill="#FBE9E5" stroke="#B5473A" strokeWidth="3" />
+          <path d="m24 24 16 16M40 24 24 40" stroke="#B5473A" strokeWidth="4" />
+        </svg>
+      );
+  }
 }
 
 /* =========================================
@@ -1678,9 +1992,11 @@ function TransactionHistory({
 function TransactionDetailsModal({
   transaction,
   onClose,
+  onViewReceipt,
 }: {
   transaction: StudentTransaction;
   onClose: () => void;
+  onViewReceipt?: () => void;
 }) {
   const details = transaction.details || {};
   const isDocument = transaction.kind === "DOCUMENT";
@@ -1855,11 +2171,39 @@ function TransactionDetailsModal({
           </button>
         </div>
 
-        <div style={{ marginTop: "16px" }}>
+        <div
+          style={{
+            marginTop: "16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
           <StatusBadge
             status={normalizeStatus(transaction.status)}
             large
           />
+
+          {onViewReceipt && (
+            <button
+              type="button"
+              onClick={onViewReceipt}
+              style={{
+                border: "1px solid #c9dce8",
+                background: "#eef6fb",
+                color: "#1e6896",
+                borderRadius: "10px",
+                padding: "8px 14px",
+                fontSize: "13px",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              🧾 View receipt
+            </button>
+          )}
         </div>
 
         {/* GENERAL INFORMATION */}
@@ -2409,6 +2753,68 @@ function StatusBadge({
 /* =========================================
    HELPERS
 ========================================= */
+
+/* A payment counts once the Cashier confirmed it. */
+function isPaidTransaction(transaction: StudentTransaction): boolean {
+  const details = transaction.details || {};
+
+  return (
+    normalizeStatus(transaction.payment_status) === "PAID" ||
+    Boolean(details.payment_confirmed_at) ||
+    (transaction.kind === "ITEM" &&
+      normalizeStatus(transaction.status) === "PAID")
+  );
+}
+
+function toReceipt(
+  transaction: StudentTransaction,
+  studentName: string,
+  studentId: string
+): ReceiptData {
+  const details = transaction.details || {};
+  const items = Array.isArray(details.items) ? details.items : [];
+
+  return {
+    kind: transaction.kind,
+    receiptNumber: String(
+      details.receipt_number ||
+        details.payment_stub_code ||
+        details.paymentCode ||
+        ""
+    ),
+    referenceId: transaction.id,
+    requestId:
+      transaction.kind === "DOCUMENT"
+        ? String(details.request_id || transaction.id)
+        : undefined,
+    paidAt: details.payment_confirmed_at,
+    amount: Number(
+      details.amount_paid ?? details.total_amount ?? details.totalAmount ?? 0
+    ),
+    cashierName: details.payment_confirmed_by_name
+      ? String(details.payment_confirmed_by_name)
+      : undefined,
+    paymentStubCode: String(
+      details.payment_stub_code || details.paymentCode || ""
+    ) || undefined,
+    claimCode: transaction.claimCode || undefined,
+    studentName,
+    studentId,
+    lines:
+      transaction.kind === "ITEM"
+        ? items.map((item: any) => {
+            const quantity = Number(item.quantity || 1);
+            const price = Number(item.price || 0);
+
+            return {
+              label: String(item.itemName || "Item"),
+              detail: `${item.size ? `Size ${item.size} · ` : ""}${quantity} × ₱${price.toFixed(2)}`,
+              amount: quantity * price,
+            };
+          })
+        : undefined,
+  };
+}
 
 function getKindLabel(kind: StudentTransaction["kind"]) {
   return kind === "DOCUMENT"

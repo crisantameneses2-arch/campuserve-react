@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isRetiredItem } from "../../components/items/retiredItems";
 import { useNotifications } from "../../hooks/useNotifications";
 import {
     markNotificationRead,
@@ -301,7 +302,10 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                     };
                 });
 
-            setInventory(inventoryData);
+            // ROTC items are no longer offered.
+            setInventory(
+                inventoryData.filter((item) => !isRetiredItem(item.itemName))
+            );
 
         } catch (error) {
 
@@ -1931,24 +1935,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     </div>
 
                                     <span>84%</span>
-
-                                </div>
-
-                                <div className="inventory-item">
-
-                                    <div className="inventory-info">
-                                        <h3>ROTC Uniform</h3>
-                                        <p>1,250 total stock</p>
-                                    </div>
-
-                                    <div className="stock-bar">
-                                        <div
-                                            className="stock-progress"
-                                            style={{ width: "70%" }}
-                                        ></div>
-                                    </div>
-
-                                    <span>70%</span>
 
                                 </div>
 

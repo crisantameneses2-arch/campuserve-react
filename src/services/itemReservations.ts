@@ -1,3 +1,4 @@
+import { isRetiredItem } from "../components/items/retiredItems";
 import {
   collection,
   doc,
@@ -43,10 +44,13 @@ export async function getInventory(): Promise<InventoryItem[]> {
     collection(db, "inventory")
   );
 
-  return snapshot.docs.map((document) => ({
-    id: document.id,
-    ...(document.data() as Omit<InventoryItem, "id">),
-  }));
+  return snapshot.docs
+    .map((document) => ({
+      id: document.id,
+      ...(document.data() as Omit<InventoryItem, "id">),
+    }))
+    // ROTC items are no longer offered.
+    .filter((item) => !isRetiredItem((item as { itemName?: string }).itemName));
 }
 
 export async function getClaimingSchedules(): Promise<

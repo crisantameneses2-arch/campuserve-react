@@ -991,6 +991,397 @@ body.sdx-body {
   color: #6c8296;
 }
 
+/* ---------- Live tracking card — compact widget ---------- */
+
+/* Smaller section header */
+.sdx .sdx-track--compact {
+  padding: 16px 18px 18px;
+  border-radius: 20px;
+}
+
+.sdx .sdx-track--compact .sdx-track__head {
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.sdx .sdx-track--compact .sdx-track__history {
+  align-self: center;
+}
+
+.sdx .sdx-track--compact .sdx-track__eyebrow h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: #fbfff8;
+}
+
+.sdx .sdx-track--compact .sdx-track__history {
+  padding: 7px 12px;
+  font-size: 10.5px;
+}
+
+.sdx .sdx-track--compact .sdx-track__grid {
+  gap: 12px;
+}
+
+.sdx .sdx-track--compact .sdx-track-box {
+  padding: 12px 14px 10px;
+  border-radius: 15px;
+}
+
+.sdx .sdx-track--compact .sdx-box-head {
+  padding-bottom: 8px;
+}
+
+.sdx .sdx-track--compact .sdx-box-head strong {
+  font-size: 12px;
+}
+
+.sdx .sdx-track--compact .sdx-box-head span {
+  padding: 3px 8px;
+  font-size: 9.5px;
+}
+
+.sdx .sdx-track--compact .sdx-track-empty {
+  padding: 12px 0 6px;
+}
+
+/* Card body */
+.sdx .sdx-tl {
+  display: flex;
+  flex-direction: column;
+  padding-top: 10px;
+}
+
+.sdx .sdx-tl__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sdx .sdx-tl__tab {
+  min-width: 0;
+  padding: 5px 10px 6px;
+  border: 1.5px solid #dfe9e1;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.sdx .sdx-tl__tab .sdx-row-eyebrow {
+  font-size: 8.5px;
+}
+
+.sdx .sdx-tl__tab h3 {
+  margin: 1px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 820;
+  letter-spacing: -0.2px;
+  color: var(--sdx-forest);
+}
+
+.sdx .sdx-tl__count {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border: 1.5px solid #dfe9e1;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 10.5px;
+  font-weight: 850;
+  color: var(--sdx-forest);
+}
+
+/* previous · CURRENT · next — icons only, no boxes or lines */
+.sdx .sdx-tl__stage {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.sdx .sdx-tl__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sdx .sdx-tl__side small {
+  font-size: 9.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
+  color: #7d9283;
+}
+
+.sdx .sdx-tl__mini {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+}
+
+.sdx .sdx-tl__mini svg {
+  width: 30px;
+  height: 30px;
+}
+
+.sdx .sdx-tl__tick {
+  position: absolute;
+  top: -3px;
+  right: -7px;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--sdx-leaf);
+  color: #fff;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.sdx .sdx-tl__side.is-prev {
+  opacity: 0.85;
+}
+
+.sdx .sdx-tl__side.is-next svg {
+  filter: grayscale(0.8);
+  opacity: 0.42;
+}
+
+.sdx .sdx-tl__side.is-empty {
+  opacity: 0.5;
+}
+
+.sdx .sdx-tl__now {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sdx .sdx-tl__now strong {
+  font-size: 14px;
+  font-weight: 850;
+  letter-spacing: -0.3px;
+  color: var(--sdx-forest);
+  white-space: nowrap;
+}
+
+.sdx .sdx-tl__hero {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  animation: sdx-hero-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1.2) both;
+}
+
+.sdx .sdx-tl__hero svg {
+  width: 62px;
+  height: 62px;
+  overflow: visible;
+  filter: drop-shadow(0 6px 8px rgba(36, 63, 36, 0.14));
+}
+
+@keyframes sdx-hero-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Claiming date + code (only once staff have set them) */
+.sdx .sdx-tl__claim {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 10px;
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: #4c705a;
+}
+
+.sdx .sdx-tl__claim b {
+  font-weight: 850;
+  color: var(--sdx-forest);
+}
+
+/* Bottom: ← View more → */
+.sdx .sdx-box-bottom--center {
+  justify-content: space-between;
+  min-height: 28px;
+  margin-top: 6px;
+}
+
+.sdx .sdx-box-bottom--center .sdx-mini-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.sdx .sdx-mini-spacer {
+  width: 26px;
+}
+
+.sdx .sdx-view-more {
+  padding: 5px 14px;
+  border: 1.5px solid #cfe2d5;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 10.5px;
+}
+
+.sdx .sdx-track-box--item .sdx-view-more {
+  border-color: #cfe2ef;
+  background: #fff;
+}
+
+/* ---------- Stage animations (current stage only) ---------- */
+
+.sdx .sdx-anim {
+  transform-box: view-box;
+}
+
+.sdx .sdx-anim-sweep.sdx-anim {
+  transform-origin: 32px 30px;
+  animation: sdx-spin 2.4s linear infinite;
+}
+
+.sdx .sdx-anim-hour.sdx-anim {
+  transform-origin: 32px 30px;
+  animation: sdx-spin 14s linear infinite;
+}
+
+.sdx .sdx-anim-dots.sdx-anim circle {
+  animation: sdx-blink 1.2s ease-in-out infinite;
+}
+
+.sdx .sdx-anim-dots.sdx-anim circle:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.sdx .sdx-anim-dots.sdx-anim circle:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.sdx .sdx-anim-stamp.sdx-anim {
+  animation: sdx-stamp 1.9s cubic-bezier(0.5, 0, 0.3, 1) infinite;
+}
+
+.sdx .sdx-anim-ink.sdx-anim {
+  animation: sdx-ink 1.9s ease infinite;
+}
+
+.sdx .sdx-anim-pulse.sdx-anim {
+  transform-origin: 46px 40px;
+  animation: sdx-pulse-dot 1.4s ease-in-out infinite;
+}
+
+.sdx .sdx-anim-coin.sdx-anim {
+  transform-origin: 44px 20px;
+  animation: sdx-coin 2.2s ease-in-out infinite;
+}
+
+.sdx .sdx-anim-gear.sdx-anim {
+  animation: sdx-spin 4s linear infinite;
+}
+
+.sdx .sdx-anim-gear-rev.sdx-anim {
+  animation: sdx-spin 2.8s linear infinite reverse;
+}
+
+.sdx .sdx-anim-spark.sdx-anim {
+  transform-origin: 32px 14px;
+  animation: sdx-twinkle 1.6s ease-in-out infinite;
+}
+
+.sdx .sdx-anim-draw.sdx-anim {
+  stroke-dasharray: 44;
+  animation: sdx-draw 2.6s ease infinite;
+}
+
+.sdx .sdx-anim-shake.sdx-anim {
+  transform-origin: 32px 32px;
+  animation: sdx-shake 1.4s ease-in-out infinite;
+}
+
+.sdx .sdx-anim-fly.sdx-anim {
+  animation: sdx-fly 2.4s ease-in-out infinite;
+}
+
+@keyframes sdx-fly {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(3px, -4px) rotate(-4deg); }
+}
+
+/* The current-stage icon gently floats, all the time.
+   The previous / next icons on the sides stay still. */
+.sdx .sdx-tl__hero svg {
+  animation: sdx-bob 2.6s ease-in-out infinite;
+}
+
+@keyframes sdx-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes sdx-blink {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@keyframes sdx-stamp {
+  0%, 100% { transform: translateY(-6px); }
+  45% { transform: translateY(10px); }
+  60% { transform: translateY(-1px); }
+}
+
+@keyframes sdx-ink {
+  0%, 40% { opacity: 0.2; }
+  50%, 90% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+@keyframes sdx-pulse-dot {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+}
+
+@keyframes sdx-coin {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  25% { transform: translateY(-4px) scaleX(0.15); }
+  50% { transform: translateY(-6px) scaleX(1); }
+  75% { transform: translateY(-2px) scaleX(0.15); }
+}
+
+@keyframes sdx-twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes sdx-draw {
+  0% { stroke-dashoffset: 44; }
+  45%, 70% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -44; }
+}
+
+@keyframes sdx-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-7deg); }
+  75% { transform: rotate(7deg); }
+}
+
+
 /* ---------- Text buttons ---------- */
 
 .sdx .sdx-text-btn {

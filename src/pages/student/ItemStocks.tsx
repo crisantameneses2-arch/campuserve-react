@@ -9,6 +9,7 @@ import {
 import { db } from "../../../firebase";
 
 import "./ItemStocks.css";
+import { isRetiredItem } from "../../components/items/retiredItems";
 
 type InventoryItem = {
   id: string;
@@ -76,7 +77,8 @@ export default function ItemStocks() {
             ...doc.data(),
           })) as InventoryItem[];
 
-        setInventory(items);
+        // ROTC items are no longer offered.
+        setInventory(items.filter((item) => !isRetiredItem(item.itemName)));
         setLoading(false);
       },
       (error) => {
