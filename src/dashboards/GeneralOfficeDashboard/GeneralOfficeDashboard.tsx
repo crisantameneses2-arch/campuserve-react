@@ -689,6 +689,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                     status: "Cancelled",
                     cancellationReason:
                         cancellationReason.trim(),
+                    cancelledAt: serverTimestamp(),
                 }
             );
 
