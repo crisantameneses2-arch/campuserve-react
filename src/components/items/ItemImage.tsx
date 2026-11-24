@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import ItemArt from "./ItemArt";
-import { getItemPhoto } from "./itemPhotos";
+import { getItemPhoto, isSmallerPhoto } from "./itemPhotos";
 
 /**
  * Picks the best picture for an item, in this order:
@@ -37,10 +37,12 @@ export default function ItemImage({
   const kindClass =
     source && source === catalogPhoto ? "is-cutout" : "is-photo";
 
+  const sizeClass = isSmallerPhoto(source) ? " is-smaller" : "";
+
   if (source) {
     return (
       <img
-        className={`${className ?? ""} ${kindClass}`.trim()}
+        className={`${className ?? ""} ${kindClass}${sizeClass}`.trim()}
         src={source}
         alt={itemName}
         loading="lazy"

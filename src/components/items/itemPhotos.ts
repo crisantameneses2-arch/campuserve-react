@@ -59,3 +59,10 @@ export function getItemPhoto(itemName: string): string | undefined {
 
   return undefined;
 }
+
+/* The fabric sets look oversized next to the clothes, so they are drawn smaller. */
+const smallerPhotos = new Set([uniformFabricSet, maleUniformFabricSet]);
+
+export function isSmallerPhoto(source: string | undefined) {
+  return Boolean(source && smallerPhotos.has(source));
+}

@@ -319,6 +319,16 @@
   translate: -14% 0;
 }
 
+/* Fabric sets: drawn smaller (by size, not scale, so they stay sharp). */
+.irx .irx-card__image.is-smaller {
+  width: 80%;
+  height: 80%;
+}
+
+.irx .irx-hero__image.is-smaller {
+  width: min(64%, 320px);
+}
+
 /* An uploaded (rectangular) photo sits in a rounded frame instead. */
 .irx .irx-card__image.is-photo {
   width: 86%;
