@@ -12,7 +12,7 @@ import DocumentRequestList from "./pages/student/DocumentRequestList";
 import "./App.css";
 import LoginBrandPanel from "./components/login/LoginBrandPanel";
 
-import {/*  useEffect, */ useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   signInWithEmailAndPassword,
@@ -46,6 +46,16 @@ import RegistrarDashboard from "./dashboards/RegistrarDashboard/RegistrarDashboa
 import GeneralOfficeDashboard from "./dashboards/GeneralOfficeDashboard/GeneralOfficeDashboard";
 import CashierDashboard from "./dashboards/CashierDashboard/CashierDashboard";
 
+
+/* TESTING ONLY: roles shown in the login page's dashboard shortcuts. */
+const TEST_ROLES: [string, string][] = [
+  ["student", "Student"],
+  ["alumni", "Alumni"],
+  ["registrar", "Registrar"],
+  ["cashier", "Cashier"],
+  ["general_office", "General Office"],
+  ["admin", "Admin"],
+];
 
 type Account = {
   email?: string;
@@ -170,6 +180,58 @@ function App() {
       accountData,
     };
   };
+  // ==================================================
+  // TESTING ONLY: open a dashboard without logging in
+  // Shown only by `npm run dev` (import.meta.env.DEV), never on the
+  // deployed site. Lists every active account in Firestore, grouped by
+  // role; clicking one opens that account's dashboard.
+  // Remove before the final defense.
+  // ==================================================
+
+  const [testAccounts, setTestAccounts] = useState<Account[]>([]);
+  const [testAccountsLoading, setTestAccountsLoading] = useState(
+    import.meta.env.DEV
+  );
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    let active = true;
+
+    getDocs(
+      query(collection(db, "accounts"), where("status", "==", "active"))
+    )
+      .then((snapshot) => {
+        if (!active) return;
+
+        setTestAccounts(
+          snapshot.docs
+            .map((item) => item.data() as Account)
+            .sort((x, y) =>
+              String(x.name || x.email || "").localeCompare(
+                String(y.name || y.email || "")
+              )
+            )
+        );
+      })
+      .catch((testError) =>
+        console.error("Could not load test accounts:", testError)
+      )
+      .finally(() => {
+        if (active) setTestAccountsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleTestLogin = (testAccount: Account) => {
+    setError("");
+    setMessage("");
+    setAccount(testAccount);
+  };
+
   // ==================================================
   // RESTORE LOGGED-IN ACCOUNT WHEN APP LOADS
   // ==================================================
@@ -1361,6 +1423,60 @@ function App() {
               </p>
 
             </div>
+
+
+            {/* TESTING ONLY: dev server shortcuts, hidden on the live site */}
+
+            {import.meta.env.DEV && (
+              <div className="campuserve-dev-access">
+                <span>TESTING ONLY · open a dashboard without logging in</span>
+
+                {testAccountsLoading ? (
+                  <p className="campuserve-dev-access__empty">Loading accounts…</p>
+                ) : (
+                  TEST_ROLES.map(([role, label]) => {
+                    const roleAccounts = testAccounts.filter(
+                      (item) => item.role === role
+                    );
+
+                    return (
+                      <div className="campuserve-dev-access__group" key={role}>
+                        <strong>
+                          {label} <small>({roleAccounts.length})</small>
+                        </strong>
+
+                        {roleAccounts.length === 0 ? (
+                          <p className="campuserve-dev-access__empty">
+                            No active {label.toLowerCase()} accounts
+                          </p>
+                        ) : (
+                          <div className="campuserve-dev-access__buttons">
+                            {roleAccounts.map((item, index) => (
+                              <button
+                                key={item.email || item.student_id || index}
+                                type="button"
+                                onClick={() => handleTestLogin(item)}
+                                title={item.email}
+                              >
+                                <b>
+                                  {item.name ||
+                                    [item.firstName, item.lastName]
+                                      .filter(Boolean)
+                                      .join(" ") ||
+                                    item.email ||
+                                    "Unnamed account"}
+                                </b>
+                                <small>{item.student_id || item.email}</small>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
 
           </div>
 

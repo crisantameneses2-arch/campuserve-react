@@ -791,3 +791,84 @@ body.cs-owl-login-body {
     transition: none !important;
   }
 }
+
+/* TESTING ONLY: dashboard shortcuts (dev server only) */
+.cs-owl-login .campuserve-dev-access {
+  margin-top: 18px;
+  padding: 12px;
+  border: 1px dashed #e2af6b;
+  border-radius: 12px;
+  background: #fffaf0;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.cs-owl-login .campuserve-dev-access > span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #9a6a1f;
+}
+
+.cs-owl-login .campuserve-dev-access__group {
+  margin-top: 10px;
+}
+
+.cs-owl-login .campuserve-dev-access__group > strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  color: #173f60;
+}
+
+.cs-owl-login .campuserve-dev-access__group > strong small {
+  font-weight: 600;
+  color: #6f879b;
+}
+
+.cs-owl-login .campuserve-dev-access__empty {
+  margin: 0;
+  font-size: 11px;
+  color: #8397a8;
+}
+
+.cs-owl-login .campuserve-dev-access__buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cs-owl-login .campuserve-dev-access__buttons button {
+  display: grid;
+  gap: 1px;
+  padding: 7px 9px;
+  border: 1px solid #d6e4ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e5a84;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cs-owl-login .campuserve-dev-access__buttons button b,
+.cs-owl-login .campuserve-dev-access__buttons button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-owl-login .campuserve-dev-access__buttons button b {
+  font-size: 11.5px;
+}
+
+.cs-owl-login .campuserve-dev-access__buttons button small {
+  font-size: 10px;
+  color: #6f879b;
+}
+
+.cs-owl-login .campuserve-dev-access__buttons button:hover {
+  background: #eef5fa;
+  border-color: #a9cbe2;
+}
