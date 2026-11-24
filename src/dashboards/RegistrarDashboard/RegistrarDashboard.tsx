@@ -742,6 +742,7 @@ export default function RegistrarDashboard({
           decline_reason:
             declineReason.trim(),
           decline_review_status: "COMPLETED",
+          declined_at: serverTimestamp(),
           updated_at: serverTimestamp(),
         },
       );

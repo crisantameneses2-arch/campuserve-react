@@ -93,7 +93,7 @@ const ACTIVE_STATUSES = [
   "RESCHEDULED",
 ];
 
-/** How long a cancelled document request stays in Live tracking. */
+/** How long a cancelled or declined document request stays in Live tracking. */
 const CANCELLED_TRACKING_MS = 24 * 60 * 60 * 1000;
 
 const TRACKING_STEPS = [
@@ -358,19 +358,22 @@ export default function StudentDashboard({
         // Received by the student: no longer tracked.
         if (status === "CLAIMED" || status === "COMPLETED") return false;
 
-        // Cancelled document requests stay visible for 24 hours only.
+        // Cancelled or declined document requests stay visible for 24 hours only.
         if (
           transaction.kind === "DOCUMENT" &&
-          (status === "CANCELLED" || status === "CANCELED")
+          (status === "CANCELLED" ||
+            status === "CANCELED" ||
+            status === "DECLINED")
         ) {
-          const cancelledAt = getTime(
+          const endedAt = getTime(
             transaction.details?.cancelled_at ??
+              transaction.details?.declined_at ??
               transaction.details?.updated_at
           );
 
           return (
-            cancelledAt > 0 &&
-            trackingNow - cancelledAt < CANCELLED_TRACKING_MS
+            endedAt > 0 &&
+            trackingNow - endedAt < CANCELLED_TRACKING_MS
           );
         }
 
