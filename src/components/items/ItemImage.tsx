@@ -4,6 +4,7 @@ import {
   getItemPhoto,
   isFemaleSetPhoto,
   isNudgedRightPhoto,
+  isSkirtPhoto,
   isSmallerPhoto,
 } from "./itemPhotos";
 
@@ -45,11 +46,12 @@ export default function ItemImage({
   const sizeClass = isSmallerPhoto(source) ? " is-smaller" : "";
   const nudgeClass = isNudgedRightPhoto(source) ? " is-nudge-right" : "";
   const femaleSetClass = isFemaleSetPhoto(source) ? " is-female-set" : "";
+  const skirtClass = isSkirtPhoto(source) ? " is-skirt" : "";
 
   if (source) {
     return (
       <img
-        className={`${className ?? ""} ${kindClass}${sizeClass}${nudgeClass}${femaleSetClass}`.trim()}
+        className={`${className ?? ""} ${kindClass}${sizeClass}${nudgeClass}${femaleSetClass}${skirtClass}`.trim()}
         src={source}
         alt={itemName}
         loading="lazy"

@@ -78,3 +78,8 @@ export function isNudgedRightPhoto(source: string | undefined) {
 export function isFemaleSetPhoto(source: string | undefined) {
   return Boolean(source && source === femaleUniformSet);
 }
+
+/* The female skirt: 8px smaller. */
+export function isSkirtPhoto(source: string | undefined) {
+  return Boolean(source && source === femaleUniformSkirt);
+}

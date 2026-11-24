@@ -324,9 +324,14 @@
 }
 
 .irx .irx-card__image.is-cutout.is-female-set {
-  width: calc(100% - 2px);
-  height: calc(100% - 2px);
+  width: calc(100% - 5px);
+  height: calc(100% - 5px);
   translate: calc(-14% + 2px) 0;
+}
+
+.irx .irx-card__image.is-cutout.is-skirt {
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
 }
 
 /* Fabric sets: drawn smaller (by size, not scale, so they stay sharp). */
