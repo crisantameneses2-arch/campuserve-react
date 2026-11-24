@@ -47,6 +47,13 @@ import GeneralOfficeDashboard from "./dashboards/GeneralOfficeDashboard/GeneralO
 import CashierDashboard from "./dashboards/CashierDashboard/CashierDashboard";
 
 
+/*
+ * TESTING ONLY: shows the "open a dashboard without logging in" buttons
+ * on the login page, on the live site too. Set to false (or
+ * import.meta.env.DEV for local-only) before the final defense.
+ */
+const SHOW_TEST_LOGIN = true;
+
 /* TESTING ONLY: roles shown in the login page's dashboard shortcuts. */
 const TEST_ROLES: [string, string][] = [
   ["student", "Student"],
@@ -182,19 +189,19 @@ function App() {
   };
   // ==================================================
   // TESTING ONLY: open a dashboard without logging in
-  // Shown only by `npm run dev` (import.meta.env.DEV), never on the
-  // deployed site. Lists every active account in Firestore, grouped by
+  // Shown while SHOW_TEST_LOGIN is true, including on the deployed site
+  // (for phone testing): anyone with the link can open any dashboard. Lists every active account in Firestore, grouped by
   // role; clicking one opens that account's dashboard.
   // Remove before the final defense.
   // ==================================================
 
   const [testAccounts, setTestAccounts] = useState<Account[]>([]);
   const [testAccountsLoading, setTestAccountsLoading] = useState(
-    import.meta.env.DEV
+    SHOW_TEST_LOGIN
   );
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    if (!SHOW_TEST_LOGIN) return;
 
     let active = true;
 
@@ -1427,7 +1434,7 @@ function App() {
 
             {/* TESTING ONLY: dev server shortcuts, hidden on the live site */}
 
-            {import.meta.env.DEV && (
+            {SHOW_TEST_LOGIN && (
               <div className="campuserve-dev-access">
                 <span>TESTING ONLY · open a dashboard without logging in</span>
 
