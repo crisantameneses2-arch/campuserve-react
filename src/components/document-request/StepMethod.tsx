@@ -558,29 +558,18 @@ export default function StepMethod({
                 disabled={isSearching || isAdding}
               />
 
-              {!searchedStudent ? (
-                <button
-                  type="button"
-                  className="rwx-btn rwx-btn--secondary"
-                  onClick={() => void handleSearchStudent()}
-                  disabled={
-                    isSearching ||
-                    isAdding ||
-                    !studentIdInput.trim()
-                  }
-                >
-                  {isSearching ? "Searching..." : "Search"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="rwx-btn rwx-btn--primary"
-                  onClick={() => void handleEnterStudent()}
-                  disabled={isAdding}
-                >
-                  {isAdding ? "Adding..." : "Add & invite"}
-                </button>
-              )}
+              <button
+                type="button"
+                className="rwx-btn rwx-btn--secondary"
+                onClick={() => void handleSearchStudent()}
+                disabled={
+                  isSearching ||
+                  isAdding ||
+                  !studentIdInput.trim()
+                }
+              >
+                {isSearching ? "Searching..." : "Search"}
+              </button>
             </div>
           )}
 
@@ -609,10 +598,14 @@ export default function StepMethod({
                 </small>
               </div>
 
-              <p>
-                Click <strong>Add &amp; invite</strong> (or press
-                Enter) to send the invitation.
-              </p>
+              <button
+                type="button"
+                className="rwx-btn rwx-btn--primary rwx-found__invite"
+                onClick={() => void handleEnterStudent()}
+                disabled={isAdding}
+              >
+                {isAdding ? "Inviting..." : "Invite"}
+              </button>
             </div>
           )}
 

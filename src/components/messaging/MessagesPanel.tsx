@@ -23,6 +23,10 @@ import {
 } from "../../services/messages";
 import { announceNewMessage } from "../../services/messageEvents";
 import { millis, toDate } from "../../utils/format";
+import GroupInviteChat, {
+  GROUP_THREAD_KEY,
+  useGroupInvites,
+} from "./GroupInviteChat";
 
 import "./Messaging.css";
 
@@ -46,6 +50,10 @@ type MessagesPanelProps =
       mode: "student";
       studentId: string;
       studentName: string;
+      /** Opens a group request the student started. */
+      onContinueDraft?: (requestId: string) => void;
+      /** Open the Group Requests conversation first. */
+      openGroupInvites?: boolean;
     }
   | {
       mode: "staff";
@@ -177,7 +185,15 @@ export default function MessagesPanel(props: MessagesPanelProps) {
 
   /* ---------------- selection ---------------- */
 
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(
+    props.mode === "student" && props.openGroupInvites
+      ? GROUP_THREAD_KEY
+      : null
+  );
+
+  /* Group request invitations: a conversation of their own (students only). */
+  const group = useGroupInvites(studentId);
+  const groupOpen = isStudent && selectedKey === GROUP_THREAD_KEY;
   const [search, setSearch] = useState("");
 
   const visibleThreads = useMemo(() => {
@@ -374,7 +390,7 @@ export default function MessagesPanel(props: MessagesPanelProps) {
 
   return (
     <section
-      className={`msx ${selected ? "msx--thread-open" : ""}`}
+      className={`msx ${selected || groupOpen ? "msx--thread-open" : ""}`}
       aria-label={panelTitle}
     >
       {/* ===== Conversation list ===== */}
@@ -446,6 +462,44 @@ export default function MessagesPanel(props: MessagesPanelProps) {
         )}
 
         <div className="msx-threads" role="list">
+          {isStudent && (
+            <button
+              type="button"
+              role="listitem"
+              className={`msx-thread ${groupOpen ? "is-active" : ""} ${group.pendingCount > 0 ? "is-unread" : ""}`}
+              onClick={() => {
+                setSelectedKey(GROUP_THREAD_KEY);
+                setSendError("");
+              }}
+            >
+              <span className="msx-avatar msx-avatar--group" aria-hidden="true">
+                <GroupIcon />
+              </span>
+
+              <span className="msx-thread__body">
+                <span className="msx-thread__top">
+                  <strong>Group Requests</strong>
+                  {group.latest && (
+                    <small>{formatShortTime(group.latest.at)}</small>
+                  )}
+                </span>
+
+                <span className="msx-thread__preview">
+                  {group.latest?.text || "Invitations from classmates"}
+                </span>
+              </span>
+
+              {group.pendingCount > 0 && (
+                <span
+                  className="msx-count"
+                  aria-label={`${group.pendingCount} pending invitations`}
+                >
+                  {group.pendingCount > 9 ? "9+" : group.pendingCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {listLoading ? (
             <p className="msx-muted msx-pad">Loading conversations…</p>
           ) : listError ? (
@@ -511,7 +565,37 @@ export default function MessagesPanel(props: MessagesPanelProps) {
       {/* ===== Open thread ===== */}
 
       <div className="msx-chat">
-        {!selected ? (
+        {groupOpen ? (
+          <>
+            <header className="msx-chat__head">
+              <button
+                type="button"
+                className="msx-btn msx-btn--ghost msx-back"
+                onClick={() => setSelectedKey(null)}
+                aria-label="Back to conversations"
+              >
+                ←
+              </button>
+
+              <span className="msx-avatar msx-avatar--group" aria-hidden="true">
+                <GroupIcon />
+              </span>
+
+              <div>
+                <strong>Group Requests</strong>
+                <small>Invitations from classmates</small>
+              </div>
+            </header>
+
+            <GroupInviteChat
+              studentName={studentName}
+              data={group}
+              onContinueDraft={
+                props.mode === "student" ? props.onContinueDraft : undefined
+              }
+            />
+          </>
+        ) : !selected ? (
           <div className="msx-placeholder">
             <span className="msx-placeholder__icon" aria-hidden="true">
               <ChatIcon />
@@ -739,6 +823,25 @@ function OfficeIcon({ office }: { office: Office }) {
     <svg {...common}>
       <path d="M12 3 20 7v5c0 5-3.4 8.3-8 9.5C7.4 20.3 4 17 4 12V7z" />
       <path d="m9 12 2.2 2.2L15.5 10" />
+    </svg>
+  );
+}
+
+function GroupIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="19"
+      height="19"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19.5c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" />
+      <path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 14.7c1.6.6 2.7 2.2 3 4.8" />
     </svg>
   );
 }

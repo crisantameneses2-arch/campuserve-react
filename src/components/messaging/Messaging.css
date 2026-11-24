@@ -127,14 +127,14 @@
 }
 
 .msx .msx-btn--primary {
-  background: linear-gradient(125deg, var(--msx-green), var(--msx-leaf));
-  border-color: var(--msx-green);
+  background: linear-gradient(125deg, var(--msx-blue-dark), var(--msx-blue));
+  border-color: var(--msx-blue-dark);
   color: #fff;
   box-shadow: 0 6px 14px rgba(46, 96, 46, 0.14);
 }
 
 .msx .msx-btn--primary:hover:not(:disabled) {
-  background: linear-gradient(125deg, #244e2a, #348a5b);
+  background: linear-gradient(125deg, #17496d, #1e6896);
   transform: translateY(-1px);
 }
 
@@ -575,6 +575,130 @@
 }
 
 /* ---------- Responsive: one column, list ↔ chat ---------- */
+
+/* ---------- Group request invitations (chat style) ---------- */
+
+.msx .msx-avatar--group {
+  background: linear-gradient(135deg, #1e6896, #59a9d2);
+  color: #fff;
+}
+
+.msx .msx-msg.msx-invite {
+  width: min(100%, 380px);
+}
+
+.msx .msx-invite__card {
+  margin-top: 8px;
+  padding: 11px 12px;
+  border: 1px solid #d6e6f0;
+  border-radius: 12px;
+  background: #f4f9fd;
+  color: var(--msx-ink);
+}
+
+.msx .msx-msg.is-mine .msx-invite__card {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.msx .msx-invite__tag {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--msx-blue);
+}
+
+.msx .msx-invite__card > strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.msx .msx-invite__card dl {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+}
+
+.msx .msx-invite__card dl div {
+  display: flex;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.msx .msx-invite__card dt {
+  flex: 0 0 70px;
+  color: var(--msx-muted);
+}
+
+.msx .msx-invite__card dd {
+  margin: 0;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.msx .msx-invite__members {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.msx .msx-invite__members li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.msx .msx-invite__members em {
+  padding: 1px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.msx .msx-invite__members em.is-pending {
+  background: #fdf6d8;
+  color: #8a6d0f;
+}
+
+.msx .msx-invite__members em.is-accepted {
+  background: #e2f3e7;
+  color: #28633d;
+}
+
+.msx .msx-invite__members em.is-declined {
+  background: #fbe9e6;
+  color: #9c4a3f;
+}
+
+.msx .msx-invite__note {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--msx-muted);
+}
+
+.msx .msx-invite__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.msx .msx-invite__actions .msx-btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.msx .msx-composer--note .msx-hint {
+  display: block;
+  margin: 0;
+}
 
 @media (max-width: 760px) {
   .msx {

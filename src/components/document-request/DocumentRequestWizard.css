@@ -1318,3 +1318,8 @@
     transition: none !important;
   }
 }
+
+/* Invite button sits beside the found student's details. */
+.rwx .rwx-found__invite {
+  flex: 0 0 auto;
+}

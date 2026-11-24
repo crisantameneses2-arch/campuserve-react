@@ -13,7 +13,6 @@ import ItemReservation from "../../pages/student/ItemReservation";
 import DocumentRequestWizard from "../../pages/student/DocumentRequestWizard";
 import DocumentRequestList from "../../pages/student/DocumentRequestList";
 import ClaimStubPage from "../../pages/student/ClaimStubPage";
-import GroupRequestInvitations from "../../pages/student/GroupRequestInvitations";
 import HelpCenter from "../../pages/student/HelpCenter";
 import ContactSupport from "../../pages/student/ContactSupport";
 import MessagesPanel from "../../components/messaging/MessagesPanel";
@@ -58,7 +57,6 @@ type DashboardPage =
   | "dashboard"
   | "request"
   | "requests"
-  | "groupInvites"
   | "itemReservation"
   | "claimStub"
   | "transactions"
@@ -68,7 +66,7 @@ type DashboardPage =
   | "contact"
   | "profile"
   | "settings";
-type StudentTransaction = {
+export type StudentTransaction = {
   key: string;
   id: string;
   kind: "DOCUMENT" | "ITEM";
@@ -410,7 +408,11 @@ export default function StudentDashboard({
      NAVIGATION
   ========================================= */
 
-  function go(page: DashboardPage) {
+  // Set by the dashboard invitation banner so Messages opens on Group Requests.
+  const [openGroupInvites, setOpenGroupInvites] = useState(false);
+
+  function go(page: DashboardPage, options?: { groupInvites?: boolean }) {
+    setOpenGroupInvites(Boolean(options?.groupInvites));
     setMenuOpen(false);
     setActivePage(page);
 
@@ -485,7 +487,7 @@ export default function StudentDashboard({
                 <button
                   className="sdx-invite"
                   type="button"
-                  onClick={() => go("groupInvites")}
+                  onClick={() => go("messages", { groupInvites: true })}
                 >
                   <span className="sdx-invite__mark">
                     <Icon name="users" size={26} />
@@ -731,16 +733,6 @@ export default function StudentDashboard({
                 <DocumentRequestList studentId={studentId} />
               )}
 
-              {activePage === "groupInvites" && (
-                <GroupRequestInvitations
-                  studentId={studentId}
-                  onContinueDraft={(requestId) => {
-                    setSelectedDraftRequestId(requestId);
-                    go("request");
-                  }}
-                />
-              )}
-
               {activePage === "itemReservation" && (
                 <ItemReservation
                   studentId={studentId}
@@ -777,6 +769,11 @@ export default function StudentDashboard({
                   mode="student"
                   studentId={studentId}
                   studentName={studentName}
+                  openGroupInvites={openGroupInvites}
+                  onContinueDraft={(requestId) => {
+                    setSelectedDraftRequestId(requestId);
+                    go("request");
+                  }}
                 />
               )}
 
@@ -849,7 +846,6 @@ const PAGE_TITLES: Record<DashboardPage, string> = {
   dashboard: "Dashboard",
   request: "Request a document",
   requests: "Document requests",
-  groupInvites: "Group requests",
   itemReservation: "Item reservations",
   claimStub: "Claim & release",
   transactions: "Transaction history",
@@ -899,7 +895,6 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
         icon: "file",
         also: ["requests"],
       },
-      { page: "groupInvites", label: "Group Requests", icon: "users" },
       { page: "itemReservation", label: "Item Reservations", icon: "bag" },
       { page: "claimStub", label: "Claim & Release", icon: "ticket" },
       { page: "transactions", label: "Transaction History", icon: "clock" },
@@ -991,8 +986,8 @@ function StudentSidebar({
                 Boolean(item.also?.includes(activePage));
 
               const showMark =
-                (item.page === "groupInvites" && pendingInvites > 0) ||
-                (item.page === "messages" && unreadMessages > 0) ||
+                (item.page === "messages" &&
+                  (unreadMessages > 0 || pendingInvites > 0)) ||
                 (item.page === "notifications" &&
                   unreadNotifications > 0);
 
