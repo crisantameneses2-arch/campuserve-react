@@ -24,6 +24,7 @@ import { useStudentUnreadMessages } from "../../components/messaging/useUnreadMe
 
 import { useNotifications } from "../../hooks/useNotifications";
 import {
+  markAllNotificationsRead,
   markNotificationRead,
   studentAudience,
   ALL_STUDENTS_AUDIENCE,
@@ -40,6 +41,7 @@ import {
   formatClaimTime,
   normalizeStatus,
   timeAgo,
+  toDate,
 } from "../../utils/format";
 
 import "./StudentDashboard.css";
@@ -815,6 +817,12 @@ export default function StudentDashboard({
                   loading={notificationsLoading}
                   studentId={studentId}
                   onNotificationClick={handleNotificationClick}
+                  onReadAll={() =>
+                    markAllNotificationsRead(notifications, studentId).catch(
+                      (error) =>
+                        console.warn("Could not mark all as read:", error)
+                    )
+                  }
                 />
               )}
 
@@ -2574,6 +2582,7 @@ function NotificationPage({
   loading,
   studentId,
   onNotificationClick,
+  onReadAll,
 }: {
   notifications: AppNotification[];
   loading: boolean;
@@ -2581,7 +2590,15 @@ function NotificationPage({
   onNotificationClick: (
     notification: AppNotification
   ) => Promise<void>;
+  onReadAll: () => void;
 }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const groups = groupNotifications(notifications);
+  const hasUnread = notifications.some(
+    (notification) => !notification.readBy.includes(studentId)
+  );
+
   return (
     <>
       <PageHeading
@@ -2590,7 +2607,7 @@ function NotificationPage({
         text="Updates about your requests, reservations and claiming schedule."
       />
 
-      <section className="sdx-panel">
+      <section className="sdx-panel sdx-notifs-panel">
         {loading ? (
           <DashboardLoading />
         ) : notifications.length === 0 ? (
@@ -2600,45 +2617,131 @@ function NotificationPage({
             text="New updates will appear here."
           />
         ) : (
-          <div className="sdx-notifs">
-            {notifications.map((notification) => {
-              const unread = !notification.readBy.includes(
-                studentId
-              );
+          <>
+            <div className="sdx-notifs__bar">
+              <button
+                type="button"
+                className="sdx-notifs__readall"
+                onClick={onReadAll}
+                disabled={!hasUnread}
+              >
+                Read All
+              </button>
+            </div>
 
-              return (
-                <button
-                  type="button"
-                  className={`sdx-notif ${unread ? "is-unread" : ""}`}
-                  key={notification.id}
-                  onClick={() => {
-                    void onNotificationClick(notification);
-                  }}
-                >
-                  <span className="sdx-notif__icon">
-                    <Icon name="bell" size={17} />
-                  </span>
+            {groups.map((group) => (
+              <div className="sdx-notifs__group" key={group.label}>
+                <h2 className="sdx-notifs__heading">{group.label}</h2>
 
-                  <span className="sdx-notif__body">
-                    <strong>{notification.title}</strong>
-                    <span>{notification.message}</span>
-                    <small>{timeAgo(notification.createdAt)}</small>
-                  </span>
+                <div className="sdx-notifs">
+                  {group.items.map((notification) => {
+                    const unread = !notification.readBy.includes(studentId);
+                    const open = openId === notification.id;
 
-                  {unread && (
-                    <span
-                      className="sdx-notif__dot"
-                      aria-label="Unread"
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                    return (
+                      <button
+                        type="button"
+                        className={`sdx-notif ${unread ? "is-unread" : ""} ${open ? "is-open" : ""}`}
+                        key={notification.id}
+                        aria-expanded={open}
+                        onClick={() => {
+                          setOpenId(open ? null : notification.id);
+                          void onNotificationClick(notification);
+                        }}
+                      >
+                        <span className="sdx-notif__body">
+                          <span className="sdx-notif__head">
+                            <strong>{notification.title}</strong>
+                            <small>
+                              {notificationTime(notification.createdAt, group.label)}
+                            </small>
+                          </span>
+                          <span className="sdx-notif__text">
+                            {notification.message}
+                          </span>
+                        </span>
+
+                        <span className="sdx-notif__chevron" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="16" height="16">
+                            <path
+                              d="m6 9 6 6 6-6"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </>
         )}
       </section>
     </>
   );
+}
+
+type NotificationGroupLabel = "Today" | "Yesterday" | "This Week" | "Earlier";
+
+/* Sort newest first, then split into Today / Yesterday / This Week / Earlier. */
+function groupNotifications(items: AppNotification[]) {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const today = startOfToday.getTime();
+  const day = 24 * 60 * 60 * 1000;
+
+  const order: NotificationGroupLabel[] = ["Today", "Yesterday", "This Week", "Earlier"];
+  const buckets = new Map<NotificationGroupLabel, AppNotification[]>();
+
+  [...items]
+    .sort(
+      (a, b) =>
+        (toDate(b.createdAt)?.getTime() ?? Date.now()) -
+        (toDate(a.createdAt)?.getTime() ?? Date.now())
+    )
+    .forEach((item) => {
+      // A just-written notification has no server time yet: treat it as now.
+      const time = toDate(item.createdAt)?.getTime() ?? Date.now();
+      const label: NotificationGroupLabel =
+        time >= today
+          ? "Today"
+          : time >= today - day
+            ? "Yesterday"
+            : time >= today - 6 * day
+              ? "This Week"
+              : "Earlier";
+
+      buckets.set(label, [...(buckets.get(label) ?? []), item]);
+    });
+
+  return order
+    .filter((label) => buckets.has(label))
+    .map((label) => ({ label, items: buckets.get(label)! }));
+}
+
+/* "11 minutes ago" today, "Yesterday, 2:14pm", then "Wednesday, 12:21pm" / "Nov 3, 9:05am". */
+function notificationTime(value: unknown, group: NotificationGroupLabel) {
+  const date = toDate(value);
+
+  if (group === "Today" || !date) return timeAgo(value);
+
+  const time = date
+    .toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })
+    .replace(/\s/g, "")
+    .toLowerCase();
+
+  if (group === "Yesterday") return `Yesterday, ${time}`;
+
+  if (group === "This Week") {
+    return `${date.toLocaleDateString("en-PH", { weekday: "long" })}, ${time}`;
+  }
+
+  return `${date.toLocaleDateString("en-PH", { month: "short", day: "numeric" })}, ${time}`;
 }
 
 /* =========================================
