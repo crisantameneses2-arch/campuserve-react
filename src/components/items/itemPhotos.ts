@@ -59,3 +59,13 @@ export function getItemPhoto(itemName: string): string | undefined {
 
   return undefined;
 }
+
+/*
+ * Tall, narrow cut-outs (pants and slacks) hug the card's right edge,
+ * so they are nudged a little to the left.
+ */
+const shiftedLeft = new Set([peJoggingPants, maleUniformSlacks]);
+
+export function isShiftedLeftPhoto(source: string | undefined) {
+  return Boolean(source && shiftedLeft.has(source));
+}
