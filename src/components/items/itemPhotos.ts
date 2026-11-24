@@ -73,3 +73,8 @@ const nudgedRightPhotos = new Set([maleUniformTop, femaleUniformTop, peAthleticS
 export function isNudgedRightPhoto(source: string | undefined) {
   return Boolean(source && nudgedRightPhotos.has(source));
 }
+
+/* The female ready-to-wear set: 2px smaller and 2px further right. */
+export function isFemaleSetPhoto(source: string | undefined) {
+  return Boolean(source && source === femaleUniformSet);
+}

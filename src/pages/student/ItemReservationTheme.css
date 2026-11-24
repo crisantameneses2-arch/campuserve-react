@@ -323,6 +323,12 @@
   translate: calc(-14% + 3px) 0;
 }
 
+.irx .irx-card__image.is-cutout.is-female-set {
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  translate: calc(-14% + 2px) 0;
+}
+
 /* Fabric sets: drawn smaller (by size, not scale, so they stay sharp). */
 .irx .irx-card__image.is-smaller {
   width: 80%;

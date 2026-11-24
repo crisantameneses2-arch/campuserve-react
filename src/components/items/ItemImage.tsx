@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ItemArt from "./ItemArt";
 import {
   getItemPhoto,
+  isFemaleSetPhoto,
   isNudgedRightPhoto,
   isSmallerPhoto,
 } from "./itemPhotos";
@@ -43,11 +44,12 @@ export default function ItemImage({
 
   const sizeClass = isSmallerPhoto(source) ? " is-smaller" : "";
   const nudgeClass = isNudgedRightPhoto(source) ? " is-nudge-right" : "";
+  const femaleSetClass = isFemaleSetPhoto(source) ? " is-female-set" : "";
 
   if (source) {
     return (
       <img
-        className={`${className ?? ""} ${kindClass}${sizeClass}${nudgeClass}`.trim()}
+        className={`${className ?? ""} ${kindClass}${sizeClass}${nudgeClass}${femaleSetClass}`.trim()}
         src={source}
         alt={itemName}
         loading="lazy"
