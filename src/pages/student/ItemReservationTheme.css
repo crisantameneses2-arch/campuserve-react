@@ -334,6 +334,12 @@
   height: calc(100% - 13px);
 }
 
+.irx .irx-card__image.is-cutout.is-pe-set {
+  width: calc(100% + 5px);
+  height: calc(100% + 5px);
+  flex-shrink: 0; /* let it grow past the photo area instead of being squeezed back */
+}
+
 /* Fabric sets: drawn smaller (by size, not scale, so they stay sharp). */
 .irx .irx-card__image.is-smaller {
   width: 80%;

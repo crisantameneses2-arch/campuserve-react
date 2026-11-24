@@ -83,3 +83,8 @@ export function isFemaleSetPhoto(source: string | undefined) {
 export function isSkirtPhoto(source: string | undefined) {
   return Boolean(source && source === femaleUniformSkirt);
 }
+
+/* The PE uniform set: 5px larger. */
+export function isPeSetPhoto(source: string | undefined) {
+  return Boolean(source && source === peUniformSet);
+}
