@@ -783,6 +783,7 @@ export default function RegistrarDashboard({
           status: "CANCELLED",
           cancellation_reason:
             cancelReason.trim(),
+          cancelled_at: serverTimestamp(),
           updated_at: serverTimestamp(),
         },
       );

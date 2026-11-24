@@ -93,6 +93,9 @@ const ACTIVE_STATUSES = [
   "RESCHEDULED",
 ];
 
+/** How long a cancelled document request stays in Live tracking. */
+const CANCELLED_TRACKING_MS = 24 * 60 * 60 * 1000;
+
 const TRACKING_STEPS = [
   "UNPAID",
   "PENDING",
@@ -337,18 +340,43 @@ export default function StudentDashboard({
      LIVE TRACKING TRANSACTIONS
   ========================================= */
 
+  // Re-checked every minute so a cancelled request drops off on time.
+  const [trackingNow, setTrackingNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setTrackingNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const trackingTransactions = useMemo(
     () =>
       transactions.filter((transaction) => {
         const status = normalizeStatus(transaction.status);
 
-        return (
-          Boolean(status) &&
-          status !== "CLAIMED" &&
-          status !== "COMPLETED"
-        );
+        if (!status) return false;
+
+        // Received by the student: no longer tracked.
+        if (status === "CLAIMED" || status === "COMPLETED") return false;
+
+        // Cancelled document requests stay visible for 24 hours only.
+        if (
+          transaction.kind === "DOCUMENT" &&
+          (status === "CANCELLED" || status === "CANCELED")
+        ) {
+          const cancelledAt = getTime(
+            transaction.details?.cancelled_at ??
+              transaction.details?.updated_at
+          );
+
+          return (
+            cancelledAt > 0 &&
+            trackingNow - cancelledAt < CANCELLED_TRACKING_MS
+          );
+        }
+
+        return true;
       }),
-    [transactions]
+    [transactions, trackingNow]
   );
   // Separate live tracking transactions by type
   const documentTrackingTransactions = useMemo(
