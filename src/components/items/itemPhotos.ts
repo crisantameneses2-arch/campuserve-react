@@ -66,3 +66,10 @@ const smallerPhotos = new Set([uniformFabricSet, maleUniformFabricSet]);
 export function isSmallerPhoto(source: string | undefined) {
   return Boolean(source && smallerPhotos.has(source));
 }
+
+/* Tops and the PE shirt sit a few pixels further right than the rest. */
+const nudgedRightPhotos = new Set([maleUniformTop, femaleUniformTop, peAthleticShirt]);
+
+export function isNudgedRightPhoto(source: string | undefined) {
+  return Boolean(source && nudgedRightPhotos.has(source));
+}

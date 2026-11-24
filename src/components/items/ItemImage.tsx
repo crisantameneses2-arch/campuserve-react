@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import ItemArt from "./ItemArt";
-import { getItemPhoto, isSmallerPhoto } from "./itemPhotos";
+import {
+  getItemPhoto,
+  isNudgedRightPhoto,
+  isSmallerPhoto,
+} from "./itemPhotos";
 
 /**
  * Picks the best picture for an item, in this order:
@@ -38,11 +42,12 @@ export default function ItemImage({
     source && source === catalogPhoto ? "is-cutout" : "is-photo";
 
   const sizeClass = isSmallerPhoto(source) ? " is-smaller" : "";
+  const nudgeClass = isNudgedRightPhoto(source) ? " is-nudge-right" : "";
 
   if (source) {
     return (
       <img
-        className={`${className ?? ""} ${kindClass}${sizeClass}`.trim()}
+        className={`${className ?? ""} ${kindClass}${sizeClass}${nudgeClass}`.trim()}
         src={source}
         alt={itemName}
         loading="lazy"

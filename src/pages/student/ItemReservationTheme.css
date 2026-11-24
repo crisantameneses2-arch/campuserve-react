@@ -319,6 +319,10 @@
   translate: -14% 0;
 }
 
+.irx .irx-card__image.is-cutout.is-nudge-right {
+  translate: calc(-14% + 3px) 0;
+}
+
 /* Fabric sets: drawn smaller (by size, not scale, so they stay sharp). */
 .irx .irx-card__image.is-smaller {
   width: 80%;
