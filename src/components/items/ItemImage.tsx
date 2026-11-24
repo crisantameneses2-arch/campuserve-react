@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import ItemArt from "./ItemArt";
-import { getItemPhoto, isShiftedLeftPhoto } from "./itemPhotos";
+import { getItemPhoto } from "./itemPhotos";
 
 /**
  * Picks the best picture for an item, in this order:
@@ -37,12 +37,10 @@ export default function ItemImage({
   const kindClass =
     source && source === catalogPhoto ? "is-cutout" : "is-photo";
 
-  const shiftClass = isShiftedLeftPhoto(source) ? " is-shift-left" : "";
-
   if (source) {
     return (
       <img
-        className={`${className ?? ""} ${kindClass}${shiftClass}`.trim()}
+        className={`${className ?? ""} ${kindClass}`.trim()}
         src={source}
         alt={itemName}
         loading="lazy"
