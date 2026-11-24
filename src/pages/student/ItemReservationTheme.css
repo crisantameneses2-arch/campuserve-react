@@ -335,8 +335,8 @@
 }
 
 .irx .irx-card__image.is-cutout.is-pe-set {
-  width: calc(100% + 5px);
-  height: calc(100% + 5px);
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
   flex-shrink: 0; /* let it grow past the photo area instead of being squeezed back */
 }
 
