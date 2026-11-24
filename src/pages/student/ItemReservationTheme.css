@@ -325,7 +325,7 @@
   height: 80%;
 }
 
-.irx .irx-hero__image.is-smaller {
+.irx .irx-hero__image.is-cutout.is-smaller {
   width: min(64%, 320px);
 }
 
