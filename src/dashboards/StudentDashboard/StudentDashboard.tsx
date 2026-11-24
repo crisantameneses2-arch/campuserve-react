@@ -2593,11 +2593,15 @@ function NotificationPage({
   onReadAll: () => void;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "unread">("all");
 
-  const groups = groupNotifications(notifications);
-  const hasUnread = notifications.some(
-    (notification) => !notification.readBy.includes(studentId)
-  );
+  const isUnread = (notification: AppNotification) =>
+    !notification.readBy.includes(studentId);
+
+  const unreadCount = notifications.filter(isUnread).length;
+  const visible =
+    filter === "unread" ? notifications.filter(isUnread) : notifications;
+  const groups = groupNotifications(visible);
 
   return (
     <>
@@ -2607,7 +2611,7 @@ function NotificationPage({
         text="Updates about your requests, reservations and claiming schedule."
       />
 
-      <section className="sdx-panel sdx-notifs-panel">
+      <section className="sdx-panel sdx-nt">
         {loading ? (
           <DashboardLoading />
         ) : notifications.length === 0 ? (
@@ -2618,72 +2622,153 @@ function NotificationPage({
           />
         ) : (
           <>
-            <div className="sdx-notifs__bar">
+            <div className="sdx-nt__bar">
+              <div className="sdx-nt__tabs" role="tablist" aria-label="Filter notifications">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === "all"}
+                  className={filter === "all" ? "is-active" : ""}
+                  onClick={() => setFilter("all")}
+                >
+                  All <span>{notifications.length}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === "unread"}
+                  className={filter === "unread" ? "is-active" : ""}
+                  onClick={() => setFilter("unread")}
+                >
+                  Unread <span>{unreadCount}</span>
+                </button>
+              </div>
+
               <button
                 type="button"
-                className="sdx-notifs__readall"
+                className="sdx-nt__readall"
                 onClick={onReadAll}
-                disabled={!hasUnread}
+                disabled={unreadCount === 0}
               >
+                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                  <path
+                    d="m2 12 5 5L18 6m-6 11 1 1L22 9"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
                 Read All
               </button>
             </div>
 
-            {groups.map((group) => (
-              <div className="sdx-notifs__group" key={group.label}>
-                <h2 className="sdx-notifs__heading">{group.label}</h2>
-
-                <div className="sdx-notifs">
-                  {group.items.map((notification) => {
-                    const unread = !notification.readBy.includes(studentId);
-                    const open = openId === notification.id;
-
-                    return (
-                      <button
-                        type="button"
-                        className={`sdx-notif ${unread ? "is-unread" : ""} ${open ? "is-open" : ""}`}
-                        key={notification.id}
-                        aria-expanded={open}
-                        onClick={() => {
-                          setOpenId(open ? null : notification.id);
-                          void onNotificationClick(notification);
-                        }}
-                      >
-                        <span className="sdx-notif__body">
-                          <span className="sdx-notif__head">
-                            <strong>{notification.title}</strong>
-                            <small>
-                              {notificationTime(notification.createdAt, group.label)}
-                            </small>
-                          </span>
-                          <span className="sdx-notif__text">
-                            {notification.message}
-                          </span>
-                        </span>
-
-                        <span className="sdx-notif__chevron" aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="16" height="16">
-                            <path
-                              d="m6 9 6 6 6-6"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+            {groups.length === 0 ? (
+              <div className="sdx-nt__empty">
+                <Icon name="bell" size={22} />
+                <strong>No unread notifications</strong>
+                <span>You've read everything. Nice!</span>
               </div>
-            ))}
+            ) : (
+              groups.map((group) => (
+                <div className="sdx-nt__group" key={group.label}>
+                  <h2 className="sdx-nt__day">
+                    <span>{group.label}</span>
+                    <small>{group.items.length}</small>
+                  </h2>
+
+                  <ul className="sdx-nt__list">
+                    {group.items.map((notification) => {
+                      const unread = isUnread(notification);
+                      const open = openId === notification.id;
+                      const look = notificationLook(notification);
+
+                      return (
+                        <li key={notification.id}>
+                          <button
+                            type="button"
+                            className={`sdx-nt__item tone-${look.tone} ${unread ? "is-unread" : ""} ${open ? "is-open" : ""}`}
+                            aria-expanded={open}
+                            onClick={() => {
+                              setOpenId(open ? null : notification.id);
+                              void onNotificationClick(notification);
+                            }}
+                          >
+                            <span className="sdx-nt__icon" aria-hidden="true">
+                              <Icon name={look.icon} size={17} />
+                            </span>
+
+                            <span className="sdx-nt__body">
+                              <span className="sdx-nt__head">
+                                <strong>{notification.title}</strong>
+                                <small>
+                                  {notificationTime(notification.createdAt, group.label)}
+                                </small>
+                              </span>
+                              <span className="sdx-nt__text">
+                                {notification.message}
+                              </span>
+                            </span>
+
+                            <span className="sdx-nt__side" aria-hidden="true">
+                              {unread && <span className="sdx-nt__dot" />}
+                              <svg
+                                className="sdx-nt__chevron"
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                              >
+                                <path
+                                  d="m6 9 6 6 6-6"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))
+            )}
           </>
         )}
       </section>
     </>
   );
+}
+
+/* Icon and colour for each kind of notification. */
+function notificationLook(notification: AppNotification): {
+  icon: string;
+  tone: "blue" | "green" | "sun" | "red" | "sky";
+} {
+  switch (notification.type) {
+    case "CANCELLED":
+      return { icon: "ticket", tone: "red" };
+    case "RESCHEDULED":
+      return { icon: "calendar", tone: "sun" };
+    case "REMINDER":
+      return { icon: "clock", tone: "sun" };
+    case "GROUP_REQUEST":
+    case "GROUP_RESPONSE":
+      return { icon: "users", tone: "green" };
+    case "STOCK":
+      return { icon: "bag", tone: "sky" };
+    case "STATUS":
+    case "SUBMITTED":
+      return notification.kind === "ITEM"
+        ? { icon: "bag", tone: "blue" }
+        : { icon: "file", tone: "blue" };
+    default:
+      return { icon: "bell", tone: "blue" };
+  }
 }
 
 type NotificationGroupLabel = "Today" | "Yesterday" | "This Week" | "Earlier";
