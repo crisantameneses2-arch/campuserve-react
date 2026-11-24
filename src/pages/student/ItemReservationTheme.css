@@ -330,8 +330,8 @@
 }
 
 .irx .irx-card__image.is-cutout.is-skirt {
-  width: calc(100% - 8px);
-  height: calc(100% - 8px);
+  width: calc(100% - 13px);
+  height: calc(100% - 13px);
 }
 
 /* Fabric sets: drawn smaller (by size, not scale, so they stay sharp). */
