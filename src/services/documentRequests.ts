@@ -14,6 +14,12 @@ import {
 
 import { db } from "../../firebase";
 
+import {
+  assertCopiesAllowed,
+  assertFeatureEnabled,
+} from "./settings";
+import { logActivity } from "./activityLog";
+
 /* =========================================================
    TYPES
 ========================================================= */
@@ -94,6 +100,7 @@ export function generateRequestId(): string {
 export async function createDraftGroupDocumentRequest(
   student_id: string
 ): Promise<string> {
+    await assertFeatureEnabled("documentRequests");
   const request_id = generateRequestId();
 
   const requestData = {
@@ -177,6 +184,8 @@ export async function finalizeDraftGroupDocumentRequest(
     details: DocumentDetailInput[];
   },
 ) {
+  await assertFeatureEnabled("documentRequests");
+  await assertCopiesAllowed(input.number_of_copies);
   if (!input.details || input.details.length === 0) {
     throw new Error("Select at least one document before submitting.");
   }
@@ -249,14 +258,15 @@ export async function finalizeDraftGroupDocumentRequest(
       },
     };
   });
-
+    let submittedBy = "";
   await runTransaction(db, async (transaction) => {
     // All reads must happen before writes.
     const requestSnapshot = await transaction.get(requestRef);
 
     if (!requestSnapshot.exists()) {
       throw new Error("The group request could not be found.");
-    }
+    submittedBy = String(requestSnapshot.data()?.student_id || "");
+  }
 
     if (requestSnapshot.data().status !== "DRAFT") {
       throw new Error("This group request has already been submitted.");
@@ -300,9 +310,21 @@ export async function finalizeDraftGroupDocumentRequest(
       status: "PENDING",
       finalized_at: serverTimestamp(),
       submitted_at: serverTimestamp(),
-      updated_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
     });
   });
+
+  await logActivity(
+    { id: submittedBy, name: submittedBy, role: "student" },
+    "REQUEST_SUBMITTED",
+    `Submitted group document request ${request_id}.`,
+    {
+      request_method: "WITH_OTHERS",
+      number_of_copies: input.number_of_copies,
+      total_amount: input.total_amount,
+    },
+    request_id
+  );
 }
 /* =========================================================
    CREATE DOCUMENT REQUEST
@@ -322,6 +344,8 @@ export async function finalizeDraftGroupDocumentRequest(
 export async function createDocumentRequest(
   input: CreateDocumentRequestInput
 ): Promise<string> {
+    await assertFeatureEnabled("documentRequests");
+  await assertCopiesAllowed(input.number_of_copies);
   const request_id = generateRequestId();
 
   const requestData = {
@@ -376,7 +400,17 @@ export async function createDocumentRequest(
     ),
     requestData
   );
-
+  await logActivity(
+    { id: input.student_id, name: input.student_id, role: "student" },
+    "REQUEST_SUBMITTED",
+    `Submitted document request ${request_id}.`,
+    {
+      request_method: input.request_method,
+      number_of_copies: input.number_of_copies,
+      total_amount: input.total_amount,
+    },
+    request_id
+  );
   return request_id;
 }
 
