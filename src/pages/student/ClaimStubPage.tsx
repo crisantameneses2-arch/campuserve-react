@@ -112,17 +112,7 @@ export default function ClaimStubPage({ studentId }: Props) {
     names[row.requestId] || "Document request";
 
   return (
-    <section className="cst" aria-labelledby="cst-title">
-      <header className="cst-head">
-        <span className="cst-kicker">CLAIM &amp; RELEASE</span>
-        <h1 id="cst-title">Your claim-ready documents</h1>
-        <p>
-          Select a document marked <strong>Ready for Claiming</strong> to see
-          its claim code. Show the code at the Registrar's window; the
-          Registrar checks it and releases your document.
-        </p>
-      </header>
-
+    <section className="cst" aria-label="Claim and release">
       <div className="cst-grid">
         {/* ===== Ready list ===== */}
 

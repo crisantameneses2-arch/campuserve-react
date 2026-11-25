@@ -68,16 +68,6 @@ const faqs = [
 export default function HelpCenter() {
     return (
         <div className="help-center-page">
-            <div className="help-center-header">
-                <span className="help-center-eyebrow">
-                    INFORMATION & SUPPORT
-                </span>
-                <h1>Help Center & FAQs</h1>
-                <p>
-                    Find answers and guidance for using the CampuServe system.
-                </p>
-            </div>
-
             <section className="help-center-section">
                 <h2>Frequently Asked Questions</h2>
                 <p className="help-center-subtitle">

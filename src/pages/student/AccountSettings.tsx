@@ -9,12 +9,6 @@ export default function AccountSettings() {
 
   return (
     <div className="account-settings-page">
-      <div className="account-settings-header">
-        <span className="account-settings-eyebrow">ACCOUNT</span>
-        <h2>Account Settings</h2>
-        <p>Manage your account preferences and security.</p>
-      </div>
-
       <section className="account-settings-section">
         <div className="account-settings-section-heading">
           <div className="account-settings-section-icon">🔔</div>

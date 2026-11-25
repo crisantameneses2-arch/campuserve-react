@@ -618,15 +618,6 @@ export default function ItemReservation({
           </button>
         </div>
 
-        <div className="irx-page-head">
-          <span className="irx-eyebrow">ITEM RESERVATION</span>
-          <h1>Review your reservation</h1>
-          <p>
-            Check your items, confirm your details, then reserve. Pay and
-            claim at the Supply Office counter.
-          </p>
-        </div>
-
         <div className="irx-checkout">
           {/* ITEMS */}
 
@@ -1062,17 +1053,6 @@ export default function ItemReservation({
 
   return (
     <div className="irx">
-      {/* HEADER */}
-
-      <div className="irx-page-head">
-        <span className="irx-eyebrow">SUPPLY OFFICE</span>
-        <h1>Item collections</h1>
-        <p>
-          Uniforms, IDs and campus essentials in one place. Reserved
-          items must be claimed within three (3) days.
-        </p>
-      </div>
-
       {/* SEARCH */}
 
       <div className="irx-search-row">

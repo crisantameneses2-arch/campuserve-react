@@ -900,6 +900,7 @@ export default function StudentDashboard({
               {activePage === "requests" && (
                 <DocumentRequestList
                   studentId={studentId}
+                  embedded
                   onViewDetails={(requestId) => {
                     const match = documentTransactions.find(
                       (transaction) => transaction.id === requestId
@@ -2075,12 +2076,6 @@ function TransactionHistory({
 }) {
   return (
     <>
-      <PageHeading
-        eyebrow="TRANSACTIONS"
-        title="Transaction History"
-        text="Every document request and item reservation."
-      />
-
       <section className="sdx-panel">
         {loading ? (
           <DashboardLoading />
@@ -2938,12 +2933,6 @@ function NotificationPage({
 
   return (
     <>
-      <PageHeading
-        eyebrow="UPDATES"
-        title="Notifications"
-        text="Updates about your requests, reservations and claiming schedule."
-      />
-
       <section className="sdx-panel sdx-nt">
         {loading ? (
           <DashboardLoading />
@@ -3160,28 +3149,6 @@ function notificationTime(value: unknown, group: NotificationGroupLabel) {
   }
 
   return `${date.toLocaleDateString("en-PH", { month: "short", day: "numeric" })}, ${time}`;
-}
-
-/* =========================================
-   PAGE HEADING
-========================================= */
-
-function PageHeading({
-  eyebrow,
-  title,
-  text,
-}: {
-  eyebrow: string;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="sdx-page-head">
-      <span className="sdx-tag">{eyebrow}</span>
-      <h1>{title}</h1>
-      <p>{text}</p>
-    </div>
-  );
 }
 
 /* =========================================

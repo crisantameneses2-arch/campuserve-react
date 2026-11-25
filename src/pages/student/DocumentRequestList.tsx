@@ -22,11 +22,14 @@ type DocumentRequestListProps = {
   studentId: string;
   /** Opens the request's details (where it can also be cancelled). */
   onViewDetails?: (requestId: string) => void;
+  /** Shown inside the dashboard: its top bar and menu replace the heading and back link. */
+  embedded?: boolean;
 };
 
 export default function DocumentRequestList({
   studentId,
   onViewDetails,
+  embedded = false,
 }: DocumentRequestListProps) {
   const [requests, setRequests] = useState<
     StudentRequest[]
@@ -84,11 +87,15 @@ export default function DocumentRequestList({
         padding: "24px",
       }}
     >
-      <h1>My Requests</h1>
+      {!embedded && (
+        <>
+          <h1>My Requests</h1>
 
-      <Link to="/student">
-        ← Student Dashboard
-      </Link>
+          <Link to="/student">
+            ← Student Dashboard
+          </Link>
+        </>
+      )}
 
       {loading && (
         <p>Loading your requests...</p>

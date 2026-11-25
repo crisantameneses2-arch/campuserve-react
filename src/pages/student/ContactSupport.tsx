@@ -22,20 +22,6 @@ export default function ContactSupport() {
 
   return (
     <div className="contact-support-page">
-      <div className="contact-support-header">
-        <div>
-          <span className="contact-support-eyebrow">
-            HELP & SUPPORT
-          </span>
-          <h2>Contact Support</h2>
-          <p>
-            Have a question or encountered a problem?
-            Send us your concern and we'll assist you.
-          </p>
-        </div>
-        <div className="contact-support-icon">✉</div>
-      </div>
-
       <div className="contact-support-content">
         <div className="contact-support-info">
           <h3>We're here to help.</h3>

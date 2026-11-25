@@ -1387,19 +1387,6 @@ export default function DocumentRequestWizard({
 
   return (
     <div className="rwx">
-      <div className="rwx-page-head">
-        <span className="rwx-eyebrow rwx-eyebrow--muted">
-          DOCUMENT SERVICES
-        </span>
-
-        <h1>Request a document</h1>
-
-        <p>
-          Choose how you want to request, pick your documents, and
-          tell us what they're for.
-        </p>
-      </div>
-
       <section className="rwx-shell">
         <StepProgress
           currentStep={currentStep}
