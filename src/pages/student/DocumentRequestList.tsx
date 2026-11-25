@@ -20,10 +20,13 @@ interface StudentRequest {
 
 type DocumentRequestListProps = {
   studentId: string;
+  /** Opens the request's details (where it can also be cancelled). */
+  onViewDetails?: (requestId: string) => void;
 };
 
 export default function DocumentRequestList({
   studentId,
+  onViewDetails,
 }: DocumentRequestListProps) {
   const [requests, setRequests] = useState<
     StudentRequest[]
@@ -152,17 +155,22 @@ export default function DocumentRequestList({
               </Link>
             )}
 
-            <div
-              style={{
-                marginTop: "8px",
-              }}
-            >
-              <Link
-                to={`/student/requests/${request.request_id}`}
+            {onViewDetails && (
+              <div
+                style={{
+                  marginTop: "8px",
+                }}
               >
-                View Details
-              </Link>
-            </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onViewDetails(request.request_id)
+                  }
+                >
+                  View Details
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -42,16 +42,6 @@ export interface GroupMemberInput {
     | "DECLINED";
 }
 
-/*
- * Available claiming schedule
- */
-export interface AvailableClaimingSchedule {
-  id: string;
-  claimDate: string;
-  timeSlot: string;
-  availableSlot: number;
-}
-
 /* =========================================================
    REQUEST ID
 ========================================================= */
@@ -859,262 +849,104 @@ export function subscribeToStudentDraftGroupRequests(
 }
 
 /* =========================================================
-   CANCEL DOCUMENT REQUEST
+   CANCEL DOCUMENT REQUEST (student)
 ========================================================= */
 
 /*
- * A student can cancel a request
- * only while it is PENDING.
+ * Statuses a student may still cancel from — as long as
+ * the request has NOT been paid yet. Once the Cashier
+ * confirms payment (payment_status = "PAID") the request
+ * can no longer be cancelled by the student.
+ *
+ * Scheduling is handled by the Registrar, so students
+ * cannot reschedule from their side.
+ */
+const STUDENT_CANCELLABLE_STATUSES = [
+  "PENDING",
+  "APPROVED",
+  "RESCHEDULED",
+];
+
+function normalizeValue(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+/**
+ * True when a student is still allowed to cancel this
+ * request: it is in an early status and not yet paid.
+ */
+export function canStudentCancelDocumentRequest(request: {
+  status?: unknown;
+  payment_status?: unknown;
+}): boolean {
+  return (
+    STUDENT_CANCELLABLE_STATUSES.includes(
+      normalizeValue(request.status),
+    ) && normalizeValue(request.payment_status) !== "PAID"
+  );
+}
+
+/*
+ * Cancels a student's own document request.
+ *
+ * Everything is checked inside a transaction against the
+ * latest saved data (not what the page last showed):
+ *   - the request must belong to this student (the host,
+ *     for group requests)
+ *   - it must still be in an early status
+ *   - it must NOT be paid yet
  */
 export async function cancelDocumentRequest(
-  request_id: string
-): Promise<void> {
-  const requestRef =
-    doc(
-      db,
-      "document_requests",
-      request_id
-    );
-
-  await updateDoc(
-    requestRef,
-    {
-      status: "CANCELLED",
-
-      cancelled_at:
-        serverTimestamp(),
-    }
-  );
-}
-
-/* =========================================================
-   GET AVAILABLE CLAIMING SCHEDULES
-========================================================= */
-
-/*
- * Gets claiming schedules that still
- * have available slots.
- *
- * Collection:
- * claimingSchedules
- */
-export async function getAvailableClaimingSchedules(): Promise<
-  AvailableClaimingSchedule[]
-> {
-  const schedulesSnapshot =
-    await getDocs(
-      collection(
-        db,
-        "claimingSchedules"
-      )
-    );
-
-  /*
-   * Today
-   */
-  const today =
-    new Date();
-
-  today.setHours(
-    0,
-    0,
-    0,
-    0
-  );
-
-  /*
-   * Maximum rescheduling date:
-   * 14 days from today.
-   */
-  const maximumDate =
-    new Date(today);
-
-  maximumDate.setDate(
-    maximumDate.getDate() + 14
-  );
-
-  const schedules =
-    schedulesSnapshot.docs
-      .map((scheduleDoc) => {
-        const data =
-          scheduleDoc.data();
-
-        return {
-          id:
-            scheduleDoc.id,
-
-          claimDate:
-            data.claimDate ?? "",
-
-          timeSlot:
-            data.timeSlot ?? "",
-
-          availableSlot:
-            Number(
-              data.availableSlot ?? 0
-            ),
-        };
-      })
-      .filter((schedule) => {
-        if (
-          !schedule.claimDate ||
-          !schedule.timeSlot
-        ) {
-          return false;
-        }
-
-        if (
-          schedule.availableSlot <= 0
-        ) {
-          return false;
-        }
-
-        /*
-         * Convert:
-         *
-         * 2026-10-05
-         *
-         * into a JavaScript Date.
-         */
-        const scheduleDate =
-          new Date(
-            `${schedule.claimDate}T00:00:00`
-          );
-
-        /*
-         * Only show schedules from
-         * today through the next 14 days.
-         */
-        return (
-          scheduleDate >= today &&
-          scheduleDate <= maximumDate
-        );
-      })
-      .sort((a, b) => {
-        return (
-          new Date(
-            `${a.claimDate}T00:00:00`
-          ).getTime() -
-          new Date(
-            `${b.claimDate}T00:00:00`
-          ).getTime()
-        );
-      });
-
-  return schedules;
-}
-
-/* =========================================================
-   RESCHEDULE DOCUMENT REQUEST
-========================================================= */
-
-/*
- * Rescheduling behavior:
- *
- * PENDING
- *   ↓
- * Reschedule
- *   ↓
- * PENDING
- *
- * APPROVED
- *   ↓
- * Reschedule
- *   ↓
- * RESCHEDULED
- *
- * Other statuses are rejected.
- */
-export async function rescheduleDocumentRequest(
   request_id: string,
-  originalDate: string,
-  originalTime: string,
-  newDate: string,
-  newTime: string,
-  currentStatus: string
+  student_id: string,
+  reason?: string,
 ): Promise<void> {
-  /*
-   * Only PENDING and APPROVED requests
-   * may be rescheduled.
-   */
-  if (
-    currentStatus !== "PENDING" &&
-    currentStatus !== "APPROVED"
-  ) {
-    throw new Error(
-      "This request can no longer be rescheduled."
-    );
+  if (!request_id || !student_id) {
+    throw new Error("Missing request or student information.");
   }
 
-  const requestRef =
-    doc(
-      db,
-      "document_requests",
-      request_id
-    );
+  const requestRef = doc(db, "document_requests", request_id);
 
-  /*
-   * Determine the new status.
-   *
-   * PENDING stays PENDING.
-   *
-   * APPROVED becomes RESCHEDULED.
-   */
-  const newStatus =
-    currentStatus === "APPROVED"
-      ? "RESCHEDULED"
-      : "PENDING";
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(requestRef);
 
-  await updateDoc(
-    requestRef,
-    {
-      /*
-       * Preserve the current workflow status.
-       */
-      status:
-        newStatus,
-
-      /*
-       * Preserve the original schedule.
-       */
-      original_requested_date:
-        originalDate,
-
-      original_requested_time:
-        originalTime,
-
-      /*
-       * Save the newly selected schedule.
-       */
-      rescheduled_date:
-        newDate,
-
-      rescheduled_time:
-        newTime,
-
-      /*
-       * Update the main schedule fields.
-       *
-       * These represent the student's
-       * current claiming schedule.
-       */
-      requested_date:
-        newDate,
-
-      requested_time:
-        newTime,
-
-      /*
-       * First rescheduling attempt.
-       */
-      reschedule_count:
-        1,
-
-      /*
-       * Timestamp of the reschedule.
-       */
-      rescheduled_at:
-        serverTimestamp(),
+    if (!snapshot.exists()) {
+      throw new Error("This request could not be found.");
     }
-  );
+
+    const request = snapshot.data();
+
+    if (String(request.student_id || "") !== student_id) {
+      throw new Error("You can only cancel your own requests.");
+    }
+
+    const status = normalizeValue(request.status);
+
+    if (status === "CANCELLED") {
+      throw new Error("This request is already cancelled.");
+    }
+
+    if (normalizeValue(request.payment_status) === "PAID") {
+      throw new Error(
+        "This request has already been paid, so it can no longer be cancelled.",
+      );
+    }
+
+    if (!STUDENT_CANCELLABLE_STATUSES.includes(status)) {
+      throw new Error("This request can no longer be cancelled.");
+    }
+
+    transaction.update(requestRef, {
+      status: "CANCELLED",
+      previous_status: status,
+      cancelled_by: "STUDENT",
+      cancelled_by_id: student_id,
+      cancellation_reason: reason?.trim() || "Cancelled by the student.",
+      cancelled_at: serverTimestamp(),
+      updated_at: serverTimestamp(),
+    });
+  });
 }

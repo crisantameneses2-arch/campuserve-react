@@ -37,6 +37,11 @@ import {
 } from "../../services/groupRequests";
 
 import {
+  cancelDocumentRequest,
+  canStudentCancelDocumentRequest,
+} from "../../services/documentRequests";
+
+import {
   formatClaimDate,
   formatClaimTime,
   normalizeStatus,
@@ -260,6 +265,13 @@ export default function StudentDashboard({
       ),
     [documentTransactions, itemTransactions]
   );
+
+  /* The open details modal follows live updates (e.g. right after a cancel). */
+  const liveSelectedTransaction = selectedTransaction
+    ? transactions.find(
+        (transaction) => transaction.key === selectedTransaction.key
+      ) ?? selectedTransaction
+    : null;
 
   const transactionsLoading =
     documentsLoading || itemsLoading;
@@ -820,7 +832,15 @@ export default function StudentDashboard({
               )}
 
               {activePage === "requests" && (
-                <DocumentRequestList studentId={studentId} />
+                <DocumentRequestList
+                  studentId={studentId}
+                  onViewDetails={(requestId) => {
+                    const match = documentTransactions.find(
+                      (transaction) => transaction.id === requestId
+                    );
+                    if (match) setSelectedTransaction(match);
+                  }}
+                />
               )}
 
               {activePage === "itemReservation" && (
@@ -924,14 +944,16 @@ export default function StudentDashboard({
         </div>
       )}
 
-      {selectedTransaction && (
+      {liveSelectedTransaction && (
         <TransactionDetailsModal
-          transaction={selectedTransaction}
+          key={liveSelectedTransaction.key}
+          transaction={liveSelectedTransaction}
+          studentId={studentId}
           onClose={() => setSelectedTransaction(null)}
           onViewReceipt={
-            isPaidTransaction(selectedTransaction)
+            isPaidTransaction(liveSelectedTransaction)
               ? () => {
-                  setReceiptTransaction(selectedTransaction);
+                  setReceiptTransaction(liveSelectedTransaction);
                   setSelectedTransaction(null);
                 }
               : undefined
@@ -2033,15 +2055,50 @@ function TransactionHistory({
 
 function TransactionDetailsModal({
   transaction,
+  studentId,
   onClose,
   onViewReceipt,
 }: {
   transaction: StudentTransaction;
+  studentId: string;
   onClose: () => void;
   onViewReceipt?: () => void;
 }) {
   const details = transaction.details || {};
   const isDocument = transaction.kind === "DOCUMENT";
+
+  /* ---- Cancel (document requests, only while not yet paid) ---- */
+  const canCancel =
+    isDocument &&
+    canStudentCancelDocumentRequest({
+      status: transaction.status,
+      payment_status: transaction.payment_status,
+    });
+  const isAlreadyPaid =
+    isDocument && normalizeStatus(transaction.payment_status) === "PAID";
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [cancelDone, setCancelDone] = useState(false);
+
+  async function handleConfirmCancel() {
+    setCancelBusy(true);
+    setCancelError("");
+    try {
+      await cancelDocumentRequest(transaction.id, studentId, cancelReason);
+      setCancelDone(true);
+      setConfirmingCancel(false);
+    } catch (error) {
+      setCancelError(
+        error instanceof Error
+          ? error.message
+          : "Could not cancel the request. Please try again."
+      );
+    } finally {
+      setCancelBusy(false);
+    }
+  }
   const items = Array.isArray(details.items) ? details.items : [];
 
   useEffect(() => {
@@ -2247,6 +2304,191 @@ function TransactionDetailsModal({
             </button>
           )}
         </div>
+
+        {/* CANCEL REQUEST — only while not yet paid */}
+
+        {cancelDone && (
+          <div
+            role="status"
+            style={{
+              marginTop: "16px",
+              padding: "12px 14px",
+              borderRadius: "12px",
+              background: "#eef6f0",
+              border: "1px solid #cfe3d4",
+              color: "#2e602e",
+              fontSize: "13px",
+              fontWeight: 600,
+            }}
+          >
+            Your request has been cancelled.
+          </div>
+        )}
+
+        {canCancel && !cancelDone && (
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "14px",
+              borderRadius: "14px",
+              background: "#fff7f6",
+              border: "1px solid #f3d6d2",
+            }}
+          >
+            {!confirmingCancel ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ fontSize: "13px", color: "#7a4a44" }}>
+                  You can still cancel this request because it hasn't been
+                  paid yet.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmingCancel(true);
+                    setCancelError("");
+                  }}
+                  style={{
+                    border: "1px solid #e3a9a1",
+                    background: "#ffffff",
+                    color: "#b2382b",
+                    borderRadius: "10px",
+                    padding: "8px 14px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel request
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: "10px" }}>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    color: "#7a2a20",
+                  }}
+                >
+                  Cancel this request?
+                </div>
+                <div style={{ fontSize: "13px", color: "#7a4a44" }}>
+                  This can't be undone. You'll need to submit a new request
+                  if you change your mind.
+                </div>
+                <label
+                  style={{
+                    display: "grid",
+                    gap: "6px",
+                    fontSize: "12px",
+                    color: "#7a4a44",
+                  }}
+                >
+                  Reason (optional)
+                  <textarea
+                    value={cancelReason}
+                    onChange={(event) => setCancelReason(event.target.value)}
+                    rows={2}
+                    maxLength={300}
+                    placeholder="e.g. I no longer need this document"
+                    style={{
+                      font: "inherit",
+                      fontSize: "13px",
+                      padding: "8px 10px",
+                      borderRadius: "10px",
+                      border: "1px solid #e3c4bf",
+                      resize: "vertical",
+                    }}
+                  />
+                </label>
+                {cancelError && (
+                  <div
+                    role="alert"
+                    style={{
+                      fontSize: "13px",
+                      color: "#b2382b",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {cancelError}
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    justifyContent: "flex-end",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <button
+                    type="button"
+                    disabled={cancelBusy}
+                    onClick={() => {
+                      setConfirmingCancel(false);
+                      setCancelError("");
+                    }}
+                    style={{
+                      border: "1px solid #d5e1d8",
+                      background: "#ffffff",
+                      color: "#2e602e",
+                      borderRadius: "10px",
+                      padding: "8px 14px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Keep request
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cancelBusy}
+                    onClick={handleConfirmCancel}
+                    style={{
+                      border: 0,
+                      background: "#b2382b",
+                      color: "#ffffff",
+                      borderRadius: "10px",
+                      padding: "8px 14px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: cancelBusy ? "wait" : "pointer",
+                      opacity: cancelBusy ? 0.7 : 1,
+                    }}
+                  >
+                    {cancelBusy ? "Cancelling…" : "Yes, cancel it"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isAlreadyPaid &&
+          !cancelDone &&
+          ["APPROVED", "PROCESSING", "READY_FOR_PICKUP", "RESCHEDULED"].includes(
+            normalizeStatus(transaction.status)
+          ) && (
+            <div
+              style={{
+                marginTop: "12px",
+                fontSize: "12px",
+                color: "#6f8b7a",
+              }}
+            >
+              This request is already paid, so it can no longer be cancelled.
+              For concerns, message the Registrar Office.
+            </div>
+          )}
 
         {/* GENERAL INFORMATION */}
 
