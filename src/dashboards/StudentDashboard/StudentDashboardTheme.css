@@ -1256,7 +1256,7 @@ body.sdx-body {
   width: 62px;
   height: 62px;
   overflow: visible;
-  filter: drop-shadow(0 8px 12px rgba(20, 45, 75, 0.22));
+  filter: drop-shadow(0 8px 14px rgba(13, 27, 46, 0.22));
 }
 
 @keyframes sdx-hero-in {
@@ -1296,49 +1296,91 @@ body.sdx-body {
 
 
 /* ---------- Stage animations (current stage only) ----------
-   One calm motion per stage icon, all around the tile's centre. */
+   One short, playful loop per stage icon. Origins are in the icon's
+   64 × 64 viewBox. */
 
 .sdx .sdx-anim {
   transform-box: view-box;
   transform-origin: 32px 32px;
 }
 
-/* submitted: the paper plane glides up and back */
-.sdx .sdx-anim-fly.sdx-anim {
-  animation: sdx-fly 2.6s ease-in-out infinite;
+/* submitted: the paper plane swoops, speed lines trail behind */
+.sdx .sdx-anim-swoop.sdx-anim {
+  animation: sdx-swoop 2.4s ease-in-out infinite;
 }
 
-/* pending: the hourglass turns over now and then */
+.sdx .sdx-anim-speed.sdx-anim {
+  animation: sdx-speed 1.2s ease-out infinite;
+}
+
+/* pending: sand falls, then the hourglass turns over */
 .sdx .sdx-anim-flip.sdx-anim {
-  animation: sdx-flip 3.2s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+  animation: sdx-flip 3.4s cubic-bezier(0.6, 0, 0.3, 1) infinite;
 }
 
-/* approved / claimed: the check draws itself */
-.sdx .sdx-anim-draw.sdx-anim {
-  stroke-dasharray: 40;
-  animation: sdx-draw 2.8s ease infinite;
+.sdx .sdx-anim-sand.sdx-anim {
+  animation: sdx-sand 0.8s linear infinite;
 }
 
-/* unpaid: the reminder badge pulses */
-.sdx .sdx-anim-pulse.sdx-anim {
-  transform-origin: 47px 19px;
-  animation: sdx-pulse-dot 1.6s ease-in-out infinite;
+/* approved: the check stamp lands on the document */
+.sdx .sdx-anim-stamp.sdx-anim {
+  transform-origin: 42px 44px;
+  animation: sdx-stamp 2.8s cubic-bezier(0.3, 1.4, 0.5, 1) infinite;
 }
 
-/* paid: the peso coin flips */
+/* unpaid: the reminder badge nudges */
+.sdx .sdx-anim-nudge.sdx-anim {
+  transform-origin: 48px 20px;
+  animation: sdx-nudge 1.8s ease-in-out infinite;
+}
+
+/* paid: the coin flips over its shadow */
 .sdx .sdx-anim-coin.sdx-anim {
-  animation: sdx-coin 2.6s ease-in-out infinite;
+  transform-origin: 32px 31px;
+  animation: sdx-coin 2.4s ease-in-out infinite;
 }
 
-/* processing: the gear turns */
+/* processing: two gears turn against each other */
 .sdx .sdx-anim-gear.sdx-anim {
-  animation: sdx-spin 5s linear infinite;
+  animation: sdx-spin 4.5s linear infinite;
 }
 
-/* ready: a sparkle twinkles */
-.sdx .sdx-anim-spark.sdx-anim {
-  transform-origin: 48px 16.5px;
+.sdx .sdx-anim-gear-rev.sdx-anim {
+  animation: sdx-spin 3s linear infinite reverse;
+}
+
+/* ready: the bag hops */
+.sdx .sdx-anim-hop.sdx-anim {
+  transform-origin: 32px 50px;
+  animation: sdx-hop 2.4s ease-in-out infinite;
+}
+
+/* coin and bag: the ground shadow shrinks as they rise */
+.sdx .sdx-anim-shadow.sdx-anim {
+  transform-origin: 32px 52px;
+  animation: sdx-shadow 2.4s ease-in-out infinite;
+}
+
+/* claimed: the check pops in and draws itself */
+.sdx .sdx-anim-pop.sdx-anim {
+  animation: sdx-pop 3s cubic-bezier(0.3, 1.4, 0.5, 1) infinite;
+}
+
+.sdx .sdx-anim-draw.sdx-anim {
+  stroke-dasharray: 50;
+  animation: sdx-draw 3s ease infinite;
+}
+
+/* sparkles twinkle */
+.sdx .sdx-anim-twinkle.sdx-anim,
+.sdx .sdx-anim-twinkle-late.sdx-anim {
+  transform-box: fill-box;
+  transform-origin: center;
   animation: sdx-twinkle 1.8s ease-in-out infinite;
+}
+
+.sdx .sdx-anim-twinkle-late.sdx-anim {
+  animation-delay: 0.9s;
 }
 
 /* stopped: a small shake */
@@ -1346,62 +1388,95 @@ body.sdx-body {
   animation: sdx-shake 1.6s ease-in-out infinite;
 }
 
-/* The current-stage tile floats gently; the side icons stay still. */
-.sdx .sdx-tl__hero svg {
-  animation: sdx-bob 2.8s ease-in-out infinite;
+@keyframes sdx-swoop {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  35% { transform: translate(3px, -4px) rotate(-6deg); }
+  65% { transform: translate(-1px, 1px) rotate(2deg); }
 }
 
-@keyframes sdx-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-@keyframes sdx-fly {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(2.5px, -3px); }
+@keyframes sdx-speed {
+  0% { opacity: 0; transform: translate(2px, -1.5px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-5px, 3.5px); }
 }
 
 @keyframes sdx-flip {
-  0%, 62% { transform: rotate(0deg); }
-  82%, 100% { transform: rotate(180deg); }
+  0%, 62% { transform: rotate(0deg) scale(1); }
+  76% { transform: rotate(192deg) scale(0.92); }
+  86%, 100% { transform: rotate(180deg) scale(1); }
 }
 
-@keyframes sdx-draw {
-  0% { stroke-dashoffset: 40; }
-  40%, 80% { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: 0; opacity: 0.4; }
+@keyframes sdx-sand {
+  to { stroke-dashoffset: -8; }
 }
 
-@keyframes sdx-pulse-dot {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.18); }
+@keyframes sdx-stamp {
+  0%, 8% { opacity: 0; transform: scale(0) rotate(-25deg); }
+  24% { opacity: 1; transform: scale(1.15) rotate(6deg); }
+  34%, 86% { opacity: 1; transform: scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: scale(0.9) rotate(0deg); }
+}
+
+@keyframes sdx-nudge {
+  0%, 55%, 100% { transform: rotate(0deg) scale(1); }
+  65% { transform: rotate(-14deg) scale(1.12); }
+  75% { transform: rotate(10deg) scale(1.12); }
+  85% { transform: rotate(-4deg) scale(1); }
 }
 
 @keyframes sdx-coin {
-  0%, 30%, 100% { transform: scaleX(1); }
-  45% { transform: scaleX(0.08); }
-  60%, 70% { transform: scaleX(1); }
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  30% { transform: translateY(-5px) scaleX(0.1); }
+  50% { transform: translateY(-6px) scaleX(1); }
+  75% { transform: translateY(0) scaleX(1); }
+}
+
+@keyframes sdx-hop {
+  0%, 75%, 100% { transform: translateY(0) scale(1); }
+  10% { transform: translateY(0) scale(1.06, 0.94); }
+  35% { transform: translateY(-6px) scale(0.97, 1.03); }
+  58% { transform: translateY(0) scale(1.05, 0.95); }
+}
+
+@keyframes sdx-shadow {
+  0%, 75%, 100% { transform: scale(1); opacity: 0.28; }
+  35% { transform: scale(0.7); opacity: 0.16; }
+}
+
+@keyframes sdx-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  18% { opacity: 1; transform: scale(1.12); }
+  30%, 100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sdx-draw {
+  0%, 8% { stroke-dashoffset: 50; }
+  35%, 100% { stroke-dashoffset: 0; }
 }
 
 @keyframes sdx-twinkle {
-  0%, 100% { opacity: 0.35; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.1); }
+  0%, 100% { opacity: 0.35; transform: scale(0.7) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.15) rotate(45deg); }
 }
 
 @keyframes sdx-shake {
   0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-6deg); }
-  75% { transform: rotate(6deg); }
+  25% { transform: rotate(-7deg); }
+  75% { transform: rotate(7deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sdx .sdx-anim,
-  .sdx .sdx-tl__hero svg {
+  .sdx .sdx-anim {
     animation: none !important;
   }
 
   .sdx .sdx-anim-draw.sdx-anim {
     stroke-dasharray: none;
+  }
+
+  .sdx .sdx-anim-stamp.sdx-anim,
+  .sdx .sdx-anim-pop.sdx-anim {
+    opacity: 1;
   }
 }
 

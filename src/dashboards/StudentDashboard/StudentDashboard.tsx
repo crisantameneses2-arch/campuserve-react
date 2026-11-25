@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   collection,
   onSnapshot,
@@ -1791,19 +1791,48 @@ function stageKey(label: string): StageKey {
   return "pending";
 }
 
-/* Stage icons: a rounded tile in the stage's colour with a white symbol.
-   `animated` (the current stage only) adds one calm looping motion. */
-const STAGE_TILES: Record<StageKey, [string, string]> = {
-  submitted: ["#4fa8e0", "#1f6fb0"],
-  pending: ["#f2c35a", "#d9922b"],
-  approved: ["#5cc08c", "#2e8f5e"],
-  unpaid: ["#f2937a", "#d2603f"],
-  paid: ["#4cc2a6", "#1f8c78"],
-  processing: ["#7c8ff0", "#4058c9"],
-  ready: ["#43b8d6", "#1d7fa3"],
-  claimed: ["#5cc08c", "#2e8f5e"],
-  stopped: ["#ef7f7f", "#c94545"],
+/* Stage icons: bold flat white shapes with dark ink details on a flat tile
+   in the stage's colour, with sparkles, speed lines and ground shadows.
+   `animated` (the current stage only) plays one short, playful loop. */
+const STAGE_TILES: Record<StageKey, string> = {
+  submitted: "#2b8fdc",
+  pending: "#eda233",
+  approved: "#34a46c",
+  unpaid: "#e8714f",
+  paid: "#22a48b",
+  processing: "#5b6fe0",
+  ready: "#1f9fc4",
+  claimed: "#34a46c",
+  stopped: "#de5858",
 };
+
+const INK = "#0d1b2e";
+
+const GEAR_PATH =
+  "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z";
+
+/** A four-point sparkle centred on (x, y). */
+function Sparkle({
+  x,
+  y,
+  size = 1,
+  className,
+}: {
+  x: number;
+  y: number;
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${size})`}>
+      <path
+        className={className}
+        d="M0-5C.6-1.3 1.3-.6 5 0 1.3.6.6 1.3 0 5-.6 1.3-1.3.6-5 0-1.3-.6-.6-1.3 0-5Z"
+        fill="#fff"
+      />
+    </g>
+  );
+}
 
 function StageArt({
   stage,
@@ -1812,13 +1841,9 @@ function StageArt({
   stage: StageKey;
   animated?: boolean;
 }) {
-  const gradientId = `sdx-tile-${useId().replace(/:/g, "")}`;
   const a = animated ? " sdx-anim" : "";
-  const [from, to] = STAGE_TILES[stage];
-
-  const line = {
-    stroke: "#fff",
-    strokeWidth: 3.2,
+  const ink = {
+    stroke: INK,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
     fill: "none",
@@ -1826,93 +1851,141 @@ function StageArt({
 
   return (
     <svg viewBox="0 0 64 64" aria-hidden="true" className={`sdx-stage-icon is-${stage}`}>
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={from} />
-          <stop offset="1" stopColor={to} />
-        </linearGradient>
-      </defs>
-
-      <rect x="4" y="4" width="56" height="56" rx="17" fill={`url(#${gradientId})`} />
-      <rect x="4.75" y="4.75" width="54.5" height="54.5" rx="16.3" fill="none" stroke="#fff" strokeOpacity=".22" strokeWidth="1.5" />
+      <rect x="4" y="4" width="56" height="56" rx="17" fill={STAGE_TILES[stage]} />
 
       {stage === "submitted" && (
-        <g className={`sdx-anim-fly${a}`}>
-          <path d="M17 31 46 19 40 46 32 37 17 31Z" {...line} fill="#fff" fillOpacity=".2" />
-          <path d="M46 19 32 37v8l4.5-5" {...line} />
-        </g>
+        <>
+          <g className={`sdx-anim-speed${a}`}>
+            <path d="M11 45l6-4M15 51l5-3.4" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+          </g>
+          <g className={`sdx-anim-swoop${a}`}>
+            <path d="M13 30 50 16 39 47 31 38Z" fill="#fff" />
+            <path d="M31 38 50 16 27 44Z" fill={INK} />
+          </g>
+        </>
       )}
 
       {stage === "pending" && (
         <g className={`sdx-anim-flip${a}`}>
-          <path d="M22 17h20M22 47h20" {...line} />
-          <path d="M24.5 17c0 9 7.5 10 7.5 15s-7.5 6-7.5 15M39.5 17c0 9-7.5 10-7.5 15s7.5 6 7.5 15" {...line} />
-          <path d="M27.5 22h9L32 27.5Z" fill="#fff" />
-          <path d="M27 44h10c-1.6-3.6-3-5-5-5s-3.4 1.4-5 5Z" fill="#fff" />
+          <rect x="19" y="13" width="26" height="5" rx="2.5" fill={INK} />
+          <rect x="19" y="46" width="26" height="5" rx="2.5" fill={INK} />
+          <path d="M23 18h18c0 8.5-6.5 10.5-6.5 14s6.5 5.5 6.5 14H23c0-8.5 6.5-10.5 6.5-14S23 26.5 23 18Z" fill="#fff" />
+          <path d="M27 22h10c-.8 3.8-3.6 5.2-5 7.2-1.4-2-4.2-3.4-5-7.2Z" fill={INK} />
+          <path
+            className={`sdx-anim-sand${a}`}
+            d="M32 31v9"
+            stroke={INK}
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeDasharray="1.5 2.5"
+          />
+          <path d="M26 45.5c1-3.6 3.6-5.5 6-5.5s5 1.9 6 5.5Z" fill={INK} />
         </g>
       )}
 
       {stage === "approved" && (
         <>
-          <path d="M22 15h13l8 8v26H22Z" {...line} fill="#fff" fillOpacity=".2" />
-          <path d="M35 15v8h8" {...line} />
-          <path className={`sdx-anim-draw${a}`} d="m26.5 36 4.5 4.5 8.5-9" {...line} strokeWidth={3.6} />
+          <path d="M21 12h14.5l9.5 9.5V49a3 3 0 0 1-3 3H21a3 3 0 0 1-3-3V15a3 3 0 0 1 3-3Z" fill="#fff" />
+          <path d="M35.5 12v7.5a2 2 0 0 0 2 2H45Z" fill={INK} />
+          <path d="M23 28h11M23 33.5h8" {...ink} strokeWidth="2.6" />
+          <g className={`sdx-anim-stamp${a}`}>
+            <circle cx="42" cy="44" r="9" fill={INK} />
+            <path
+              d="m37.8 44.2 3 3 5.4-6"
+              stroke="#fff"
+              strokeWidth="2.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </g>
+          <Sparkle x={51} y={14} size={0.9} className={`sdx-anim-twinkle${a}`} />
         </>
       )}
 
       {stage === "unpaid" && (
         <>
-          <rect x="14" y="22" width="36" height="24" rx="5" {...line} fill="#fff" fillOpacity=".2" />
-          <path d="M14 29.5h36M20 39h9" {...line} />
-          <g className={`sdx-anim-pulse${a}`}>
-            <circle cx="47" cy="19" r="7.5" fill="#fff" />
-            <path d="M47 15.5v4" stroke={to} strokeWidth="2.6" strokeLinecap="round" />
-            <circle cx="47" cy="22.6" r="1.4" fill={to} />
+          <rect x="12" y="22" width="38" height="25" rx="5" fill="#fff" />
+          <rect x="12" y="28" width="38" height="6" fill={INK} />
+          <rect x="17" y="39" width="11" height="3.2" rx="1.6" fill={INK} />
+          <g className={`sdx-anim-nudge${a}`}>
+            <circle cx="48" cy="20" r="8.5" fill={INK} />
+            <rect x="47" y="15" width="2.2" height="6.4" rx="1.1" fill="#fff" />
+            <circle cx="48.1" cy="24.3" r="1.4" fill="#fff" />
           </g>
         </>
       )}
 
       {stage === "paid" && (
-        <g className={`sdx-anim-coin${a}`}>
-          <circle cx="32" cy="32" r="15" {...line} fill="#fff" fillOpacity=".2" />
-          <path d="M28.5 41V23h5.5a5 5 0 0 1 0 10h-5.5M25 27.5h14M25 31h14" {...line} strokeWidth={2.8} />
-        </g>
+        <>
+          <ellipse className={`sdx-anim-shadow${a}`} cx="32" cy="52" rx="10" ry="2.4" fill={INK} opacity=".28" />
+          <g className={`sdx-anim-coin${a}`}>
+            <circle cx="32" cy="31" r="13.5" fill="#fff" />
+            <circle cx="32" cy="31" r="10" {...ink} strokeWidth="2" />
+            <path
+              d="M29.6 38V24h4.4a3.9 3.9 0 0 1 0 7.8h-4.4M27 27.3h10.6M27 30.3h10.6"
+              {...ink}
+              strokeWidth="2.4"
+            />
+          </g>
+          <Sparkle x={50} y={14} size={0.8} className={`sdx-anim-twinkle${a}`} />
+        </>
       )}
 
       {stage === "processing" && (
-        <g className={`sdx-anim-gear${a}`}>
-          {/* Gear outline (Lucide "settings", ISC licence), scaled 1.5x. */}
-          <g transform="translate(14 14) scale(1.5)">
-            <path
-              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-              {...line}
-              strokeWidth={2}
-              fill="#fff"
-              fillOpacity=".2"
-            />
-            <circle cx="12" cy="12" r="3" {...line} strokeWidth={2} />
-          </g>
-        </g>
-      )}
-
-      {stage === "ready" && (
         <>
-          <path d="M20 26h24l-2.2 22H22.2Z" {...line} fill="#fff" fillOpacity=".2" />
-          <path d="M27 26v-3a5 5 0 0 1 10 0v3" {...line} />
-          <path d="m27 37.5 4 4 7-8" {...line} />
-          <g className={`sdx-anim-spark${a}`}>
-            <path d="M48 13v7M44.5 16.5h7" {...line} strokeWidth={2.6} />
+          {/* Gear outline from Lucide "settings" (ISC licence), filled. */}
+          <g className={`sdx-anim-gear${a}`} style={{ transformOrigin: "29px 29px" }}>
+            <path transform="translate(13 13) scale(1.333)" d={GEAR_PATH} fill="#fff" />
+            <circle cx="29" cy="29" r="5.2" fill={INK} />
+          </g>
+          <g className={`sdx-anim-gear-rev${a}`} style={{ transformOrigin: "45px 45px" }}>
+            <path transform="translate(36.6 36.6) scale(0.7)" d={GEAR_PATH} fill={INK} />
+            <circle cx="45" cy="45" r="2.6" fill="#fff" />
           </g>
         </>
       )}
 
+      {stage === "ready" && (
+        <>
+          <ellipse className={`sdx-anim-shadow${a}`} cx="32" cy="53" rx="12" ry="2.4" fill={INK} opacity=".28" />
+          <g className={`sdx-anim-hop${a}`}>
+            <path d="M18 24h28l-2.6 23.5a3 3 0 0 1-3 2.7H23.6a3 3 0 0 1-3-2.7Z" fill="#fff" />
+            <path d="M25.5 24v-2.5a6.5 6.5 0 0 1 13 0V24" {...ink} strokeWidth="3" />
+            <path d="m26.5 37 4.2 4.2 7.6-8.4" {...ink} strokeWidth="3.2" />
+          </g>
+          <Sparkle x={50} y={15} size={0.9} className={`sdx-anim-twinkle${a}`} />
+          <Sparkle x={13} y={21} size={0.6} className={`sdx-anim-twinkle-late${a}`} />
+        </>
+      )}
+
       {stage === "claimed" && (
-        <path className={`sdx-anim-draw${a}`} d="m20.5 33 7.5 7.5 15.5-16" {...line} strokeWidth={4.4} />
+        <g className={`sdx-anim-pop${a}`}>
+          <path
+            d="m20.5 34.5 8.5 8.5 16.5-17.5"
+            stroke={INK}
+            strokeWidth="7.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+            transform="translate(1.6 2.2)"
+          />
+          <path
+            className={`sdx-anim-draw${a}`}
+            d="m20.5 34.5 8.5 8.5 16.5-17.5"
+            stroke="#fff"
+            strokeWidth="7.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </g>
       )}
 
       {stage === "stopped" && (
         <g className={`sdx-anim-shake${a}`}>
-          <path d="m24 24 16 16M40 24 24 40" {...line} strokeWidth={4.2} />
+          <circle cx="32" cy="32" r="16" fill="#fff" />
+          <path d="m26 26 12 12M38 26 26 38" stroke={INK} strokeWidth="4.4" strokeLinecap="round" />
         </g>
       )}
     </svg>
