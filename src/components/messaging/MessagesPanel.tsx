@@ -34,7 +34,7 @@ import "./Messaging.css";
  * One messaging screen used by both sides:
  *
  *   <MessagesPanel mode="student" studentId=… studentName=… />
- *     Students see one thread per office (Registrar Office, Supply Office)
+ *     Students see one thread per office (Registrar Office, General Office)
  *     and can start a conversation with either of them.
  *
  *   <MessagesPanel mode="staff" office="registrar" staffName=… />
@@ -605,7 +605,7 @@ export default function MessagesPanel(props: MessagesPanelProps) {
             </strong>
             <p>
               {isStudent
-                ? "Pick the office you want to talk to. Questions about documents go to the Registrar; item reservations go to the Supply Office."
+                ? "Pick the office you want to talk to. Questions about documents go to the Registrar; item reservations go to the General Office."
                 : "Select a student on the left to read and reply."}
             </p>
           </div>

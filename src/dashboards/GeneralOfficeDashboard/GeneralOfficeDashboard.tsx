@@ -4970,7 +4970,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                         <MessagesPanel
                             mode="staff"
                             office="general_office"
-                            staffName={account.name || "Supply Office"}
+                            staffName={account.name || "General Office"}
                         />
                     </section>
                 )}

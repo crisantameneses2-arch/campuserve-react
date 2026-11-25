@@ -35,7 +35,7 @@ export type Office = "registrar" | "general_office";
 
 export const OFFICE_LABEL: Record<Office, string> = {
   registrar: "Registrar Office",
-  general_office: "Supply Office",
+  general_office: "General Office",
 };
 
 export const OFFICES: Office[] = ["registrar", "general_office"];

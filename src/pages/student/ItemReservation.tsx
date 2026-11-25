@@ -625,7 +625,7 @@ export default function ItemReservation({
           <h2>Successfully reserved!</h2>
 
           <p>
-            Your reservation has been sent to the Supply Office. Pay at the
+            Your reservation has been sent to the General Office. Pay at the
             Cashier and claim your items within three (3) days. You can
             follow its progress from your dashboard.
           </p>
@@ -1167,7 +1167,7 @@ export default function ItemReservation({
         {/* How reserving works (shown once here instead of on every item). */}
         <p className="irx-search-note">
           <strong>Description</strong>
-          Items from the Supply Office. Reserve online, then pay and claim at
+          Items from the General Office. Reserve online, then pay and claim at
           the counter within three (3) days.
         </p>
       </div>
