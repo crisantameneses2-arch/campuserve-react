@@ -2182,6 +2182,12 @@ html.cs-dark .irx .irx-success__status {
   color: #e1ce98;
 }
 
+@media (min-width: 901px) {
+html.cs-dark .irx .irx-actions {
+  background: #162b3d;
+}
+}
+
 /* ---- src/pages/student/ItemStocks.css ---- */
 
 html.cs-dark .item-stocks-header p {
