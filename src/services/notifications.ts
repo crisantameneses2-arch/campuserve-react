@@ -75,6 +75,25 @@ export const roleAudience = (role: StaffRole) =>
   `role:${role}`;
 
 /**
+ * Ask the server to email a student notification to the student's
+ * institutional email (api/send-notification-email.ts). The server looks
+ * up the recipient and their email preference itself, and sends each
+ * notification at most once. Fire-and-forget: email trouble never blocks
+ * the app.
+ */
+function requestNotificationEmail(notificationId: string, audience: string) {
+  if (!audience.startsWith("student:")) return;
+
+  fetch("/api/send-notification-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ notificationId }),
+  }).catch((error) => {
+    console.warn("Could not request notification email:", error);
+  });
+}
+
+/**
  * Create one or more notifications.
  * A notification failure must never break the action that caused it,
  * so errors are logged and swallowed.
@@ -87,7 +106,7 @@ export async function notify(
   await Promise.all(
     list.map(async (item) => {
       try {
-        await addDoc(collection(db, "notifications"), {
+        const created = await addDoc(collection(db, "notifications"), {
           audience: item.audience,
           type: item.type,
           title: item.title,
@@ -97,6 +116,8 @@ export async function notify(
           readBy: [],
           createdAt: serverTimestamp(),
         });
+
+        requestNotificationEmail(created.id, item.audience);
       } catch (error) {
         console.warn("Could not create notification:", error);
       }
@@ -125,6 +146,8 @@ export async function notifyOnce(
       readBy: [],
       createdAt: serverTimestamp(),
     });
+
+    requestNotificationEmail(id, item.audience);
   } catch (error) {
     console.warn("Could not create reminder:", error);
   }

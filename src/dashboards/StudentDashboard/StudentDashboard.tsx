@@ -970,7 +970,7 @@ export default function StudentDashboard({
                 <MyProfile account={account} />
               )}
 
-              {activePage === "settings" && <AccountSettings />}
+              {activePage === "settings" && <AccountSettings studentId={studentId} />}
             </div>
           )}
         </main>

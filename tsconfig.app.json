@@ -20,5 +20,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "firebase.ts", "api/group-invitation", "api/send-group-invitation.ts"]
+  "include": ["src", "firebase.ts", "api/group-invitation", "api/send-group-invitation.ts", "api/send-notification-email.ts"]
 }

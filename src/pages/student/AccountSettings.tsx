@@ -1,10 +1,37 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./AccountSettings.css";
 import { useDarkMode } from "../../theme/darkMode";
+import {
+  saveNotificationPreferences,
+  subscribeToNotificationPreferences,
+} from "../../services/notificationPreferences";
 
-export default function AccountSettings() {
+export default function AccountSettings({ studentId = "" }: { studentId?: string }) {
+  // Saved per student; the email sender checks it before every email.
   const [emailNotifications, setEmailNotifications] = useState(true);
+  const [emailSaveError, setEmailSaveError] = useState("");
+
+  useEffect(() => {
+    if (!studentId) return;
+
+    return subscribeToNotificationPreferences(studentId, (preferences) =>
+      setEmailNotifications(preferences.email)
+    );
+  }, [studentId]);
+
+  function changeEmailNotifications(enabled: boolean) {
+    setEmailNotifications(enabled);
+    setEmailSaveError("");
+
+    if (!studentId) return;
+
+    saveNotificationPreferences(studentId, { email: enabled }).catch((error) => {
+      console.warn("Could not save email preference:", error);
+      setEmailNotifications(!enabled);
+      setEmailSaveError("Could not save this setting. Please try again.");
+    });
+  }
   const [systemNotifications, setSystemNotifications] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [darkMode, setDarkMode] = useDarkMode();
@@ -49,13 +76,21 @@ export default function AccountSettings() {
         <div className="account-settings-option">
           <div>
             <strong>Email Notifications</strong>
-            <p>Receive updates and important announcements through email.</p>
+            <p>
+              Get your CampuServe notifications in your institutional email.
+            </p>
+            {emailSaveError && (
+              <p role="alert" style={{ color: "#c0392b" }}>
+                {emailSaveError}
+              </p>
+            )}
           </div>
           <label className="settings-switch">
             <input
               type="checkbox"
               checked={emailNotifications}
-              onChange={(e) => setEmailNotifications(e.target.checked)}
+              onChange={(e) => changeEmailNotifications(e.target.checked)}
+              aria-label="Email notifications"
             />
             <span className="settings-slider" />
           </label>
