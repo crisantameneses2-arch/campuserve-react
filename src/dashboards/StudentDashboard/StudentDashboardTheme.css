@@ -1305,117 +1305,114 @@ body.sdx-body {
 
 /* submitted: the paper plane floats and tilts */
 .sdx .sdx-a-float.sdx-anim {
-  animation: sdx-a-float 3.6s ease-in-out infinite;
+  animation: sdx-a-float 2.8s ease-in-out infinite;
 }
 
-/* pending: the sand drains, then the hourglass turns over */
+/* pending: sand drains top → bottom, the hourglass turns over, and the
+   sand keeps draining; two turns make one seamless loop (no jump back).
+   A sand rect anchored at the neck (+) or at the cap (−) sets each level. */
 .sdx .sdx-a-turn.sdx-anim {
-  animation: sdx-a-turn 5.2s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+  animation: sdx-a-turn 6s ease-in-out infinite;
 }
 
-.sdx .sdx-a-drain.sdx-anim {
-  transform-origin: 32px 29.5px;
-  animation: sdx-a-drain 5.2s linear infinite;
+.sdx .sdx-a-sand-top.sdx-anim {
+  animation: sdx-a-sand-top 6s ease-in-out infinite;
 }
 
-.sdx .sdx-a-fill.sdx-anim {
-  transform-origin: 32px 48.5px;
-  animation: sdx-a-fill 5.2s linear infinite;
+.sdx .sdx-a-sand-bottom.sdx-anim {
+  animation: sdx-a-sand-bottom 6s ease-in-out infinite;
 }
 
-.sdx .sdx-a-drip.sdx-anim circle {
-  animation: sdx-a-drip 0.9s linear infinite;
+.sdx .sdx-a-stream.sdx-anim {
+  animation: sdx-a-stream 6s linear infinite;
 }
 
-.sdx .sdx-a-drip.sdx-anim circle:nth-child(2) { animation-delay: 0.3s; }
-.sdx .sdx-a-drip.sdx-anim circle:nth-child(3) { animation-delay: 0.6s; }
+@keyframes sdx-a-turn {
+  0%, 40% { transform: rotate(0deg); }
+  50%, 90% { transform: rotate(180deg); }
+  100% { transform: rotate(360deg); }
+}
 
-.sdx .sdx-a-drip.sdx-anim {
-  animation: sdx-a-drip-run 5.2s linear infinite;
+@keyframes sdx-a-sand-top {
+  0% { transform: translateY(4px); }
+  40% { transform: translateY(16px); }
+  40.1% { transform: translateY(-16px); }
+  90% { transform: translateY(-4px); }
+  100% { transform: translateY(4px); }
+}
+
+@keyframes sdx-a-sand-bottom {
+  0% { transform: translateY(16px); }
+  40% { transform: translateY(4px); }
+  50% { transform: translateY(-4px); }
+  90% { transform: translateY(-16px); }
+  90.1%, 100% { transform: translateY(16px); }
+}
+
+@keyframes sdx-a-stream {
+  0%, 2% { opacity: 0; }
+  5%, 36% { opacity: 1; }
+  40%, 52% { opacity: 0; }
+  55%, 86% { opacity: 1; }
+  90%, 100% { opacity: 0; }
 }
 
 /* approved / claimed: the check badge pops in, holds, and resets */
 .sdx .sdx-a-badge.sdx-anim {
   transform-origin: 45px 45px;
-  animation: sdx-a-badge 3.6s cubic-bezier(0.3, 1.5, 0.5, 1) infinite;
+  animation: sdx-a-badge 2.8s cubic-bezier(0.3, 1.5, 0.5, 1) infinite;
 }
 
 /* unpaid: the wallet sways, the warning pops up beside it */
 .sdx .sdx-a-sway.sdx-anim {
   transform-origin: 34px 50px;
-  animation: sdx-a-sway 3.6s ease-in-out infinite;
+  animation: sdx-a-sway 2.8s ease-in-out infinite;
 }
 
 .sdx .sdx-a-pop.sdx-anim {
   transform-origin: 17px 30px;
-  animation: sdx-a-pop 3.6s cubic-bezier(0.3, 1.5, 0.5, 1) infinite;
+  animation: sdx-a-pop 2.8s cubic-bezier(0.3, 1.5, 0.5, 1) infinite;
 }
 
 /* paid: the receipt prints out of the slot, then drops away */
 .sdx .sdx-a-print.sdx-anim {
-  animation: sdx-a-print 4.4s ease-in-out infinite;
+  animation: sdx-a-print 3.4s ease-in-out infinite;
 }
 
 /* processing: two gears turn against each other */
 .sdx .sdx-a-spin.sdx-anim {
-  animation: sdx-spin 7s linear infinite;
+  animation: sdx-spin 5.2s linear infinite;
 }
 
 .sdx .sdx-a-spin-rev.sdx-anim {
-  animation: sdx-spin 4.6s linear infinite reverse;
+  animation: sdx-spin 3.4s linear infinite reverse;
 }
 
 /* ready: the box settles, the arrow badge points to "pick me up" */
 .sdx .sdx-a-bob.sdx-anim {
   transform-origin: 27px 46px;
-  animation: sdx-a-bob 3.4s ease-in-out infinite;
+  animation: sdx-a-bob 2.6s ease-in-out infinite;
 }
 
 .sdx .sdx-a-arrow.sdx-anim {
   transform-origin: 45px 45px;
-  animation: sdx-a-arrow 3.4s ease-in-out infinite;
+  animation: sdx-a-arrow 2.6s ease-in-out infinite;
 }
 
 .sdx .sdx-a-flap.sdx-anim {
   transform-origin: 40px 31px;
-  animation: sdx-a-flap 3.4s ease-in-out infinite;
+  animation: sdx-a-flap 2.6s ease-in-out infinite;
 }
 
 /* cancelled: the badge gives a small shake */
 .sdx .sdx-a-shake.sdx-anim {
   transform-origin: 45px 45px;
-  animation: sdx-a-shake 2.4s ease-in-out infinite;
+  animation: sdx-a-shake 2s ease-in-out infinite;
 }
 
 @keyframes sdx-a-float {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
   50% { transform: translate(1.5px, -3px) rotate(-4deg); }
-}
-
-@keyframes sdx-a-turn {
-  0%, 70% { transform: rotate(0deg); }
-  86%, 100% { transform: rotate(180deg); }
-}
-
-@keyframes sdx-a-drain {
-  0% { transform: scale(1); }
-  66%, 100% { transform: scale(0); }
-}
-
-@keyframes sdx-a-fill {
-  0% { transform: scale(0.15); }
-  66%, 100% { transform: scale(1); }
-}
-
-@keyframes sdx-a-drip-run {
-  0%, 64% { opacity: 1; }
-  68%, 100% { opacity: 0; }
-}
-
-@keyframes sdx-a-drip {
-  0% { opacity: 0; transform: translateY(-3px); }
-  40% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(3px); }
 }
 
 @keyframes sdx-a-badge {

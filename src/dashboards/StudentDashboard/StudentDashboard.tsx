@@ -1890,28 +1890,41 @@ function StageArt({
           </g>
         );
 
-      case "pending":
+      case "pending": {
+        // Sand levels are rects clipped to each half of the glass; moving a
+        // rect raises or lowers the sand, so it drains and fills smoothly.
+        const glass = "M22 15h20c0 9.5-7 11.5-7 17s7 7.5 7 17H22c0-9.5 7-11.5 7-17s-7-7.5-7-17Z";
         return (
           <g className={`sdx-a-turn${a}`}>
-            <path d="M22 15h20c0 9.5-7 11.5-7 17s7 7.5 7 17H22c0-9.5 7-11.5 7-17s-7-7.5-7-17Z" fill={paint("glass")} />
+            <defs>
+              <clipPath id={`${uid}-clip-glass`}>
+                <path d={glass} />
+              </clipPath>
+              <clipPath id={`${uid}-clip-top`}>
+                <rect x="16" y="15" width="32" height="17" />
+              </clipPath>
+              <clipPath id={`${uid}-clip-bottom`}>
+                <rect x="16" y="32" width="32" height="17" />
+              </clipPath>
+            </defs>
+            <path d={glass} fill={paint("glass")} />
+            <g clipPath={`url(#${uid}-clip-glass)`}>
+              <g clipPath={`url(#${uid}-clip-top)`}>
+                <rect className={`sdx-a-sand-top${a}`} x="16" y="16" width="32" height="16" fill={paint("sand")} />
+              </g>
+              <g clipPath={`url(#${uid}-clip-bottom)`}>
+                <rect className={`sdx-a-sand-bottom${a}`} x="16" y="32" width="32" height="16" fill={paint("sand")} />
+              </g>
+              <rect className={`sdx-a-stream${a}`} x="31.2" y="27" width="1.6" height="10" rx=".8" fill="#f58a07" />
+            </g>
             <path d="M25.5 19c.4 4.6 2.6 7 4.2 9" stroke="#fff" strokeWidth="1.6" opacity=".8" {...round} />
-            <g className={`sdx-a-drain${a}`}>
-              <path d="M25 19h14l-7 10.5Z" fill={paint("sand")} />
-            </g>
-            <g className={`sdx-a-drip${a}`}>
-              <circle cx="32" cy="34" r="1.1" fill="#f58a07" />
-              <circle cx="32" cy="38" r="1.1" fill="#f58a07" />
-              <circle cx="32" cy="42" r="1.1" fill="#f58a07" />
-            </g>
-            <g className={`sdx-a-fill${a}`}>
-              <path d="M24 48.5c1.6-5.6 4.6-8 8-8s6.4 2.4 8 8Z" fill={paint("sand")} />
-            </g>
             <rect x="17" y="9" width="30" height="5" rx="2.2" fill={paint("wood")} />
             <rect x="20" y="13.5" width="24" height="2.5" rx="1" fill="#5a3d33" />
             <rect x="20" y="48" width="24" height="2.5" rx="1" fill="#5a3d33" />
             <rect x="17" y="50" width="30" height="5" rx="2.2" fill={paint("wood")} />
           </g>
         );
+      }
 
       case "approved":
         return (
