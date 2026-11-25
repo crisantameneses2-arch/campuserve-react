@@ -616,8 +616,6 @@ export default function StudentDashboard({
     };
   }, [menuOpen]);
 
-  const pageTitle = PAGE_TITLES[activePage];
-
   return (
     <div
       className={`sdx ${menuOpen ? "sdx--menu-open" : ""} ${fullView ? "sdx--full" : ""}`}
@@ -642,7 +640,6 @@ export default function StudentDashboard({
 
       <div className="sdx-app">
         <StudentTopbar
-          title={pageTitle}
           studentName={studentName}
           studentEmail={account.email || ""}
           unreadNotifications={unreadNotifications}
@@ -1026,21 +1023,6 @@ export default function StudentDashboard({
    PAGE TITLES (top bar)
 ========================================= */
 
-const PAGE_TITLES: Record<DashboardPage, string> = {
-  dashboard: "Dashboard",
-  request: "Request a document",
-  requests: "Document requests",
-  itemReservation: "Item reservations",
-  claimStub: "Claim & release",
-  transactions: "Transaction history",
-  notifications: "Notifications",
-  messages: "Messages",
-  help: "Help Center & FAQs",
-  contact: "Contact support",
-  profile: "My profile",
-  settings: "Account settings",
-};
-
 /*
  * index.css turns <body> into a centered flex container, which would
  * shrink this full-width layout. While the student dashboard is mounted
@@ -1217,7 +1199,6 @@ function StudentSidebar({
 ========================================= */
 
 function StudentTopbar({
-  title,
   studentName,
   studentEmail,
   unreadNotifications,
@@ -1228,7 +1209,6 @@ function StudentTopbar({
   onToggleMenu,
   onNavigate,
 }: {
-  title: string;
   studentName: string;
   studentEmail: string;
   unreadNotifications: number;
@@ -1295,18 +1275,9 @@ function StudentTopbar({
         >
           <Icon name="menu" size={18} />
         </button>
-
-        <div className="sdx-topbar__title">
-          <small>YOUR CAMPUS / STUDENT PORTAL</small>
-          <strong>{title}</strong>
-        </div>
       </div>
 
       <div className="sdx-top-actions">
-        <span className="sdx-top-actions__school">
-          PANGASINAN STATE UNIVERSITY
-        </span>
-
         <button
           type="button"
           className="sdx-bell sdx-bell--chat"
