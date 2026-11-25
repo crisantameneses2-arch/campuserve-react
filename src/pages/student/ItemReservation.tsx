@@ -625,9 +625,10 @@ export default function ItemReservation({
           <h2>Successfully reserved!</h2>
 
           <p>
-            Your reservation has been sent to the General Office. Pay at the
-            Cashier and claim your items within three (3) days. You can
-            follow its progress from your dashboard.
+            Your reservation has been sent to the General Office. Once it's
+            approved, pay at the Cashier and claim your items within three
+            (3) days, or it will be cancelled. You can follow its progress
+            from your dashboard.
           </p>
 
           <div className="irx-success__ref">
@@ -851,8 +852,9 @@ export default function ItemReservation({
             </div>
 
             <p className="irx-note">
-              Reserved items must be claimed within three (3) days, or
-              the reservation is cancelled automatically.
+              Once approved, your items must be claimed within three (3)
+              days, or the reservation is cancelled and the items go back
+              to stock.
             </p>
 
             <button
@@ -1170,9 +1172,10 @@ export default function ItemReservation({
             !
           </span>
           <p>
-            <strong>Reserve now, claim in 3 days!</strong>
-            Reserve online, pay at the Cashier, then pick up your items at the
-            General Office.
+            <strong>Approved? You have 3 days to claim it!</strong>
+            Once your reservation is approved, pay at the Cashier and pick up
+            your items at the General Office within 3 days, or it's cancelled
+            and the items go back to stock.
           </p>
         </div>
       </div>
