@@ -54,21 +54,24 @@ html.cs-dark .settings-switch input:checked + .settings-slider {
 }
 
 /* Dashboard service cards: a coloured outline on each, like the yellow
-   one on Claim & release: green for documents, blue for items. */
+   one on Claim & release: blue for documents, green for items.
+   ("--green" is the document card and "--sky" the item card.) */
 html.cs-dark .sdx .sdx-service--green {
-  border-color: #4cb98a;
+  border-color: #45a9e0;
+  background: linear-gradient(145deg, #0b1724, #20394e);
 }
 
 html.cs-dark .sdx .sdx-service--green:hover {
-  border-color: #6fd0a5;
+  border-color: #6cc0ee;
 }
 
 html.cs-dark .sdx .sdx-service--sky {
-  border-color: #45a9e0;
+  border-color: #4cb98a;
+  background: linear-gradient(145deg, #0b1724, #214048);
 }
 
 html.cs-dark .sdx .sdx-service--sky:hover {
-  border-color: #6cc0ee;
+  border-color: #6fd0a5;
 }
 
 /* Claim & release card: the same navy-to-tint gradient as the other two,
@@ -80,11 +83,11 @@ html.cs-dark .sdx .sdx-service--sun {
 /* Service card arrow boxes: outlined in each card's colour with a light
    arrow, like the yellow one on Claim & release. */
 html.cs-dark .sdx .sdx-service--green .sdx-service__circle {
-  border-color: #4cb98a;
+  border-color: #45a9e0;
   color: #d4dfe9;
 }
 
 html.cs-dark .sdx .sdx-service--sky .sdx-service__circle {
-  border-color: #45a9e0;
+  border-color: #4cb98a;
   color: #d4dfe9;
 }
