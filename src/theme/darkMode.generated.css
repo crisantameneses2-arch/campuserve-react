@@ -1763,11 +1763,22 @@ html.cs-dark .irx .irx-back:hover {
 }
 
 html.cs-dark .irx .irx-search-note {
-  color: #94aaba;
+  border: 1px solid #264358;
+  border-left: 4px solid #45a9e0;
+  background: #0b1724;
+}
+
+html.cs-dark .irx .irx-search-note__mark {
+  background: #2585c5;
+  color: #f2f6fa;
+}
+
+html.cs-dark .irx .irx-search-note p {
+  color: #abbdcd;
 }
 
 html.cs-dark .irx .irx-search-note strong {
-  color: #d4dfe9;
+  color: #f2f6fa;
 }
 
 html.cs-dark .irx .irx-search {

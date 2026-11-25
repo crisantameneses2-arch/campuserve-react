@@ -1165,11 +1165,16 @@ export default function ItemReservation({
         </button>
 
         {/* How reserving works (shown once here instead of on every item). */}
-        <p className="irx-search-note">
-          <strong>Description</strong>
-          Items from the General Office. Reserve online, then pay and claim at
-          the counter within three (3) days.
-        </p>
+        <div className="irx-search-note" role="note">
+          <span className="irx-search-note__mark" aria-hidden="true">
+            !
+          </span>
+          <p>
+            <strong>Reserve now, claim in 3 days!</strong>
+            Reserve online, pay at the Cashier, then pick up your items at the
+            General Office.
+          </p>
+        </div>
       </div>
 
       {/* FILTERS */}

@@ -91,3 +91,8 @@ html.cs-dark .sdx .sdx-service--sky .sdx-service__circle {
   border-color: #4cb98a;
   color: #d4dfe9;
 }
+
+/* Item Reservation reminder card: a card surface, not the page colour. */
+html.cs-dark .irx .irx-search-note {
+  background: #162b3d;
+}
