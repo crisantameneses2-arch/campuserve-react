@@ -408,13 +408,26 @@ body.sdx-body {
   outline-offset: 2px;
 }
 
-/* Full view: no sidebar, and pages may use the whole screen width. */
-.sdx.sdx--full .sdx-side {
-  display: none;
-}
+/* Full view: the sidebar slides out to the left while the page widens
+   to fill the space (and slides back in when turned off). */
+@media (min-width: 801px) {
+  .sdx .sdx-side {
+    transition:
+      margin-left 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      visibility 0s linear 0s;
+  }
 
-.sdx.sdx--full .sdx-content {
-  max-width: none;
+  .sdx.sdx--full .sdx-side {
+    margin-left: -265px;
+    visibility: hidden; /* keeps keyboard focus out of the hidden menu */
+    transition:
+      margin-left 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      visibility 0s linear 0.34s;
+  }
+
+  .sdx.sdx--full .sdx-content {
+    max-width: none;
+  }
 }
 
 .sdx .sdx-top-actions {
@@ -2252,6 +2265,10 @@ body.sdx-body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .sdx .sdx-side {
+    transition: none !important;
+  }
+
   .sdx .sdx-nt__item,
   .sdx .sdx-nt__chevron {
     transition: none;
@@ -2373,11 +2390,6 @@ body.sdx-body {
 @media (max-width: 800px) {
   .sdx .sdx-full-btn {
     display: none;
-  }
-
-  /* On phones the sidebar is a slide-out menu, so full view does not apply. */
-  .sdx.sdx--full .sdx-side {
-    display: flex;
   }
 
   .sdx .sdx-side {
