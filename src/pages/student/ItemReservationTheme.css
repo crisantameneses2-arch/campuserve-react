@@ -350,10 +350,10 @@
   flex-shrink: 0; /* let it grow past the photo area */
 }
 
-/* PE jogging pants: 25px larger than the other photos. */
+/* PE jogging pants: 15px larger than the other photos. */
 .irx .irx-card__image.is-cutout.is-pe-pants {
-  width: 100%;
-  height: 100%;
+  width: calc(100% - 10px);
+  height: calc(100% - 10px);
 }
 
 /* Male RTW set: 20px larger than the other photos. */
