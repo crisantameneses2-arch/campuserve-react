@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
@@ -17,6 +18,8 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
  *     (notification_preferences/{studentId}.email === false)
  *   - each notification is emailed at most once, and only while it is
  *     new (old notifications are never emailed later)
+ *
+ * Sent through Gmail (GMAIL_USER + GMAIL_APP_PASSWORD) when set, else Resend.
  *
  * The result is saved on the notification as email_status:
  *   sending | sent | failed | opted_out | no_email
@@ -119,6 +122,61 @@ function emailHtml(options: {
   </div>
 </body>
 </html>`;
+}
+
+/*
+ * Sending: Gmail when GMAIL_USER and GMAIL_APP_PASSWORD are set (works
+ * for any recipient, ~500 emails/day on a free account), otherwise
+ * Resend (which needs a verified domain to reach anyone but the Resend
+ * account owner).
+ */
+type OutgoingEmail = { to: string; subject: string; text: string; html: string };
+
+type SendResult =
+  | { ok: true; via: string; id: string | null }
+  | { ok: false; via: string; error: string };
+
+async function sendEmail(email: OutgoingEmail): Promise<SendResult> {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+
+  if (gmailUser && gmailPassword) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        // App passwords are shown in groups of four; spaces don't matter.
+        auth: { user: gmailUser, pass: gmailPassword.replace(/\s+/g, "") },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"${process.env.GMAIL_FROM_NAME || "CampuServe"}" <${gmailUser}>`,
+        ...email,
+      });
+
+      return { ok: true, via: "gmail", id: info.messageId || null };
+    } catch (error) {
+      return {
+        ok: false,
+        via: "gmail",
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  if (!resendApiKey) {
+    return { ok: false, via: "none", error: "No email sender is configured." };
+  }
+
+  const result = await new Resend(resendApiKey).emails.send({
+    from: process.env.RESEND_FROM_EMAIL || "CampuServe <onboarding@resend.dev>",
+    ...email,
+  });
+
+  return result.error
+    ? { ok: false, via: "resend", error: String(result.error.message || "") }
+    : { ok: true, via: "resend", id: result.data?.id || null };
 }
 
 export default async function handler(
@@ -235,19 +293,9 @@ export default async function handler(
      * 4. Send it.
      */
 
-    const resendApiKey = process.env.RESEND_API_KEY;
-
-    if (!resendApiKey) throw new Error("Missing RESEND_API_KEY");
-
-    const resend = new Resend(resendApiKey);
-
-    const from =
-      process.env.RESEND_FROM_EMAIL || "CampuServe <onboarding@resend.dev>";
-
     const baseUrl = (process.env.APP_BASE_URL || "").replace(/\/$/, "");
 
-    const result = await resend.emails.send({
-      from,
+    const email = {
       to,
       subject: `CampuServe — ${claim.title}`,
       text: `${claim.title}\n\n${claim.message}${baseUrl ? `\n\nOpen CampuServe: ${baseUrl}/student` : ""}`,
@@ -257,15 +305,17 @@ export default async function handler(
         message: claim.message,
         link: baseUrl ? `${baseUrl}/student` : null,
       }),
-    });
+    };
 
-    if (result.error) {
-      console.error("Resend email error:", result.error);
-      await finish("failed", { email_error: String(result.error.message || "") });
+    const sent = await sendEmail(email);
+
+    if (!sent.ok) {
+      console.error(`${sent.via} email error:`, sent.error);
+      await finish("failed", { email_error: sent.error, email_via: sent.via });
       return res.status(502).json({ sent: false, reason: "send_failed" });
     }
 
-    await finish("sent", { email_id: result.data?.id || null });
+    await finish("sent", { email_id: sent.id, email_via: sent.via });
 
     return res.status(200).json({ sent: true });
   } catch (error) {
