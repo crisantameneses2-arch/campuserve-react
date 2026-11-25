@@ -1522,8 +1522,9 @@ function TrackingBox({
             />
           </div>
 
-          <div className="sdx-box-bottom sdx-box-bottom--center">
-            {count > 1 ? (
+          {/* The card itself opens the details; arrows only when there are several. */}
+          {count > 1 && (
+            <div className="sdx-box-bottom sdx-box-bottom--center">
               <button
                 type="button"
                 className="sdx-mini-btn"
@@ -1533,19 +1534,7 @@ function TrackingBox({
               >
                 ←
               </button>
-            ) : (
-              <span className="sdx-mini-spacer" />
-            )}
 
-            <button
-              type="button"
-              className="sdx-text-btn sdx-text-btn--small sdx-view-more"
-              onClick={() => onSelect(current)}
-            >
-              View more <span aria-hidden="true">↗</span>
-            </button>
-
-            {count > 1 ? (
               <button
                 type="button"
                 className="sdx-mini-btn"
@@ -1555,10 +1544,8 @@ function TrackingBox({
               >
                 →
               </button>
-            ) : (
-              <span className="sdx-mini-spacer" />
-            )}
-          </div>
+            </div>
+          )}
         </>
       )}
     </section>
