@@ -1,14 +1,42 @@
 
 import { useState } from "react";
 import "./AccountSettings.css";
+import { useDarkMode } from "../../theme/darkMode";
 
 export default function AccountSettings() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [systemNotifications, setSystemNotifications] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [darkMode, setDarkMode] = useDarkMode();
 
   return (
     <div className="account-settings-page">
+      <section className="account-settings-section">
+        <div className="account-settings-section-heading">
+          <div className="account-settings-section-icon">🌙</div>
+          <div>
+            <h3>Appearance</h3>
+            <p>Choose how CampuServe looks on this device.</p>
+          </div>
+        </div>
+
+        <div className="account-settings-option">
+          <div>
+            <strong>Dark Mode</strong>
+            <p>Use dark colours, easier on the eyes at night.</p>
+          </div>
+          <label className="settings-switch">
+            <input
+              type="checkbox"
+              checked={darkMode}
+              onChange={(e) => setDarkMode(e.target.checked)}
+              aria-label="Dark mode"
+            />
+            <span className="settings-slider" />
+          </label>
+        </div>
+      </section>
+
       <section className="account-settings-section">
         <div className="account-settings-section-heading">
           <div className="account-settings-section-icon">🔔</div>

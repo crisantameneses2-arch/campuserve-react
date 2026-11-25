@@ -54,6 +54,7 @@ import "./StudentDashboard.css";
 import "./StudentDashboardTheme.css";
 import { logout } from "../../services/logout";
 import AccountSettings from "../../pages/student/AccountSettings";
+import { useApplyDarkMode } from "../../theme/darkMode";
 import MyProfile from "../../pages/student/MyProfile";
 
 type StudentDashboardProps = {
@@ -616,6 +617,7 @@ export default function StudentDashboard({
   ========================================= */
 
   useStudentBodyClass();
+  useApplyDarkMode();
 
   const pageTitle = PAGE_TITLES[activePage];
 

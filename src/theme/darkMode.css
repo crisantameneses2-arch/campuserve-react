@@ -1,0 +1,39 @@
+/* =========================================================
+   DARK MODE (student dashboard)
+
+   The colours themselves come from darkMode.generated.css, which
+   scripts/build-dark-theme.mjs builds from the student stylesheets.
+   Photos are never changed, so items keep their real colours.
+   ========================================================= */
+
+@import "./darkMode.generated.css";
+
+html.cs-dark {
+  /* Dark scrollbars, date pickers and other built-in controls. */
+  color-scheme: dark;
+  background: #161d24;
+}
+
+/* ---- Hand-tuned touches the generated colours can't judge ---- */
+
+/* Item cards: darker bottom tones so the light price reads clearly,
+   and a plain shadow instead of the light-mode white top highlight. */
+html.cs-dark .irx .irx-tone--mint {
+  --irx-tone-deep: #1d4a3a;
+}
+
+html.cs-dark .irx .irx-tone--sky {
+  --irx-tone-deep: #1a3a52;
+}
+
+html.cs-dark .irx .irx-tone--sand {
+  --irx-tone-deep: #4a3d12;
+}
+
+html.cs-dark .irx .irx-card {
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+}
+
+html.cs-dark .irx .irx-card__price {
+  color: #eef4f9;
+}

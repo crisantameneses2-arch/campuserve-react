@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "theme:dark": "node scripts/build-dark-theme.mjs"
   },
   "dependencies": {
     "@vercel/node": "^22.0.0",
