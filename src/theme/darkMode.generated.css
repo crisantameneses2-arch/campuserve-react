@@ -1762,6 +1762,14 @@ html.cs-dark .irx .irx-back:hover {
   background: #203a4f;
 }
 
+html.cs-dark .irx .irx-search-note {
+  color: #94aaba;
+}
+
+html.cs-dark .irx .irx-search-note strong {
+  color: #d4dfe9;
+}
+
 html.cs-dark .irx .irx-search {
   border: 1px solid #223d52;
   background: #162b3d;

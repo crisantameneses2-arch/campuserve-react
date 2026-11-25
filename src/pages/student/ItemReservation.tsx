@@ -1037,15 +1037,6 @@ export default function ItemReservation({
               </div>
             )}
 
-            <div className="irx-block">
-              <h3>Description</h3>
-              <p className="irx-desc">
-                {category === "Others" ? "Campus item" : category} from
-                the Supply Office. Reserve online, then pay and claim at
-                the counter within three (3) days.
-              </p>
-            </div>
-
             <div className="irx-actions">
               <button
                 type="button"
@@ -1172,6 +1163,13 @@ export default function ItemReservation({
             Show available items only
           </span>
         </button>
+
+        {/* How reserving works (shown once here instead of on every item). */}
+        <p className="irx-search-note">
+          <strong>Description</strong>
+          Items from the Supply Office. Reserve online, then pay and claim at
+          the counter within three (3) days.
+        </p>
       </div>
 
       {/* FILTERS */}

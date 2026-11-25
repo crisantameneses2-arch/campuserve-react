@@ -137,9 +137,47 @@
 
 .irx .irx-search-row {
   display: flex;
+  align-items: center;
   gap: 12px;
-  max-width: 560px;
   margin-bottom: 16px;
+}
+
+/* The search box keeps its old width; the note sits on the right. */
+.irx .irx-search-row .irx-search {
+  flex: 0 1 488px;
+  min-width: 0;
+}
+
+.irx .irx-search-note {
+  display: grid;
+  gap: 3px;
+  max-width: 380px;
+  margin: 0 0 0 auto;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #7b8d80;
+}
+
+.irx .irx-search-note strong {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--irx-forest);
+}
+
+@media (max-width: 760px) {
+  .irx .irx-search-row {
+    flex-wrap: wrap;
+  }
+
+  .irx .irx-search-row .irx-search {
+    flex: 1 1 0;
+  }
+
+  .irx .irx-search-note {
+    flex-basis: 100%;
+    max-width: none;
+    margin: 2px 0 0;
+  }
 }
 
 .irx .irx-search {
