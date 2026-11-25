@@ -52,3 +52,21 @@ html.cs-dark .settings-slider::before {
 html.cs-dark .settings-switch input:checked + .settings-slider {
   background: #2585c5;
 }
+
+/* Dashboard service cards: a coloured outline on each, like the yellow
+   one on Claim & release: green for documents, blue for items. */
+html.cs-dark .sdx .sdx-service--green {
+  border-color: #4cb98a;
+}
+
+html.cs-dark .sdx .sdx-service--green:hover {
+  border-color: #6fd0a5;
+}
+
+html.cs-dark .sdx .sdx-service--sky {
+  border-color: #45a9e0;
+}
+
+html.cs-dark .sdx .sdx-service--sky:hover {
+  border-color: #6cc0ee;
+}
