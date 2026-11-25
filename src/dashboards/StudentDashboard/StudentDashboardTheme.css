@@ -2348,6 +2348,11 @@ body.sdx-body {
     min-width: 237px;
   }
 
+  /* Full view slides the narrower sidebar out by its own width. */
+  .sdx.sdx--full .sdx-side {
+    margin-left: -237px;
+  }
+
   .sdx .sdx-nav {
     padding-inline: 8px;
   }
