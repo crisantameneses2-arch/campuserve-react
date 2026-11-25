@@ -374,6 +374,47 @@ body.sdx-body {
   color: #2878a9;
 }
 
+/* Full view toggle (laptops only; phones use the menu button). */
+.sdx .sdx-full-btn {
+  appearance: none;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 1px solid #dceae5;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--sdx-blue);
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.sdx .sdx-full-btn:hover {
+  border-color: #bcd3e3;
+  background: #eef6fb;
+}
+
+.sdx .sdx-full-btn[aria-pressed="true"] {
+  border-color: var(--sdx-blue);
+  background: #e6f1f9;
+}
+
+.sdx .sdx-full-btn:focus-visible {
+  outline: 3px solid rgba(40, 120, 169, 0.4);
+  outline-offset: 2px;
+}
+
+/* Full view: no sidebar, and pages may use the whole screen width. */
+.sdx.sdx--full .sdx-side {
+  display: none;
+}
+
+.sdx.sdx--full .sdx-content {
+  max-width: none;
+}
+
 .sdx .sdx-top-actions {
   display: flex;
   align-items: center;
@@ -2328,6 +2369,15 @@ body.sdx-body {
 }
 
 @media (max-width: 800px) {
+  .sdx .sdx-full-btn {
+    display: none;
+  }
+
+  /* On phones the sidebar is a slide-out menu, so full view does not apply. */
+  .sdx.sdx--full .sdx-side {
+    display: flex;
+  }
+
   .sdx .sdx-side {
     position: fixed;
     top: 0;

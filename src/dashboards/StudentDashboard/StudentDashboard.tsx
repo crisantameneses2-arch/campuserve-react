@@ -125,6 +125,27 @@ export default function StudentDashboard({
     useState<string | null>(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Laptop "full view": hides the sidebar so pages use the whole width.
+  // Remembered on this device.
+  const [fullView, setFullView] = useState(() => {
+    try {
+      return localStorage.getItem("campuserve-full-view") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  function toggleFullView() {
+    setFullView((value) => {
+      try {
+        localStorage.setItem("campuserve-full-view", value ? "0" : "1");
+      } catch {
+        // Storage unavailable: the choice lasts until the page reloads.
+      }
+      return !value;
+    });
+  }
   const [stocksOpen, setStocksOpen] = useState(false);
 
   const [documentTransactions, setDocumentTransactions] =
@@ -561,7 +582,9 @@ export default function StudentDashboard({
   const pageTitle = PAGE_TITLES[activePage];
 
   return (
-    <div className={`sdx ${menuOpen ? "sdx--menu-open" : ""}`}>
+    <div
+      className={`sdx ${menuOpen ? "sdx--menu-open" : ""} ${fullView ? "sdx--full" : ""}`}
+    >
       <StudentSidebar
         activePage={activePage}
         open={menuOpen}
@@ -586,6 +609,9 @@ export default function StudentDashboard({
           studentName={studentName}
           studentEmail={account.email || ""}
           unreadNotifications={unreadNotifications}
+          unreadMessages={unreadMessages}
+          fullView={fullView}
+          onToggleFullView={toggleFullView}
           menuOpen={menuOpen}
           onToggleMenu={() => setMenuOpen(!menuOpen)}
           onNavigate={go}
@@ -1170,6 +1196,9 @@ function StudentTopbar({
   studentName,
   studentEmail,
   unreadNotifications,
+  unreadMessages,
+  fullView,
+  onToggleFullView,
   menuOpen,
   onToggleMenu,
   onNavigate,
@@ -1178,6 +1207,9 @@ function StudentTopbar({
   studentName: string;
   studentEmail: string;
   unreadNotifications: number;
+  unreadMessages: number;
+  fullView: boolean;
+  onToggleFullView: () => void;
   menuOpen: boolean;
   onToggleMenu: () => void;
   onNavigate: (page: DashboardPage) => void;
@@ -1228,6 +1260,17 @@ function StudentTopbar({
           <Icon name="menu" size={18} />
         </button>
 
+        <button
+          type="button"
+          className="sdx-full-btn"
+          onClick={onToggleFullView}
+          aria-pressed={fullView}
+          aria-label={fullView ? "Show the menu" : "Full view (hide the menu)"}
+          title={fullView ? "Show the menu" : "Full view"}
+        >
+          <Icon name={fullView ? "sidebar-show" : "sidebar-hide"} size={18} />
+        </button>
+
         <div className="sdx-topbar__title">
           <small>YOUR CAMPUS / STUDENT PORTAL</small>
           <strong>{title}</strong>
@@ -1238,6 +1281,25 @@ function StudentTopbar({
         <span className="sdx-top-actions__school">
           PANGASINAN STATE UNIVERSITY
         </span>
+
+        <button
+          type="button"
+          className="sdx-bell sdx-bell--chat"
+          onClick={() => onNavigate("messages")}
+          aria-label={
+            unreadMessages > 0
+              ? `Open messages (${unreadMessages} unread)`
+              : "Open messages"
+          }
+        >
+          <Icon name="chat" size={19} />
+
+          {unreadMessages > 0 && (
+            <span className="sdx-bell__count">
+              {unreadMessages > 9 ? "9+" : unreadMessages}
+            </span>
+          )}
+        </button>
 
         <button
           type="button"
@@ -3470,6 +3532,22 @@ function Icon({
           <rect x="4" y="3.5" width="16" height="17" rx="3" />
           <path d="M9.5 9.1a2.8 2.8 0 0 1 5 .9c0 1.5-2.5 1.9-2.5 3.7" />
           <path d="M12 17.2h.01" />
+        </svg>
+      );
+
+    case "sidebar-hide":
+      return (
+        <svg {...common}>
+          <rect x="3" y="4" width="18" height="16" rx="2.5" />
+          <path d="M9 4v16M16 10l-2 2 2 2" />
+        </svg>
+      );
+
+    case "sidebar-show":
+      return (
+        <svg {...common}>
+          <rect x="3" y="4" width="18" height="16" rx="2.5" />
+          <path d="M9 4v16M14 10l2 2-2 2" />
         </svg>
       );
 
