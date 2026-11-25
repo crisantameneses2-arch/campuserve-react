@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import {
   subscribeToOfficeConversations,
   subscribeToStudentConversations,
-  STUDENT_OFFICES,
+  OFFICES,
   type Office,
 } from "../../services/messages";
 
@@ -22,7 +22,8 @@ export function useStudentUnreadMessages(studentId: string): number {
       (rows) =>
         setUnread(
           rows
-            .filter((row) => STUDENT_OFFICES.includes(row.office))
+            // Skips old conversations with the Administrator, who no longer takes messages.
+            .filter((row) => OFFICES.includes(row.office))
             .reduce((total, row) => total + (row.studentUnread || 0), 0)
         ),
       () => setUnread(0)

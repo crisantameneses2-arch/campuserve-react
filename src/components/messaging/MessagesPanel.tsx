@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import {
-  STUDENT_OFFICES,
+  OFFICES,
   OFFICE_LABEL,
   conversationIdFor,
   lookupStudent,
@@ -132,7 +132,7 @@ export default function MessagesPanel(props: MessagesPanelProps) {
   const threads: Thread[] = useMemo(() => {
     if (isStudent) {
       // Always show every office, even before the first message.
-      return STUDENT_OFFICES.map((item) => {
+      return OFFICES.map((item) => {
         const conversation = conversations.find(
           (row) => row.office === item
         );
@@ -733,7 +733,6 @@ export default function MessagesPanel(props: MessagesPanelProps) {
 const OFFICE_HINT: Record<Office, string> = {
   registrar: "Document requests & claiming",
   general_office: "Item reservations",
-  admin: "Account & system concerns",
 };
 
 function getInitials(value: string) {

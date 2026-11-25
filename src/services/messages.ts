@@ -30,18 +30,15 @@ import { millis, type TransactionKind } from "../utils/format";
      text, relatedKind/relatedId/relatedLabel (optional), createdAt
 ========================================================= */
 
-export type Office = "registrar" | "general_office" | "admin";
+/** Offices students can message. The Administrator does not take messages. */
+export type Office = "registrar" | "general_office";
 
 export const OFFICE_LABEL: Record<Office, string> = {
   registrar: "Registrar Office",
   general_office: "Supply Office",
-  admin: "Administrator",
 };
 
-export const OFFICES: Office[] = ["registrar", "general_office", "admin"];
-
-/** Offices a student can message (the Administrator is not one of them). */
-export const STUDENT_OFFICES: Office[] = ["registrar", "general_office"];
+export const OFFICES: Office[] = ["registrar", "general_office"];
 
 export interface RelatedRef {
   kind: TransactionKind;

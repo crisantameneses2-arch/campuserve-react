@@ -18,8 +18,6 @@ import ItemReservations from "./ItemReservations";
 import ReportsAnalytics from "./ReportsAnalytics";
 import ActivityLogs from "./ActivityLogs";
 import SystemSettings from "./SystemSettings";
-import MessagesPanel from "../../components/messaging/MessagesPanel";
-import UnreadMessagesBadge from "../../components/messaging/UnreadMessagesBadge";
 
 type RecordData = {
   id: string;
@@ -447,23 +445,6 @@ function AdminDashboard({
             Activity logs
           </button>
 
-          {/* ================= MESSAGES ================= */}
-
-          <button
-            className={`sidebar-item ${
-              currentPage === "messages"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setCurrentPage("messages")
-            }
-          >
-            <span>💬</span>
-            Messages
-            <UnreadMessagesBadge office="admin" />
-          </button>
-
           {/* ================= SYSTEM SETTINGS ================= */}
 
           <button
@@ -645,16 +626,6 @@ function AdminDashboard({
           ) : currentPage === "systemSettings" ? (
 
             <SystemSettings />
-
-          /* MESSAGES */
-
-          ) : currentPage === "messages" ? (
-
-            <MessagesPanel
-              mode="staff"
-              office="admin"
-              staffName={account.name || "Administrator"}
-            />
 
           /* DASHBOARD */
 
