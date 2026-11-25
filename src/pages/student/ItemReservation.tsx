@@ -115,6 +115,12 @@ export default function ItemReservation({
     total: number;
   } | null>(null);
 
+  // Opening an item, the checkout or the success screen starts at the top
+  // of the page, not wherever the item list was scrolled to.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [selectedItem, showCheckout, success]);
+
   // Search + "available only" filter (display only)
   const [search, setSearch] = useState("");
   const [availableOnly, setAvailableOnly] = useState(false);
