@@ -1256,7 +1256,7 @@ body.sdx-body {
   width: 62px;
   height: 62px;
   overflow: visible;
-  filter: drop-shadow(0 8px 14px rgba(13, 27, 46, 0.22));
+  filter: drop-shadow(0 4px 5px rgba(13, 27, 46, 0.16));
 }
 
 @keyframes sdx-hero-in {
@@ -1330,13 +1330,13 @@ body.sdx-body {
 
 /* unpaid: the reminder badge nudges */
 .sdx .sdx-anim-nudge.sdx-anim {
-  transform-origin: 48px 20px;
+  transform-origin: 49px 19px;
   animation: sdx-nudge 1.8s ease-in-out infinite;
 }
 
 /* paid: the coin flips over its shadow */
 .sdx .sdx-anim-coin.sdx-anim {
-  transform-origin: 32px 31px;
+  transform-origin: 32px 30px;
   animation: sdx-coin 2.4s ease-in-out infinite;
 }
 
@@ -1357,7 +1357,7 @@ body.sdx-body {
 
 /* coin and bag: the ground shadow shrinks as they rise */
 .sdx .sdx-anim-shadow.sdx-anim {
-  transform-origin: 32px 52px;
+  transform-origin: 32px 54px;
   animation: sdx-shadow 2.4s ease-in-out infinite;
 }
 
@@ -1439,8 +1439,8 @@ body.sdx-body {
 }
 
 @keyframes sdx-shadow {
-  0%, 75%, 100% { transform: scale(1); opacity: 0.28; }
-  35% { transform: scale(0.7); opacity: 0.16; }
+  0%, 75%, 100% { transform: scale(1); opacity: 0.14; }
+  35% { transform: scale(0.7); opacity: 0.08; }
 }
 
 @keyframes sdx-pop {
