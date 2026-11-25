@@ -875,14 +875,6 @@ export default function StudentDashboard({
             </div>
           ) : (
             <div className="sdx-subpage">
-              <button
-                className="sdx-back"
-                type="button"
-                onClick={() => go("dashboard")}
-              >
-                <span aria-hidden="true">←</span> Back to Dashboard
-              </button>
-
               {activePage === "request" && (
                 <DocumentRequestWizard
                   studentId={studentId}
