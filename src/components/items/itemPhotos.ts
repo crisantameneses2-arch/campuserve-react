@@ -93,3 +93,8 @@ export function isPeSetPhoto(source: string | undefined) {
 export function isMaleSetPhoto(source: string | undefined) {
   return Boolean(source && source === maleUniformSet);
 }
+
+/* The PE jogging pants: 10px larger than the other photos. */
+export function isPePantsPhoto(source: string | undefined) {
+  return Boolean(source && source === peJoggingPants);
+}
