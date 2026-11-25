@@ -327,8 +327,8 @@
 }
 
 .irx .irx-card__image.is-cutout.is-female-set {
-  width: calc(100% - 40px);
-  height: calc(100% - 40px);
+  width: calc(100% - 20px);
+  height: calc(100% - 20px);
   translate: calc(-14% + 5px) 0;
 }
 
