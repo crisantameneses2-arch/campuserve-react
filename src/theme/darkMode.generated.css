@@ -2134,6 +2134,54 @@ html.cs-dark .irx .irx-spinner {
   border-top-color: #74c89a;
 }
 
+html.cs-dark .irx .irx-success {
+  border: 1px solid #243f55;
+  background: #162b3d;
+}
+
+html.cs-dark .irx .irx-success__mark {
+  color: #74c89a;
+}
+
+html.cs-dark .irx .irx-success__eyebrow {
+  color: #45a9e0;
+}
+
+html.cs-dark .irx .irx-success h2 {
+  color: #f2f6fa;
+}
+
+html.cs-dark .irx .irx-success > p {
+  color: #90a6b7;
+}
+
+html.cs-dark .irx .irx-success__ref {
+  border: 1px dashed #698295;
+  background: #0b1724;
+  color: #8fa5b6;
+}
+
+html.cs-dark .irx .irx-success__ref strong {
+  color: #45a9e0;
+}
+
+html.cs-dark .irx .irx-success__details > div {
+  border-bottom: 1px solid #1f394d;
+}
+
+html.cs-dark .irx .irx-success__details dt {
+  color: #879daf;
+}
+
+html.cs-dark .irx .irx-success__details dd {
+  color: #45a9e0;
+}
+
+html.cs-dark .irx .irx-success__status {
+  background: #2e3e43;
+  color: #e1ce98;
+}
+
 /* ---- src/pages/student/ItemStocks.css ---- */
 
 html.cs-dark .item-stocks-header p {

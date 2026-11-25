@@ -108,6 +108,13 @@ export default function ItemReservation({
 
   const [reserving, setReserving] = useState(false);
 
+  // Shown after a reservation is made (like the document request success).
+  const [success, setSuccess] = useState<{
+    reservationId: string;
+    itemCount: number;
+    total: number;
+  } | null>(null);
+
   // Search + "available only" filter (display only)
   const [search, setSearch] = useState("");
   const [availableOnly, setAvailableOnly] = useState(false);
@@ -552,9 +559,11 @@ export default function ItemReservation({
       // SUCCESS
       // ========================================
 
-      window.alert(
-        `Reservation successful!\n\nReservation ID: ${reservationId}`
-      );
+      setSuccess({
+        reservationId,
+        itemCount: cart.reduce((count, item) => count + item.quantity, 0),
+        total: cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      });
 
       // Clear reservation data
       setCart([]);
@@ -568,9 +577,6 @@ export default function ItemReservation({
       setQuantity(1);
 
       setShowCheckout(false);
-
-      // Return to dashboard
-      onBack();
     } catch (error) {
       console.error("Reservation failed:", error);
 
@@ -585,6 +591,83 @@ export default function ItemReservation({
       setReserving(false);
     }
   };
+
+  // =========================
+  // SUCCESS
+  // =========================
+
+  if (success) {
+    return (
+      <div className="irx">
+        <section className="irx-success">
+          <span className="irx-success__mark" aria-hidden="true">
+            <svg viewBox="0 0 76 76" fill="none">
+              <circle cx="38" cy="38" r="35" fill="currentColor" opacity=".12" />
+              <circle cx="38" cy="38" r="26" fill="currentColor" />
+              <path
+                d="m27 38.5 7.5 7.5L50 30.5"
+                stroke="#fff"
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+
+          <span className="irx-success__eyebrow">RESERVATION SUBMITTED</span>
+
+          <h2>Successfully reserved!</h2>
+
+          <p>
+            Your reservation has been sent to the Supply Office. Pay at the
+            Cashier and claim your items within three (3) days. You can
+            follow its progress from your dashboard.
+          </p>
+
+          <div className="irx-success__ref">
+            <span>RESERVATION ID</span>
+            <strong>{success.reservationId}</strong>
+          </div>
+
+          <dl className="irx-success__details">
+            <div>
+              <dt>Student ID</dt>
+              <dd>{studentId}</dd>
+            </div>
+            <div>
+              <dt>Items</dt>
+              <dd>
+                {success.itemCount} item{success.itemCount === 1 ? "" : "s"}
+              </dd>
+            </div>
+            <div>
+              <dt>Total</dt>
+              <dd>{formatPrice(success.total)}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <span className="irx-success__status">Unpaid</span>
+              </dd>
+            </div>
+          </dl>
+
+          <div className="irx-success__actions">
+            <button
+              type="button"
+              className="irx-btn irx-btn--primary"
+              onClick={() => setSuccess(null)}
+            >
+              Reserve more items
+            </button>
+            <button type="button" className="irx-link-btn" onClick={onBack}>
+              Go to dashboard
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   // =========================
   // LOADING
