@@ -76,3 +76,15 @@ html.cs-dark .sdx .sdx-service--sky:hover {
 html.cs-dark .sdx .sdx-service--sun {
   background: linear-gradient(145deg, #0b1724, #3b3a27);
 }
+
+/* Service card arrow boxes: outlined in each card's colour with a light
+   arrow, like the yellow one on Claim & release. */
+html.cs-dark .sdx .sdx-service--green .sdx-service__circle {
+  border-color: #4cb98a;
+  color: #d4dfe9;
+}
+
+html.cs-dark .sdx .sdx-service--sky .sdx-service__circle {
+  border-color: #45a9e0;
+  color: #d4dfe9;
+}
