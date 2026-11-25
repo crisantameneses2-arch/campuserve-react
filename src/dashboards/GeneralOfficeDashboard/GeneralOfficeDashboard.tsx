@@ -916,6 +916,9 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 doc(db, "itemReservations", reservationId),
                 {
                     status: "approved",
+                    // Starts the 7-day claim deadline
+                    // (api/cron/expire-reservations.ts).
+                    approvedAt: serverTimestamp(),
                 }
             );
 
