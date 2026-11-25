@@ -316,9 +316,9 @@
 /* Move every catalog photo a little off the card's right edge.
    `translate` is separate from `transform`, so the hover lift still works. */
 .irx .irx-card__image.is-cutout {
-  /* Every catalog photo is drawn 15px smaller than its photo area. */
-  width: calc(100% - 15px);
-  height: calc(100% - 15px);
+  /* Every catalog photo is drawn 25px smaller than its photo area. */
+  width: calc(100% - 25px);
+  height: calc(100% - 25px);
   translate: -14% 0;
 }
 
@@ -327,26 +327,26 @@
 }
 
 .irx .irx-card__image.is-cutout.is-female-set {
-  width: calc(100% - 30px);
-  height: calc(100% - 30px);
+  width: calc(100% - 40px);
+  height: calc(100% - 40px);
   translate: calc(-14% + 5px) 0;
 }
 
 .irx .irx-card__image.is-cutout.is-skirt {
-  width: calc(100% - 28px);
-  height: calc(100% - 28px);
+  width: calc(100% - 38px);
+  height: calc(100% - 38px);
 }
 
 .irx .irx-card__image.is-cutout.is-pe-set {
-  width: calc(100% - 5px);
-  height: calc(100% - 5px);
+  width: calc(100% - 15px);
+  height: calc(100% - 15px);
   flex-shrink: 0; /* let it grow past the photo area instead of being squeezed back */
 }
 
 /* Fabric sets: drawn smaller (by size, not scale, so they stay sharp). */
 .irx .irx-card__image.is-smaller {
-  width: calc(80% - 15px);
-  height: calc(80% - 15px);
+  width: calc(80% - 25px);
+  height: calc(80% - 25px);
 }
 
 .irx .irx-hero__image.is-cutout.is-smaller {
