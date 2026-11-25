@@ -343,10 +343,10 @@
   flex-shrink: 0; /* let it grow past the photo area instead of being squeezed back */
 }
 
-/* Male slacks: 35px larger than the other photos. */
+/* Male slacks: 30px larger than the other photos. */
 .irx .irx-card__image.is-cutout.is-slacks {
-  width: calc(100% + 10px);
-  height: calc(100% + 10px);
+  width: calc(100% + 5px);
+  height: calc(100% + 5px);
   flex-shrink: 0; /* let it grow past the photo area */
 }
 
