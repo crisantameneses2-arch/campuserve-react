@@ -98,3 +98,8 @@ export function isMaleSetPhoto(source: string | undefined) {
 export function isPePantsPhoto(source: string | undefined) {
   return Boolean(source && source === peJoggingPants);
 }
+
+/* The male slacks: 20px larger than the other photos. */
+export function isSlacksPhoto(source: string | undefined) {
+  return Boolean(source && source === maleUniformSlacks);
+}

@@ -343,6 +343,12 @@
   flex-shrink: 0; /* let it grow past the photo area instead of being squeezed back */
 }
 
+/* Male slacks: 20px larger than the other photos. */
+.irx .irx-card__image.is-cutout.is-slacks {
+  width: calc(100% - 5px);
+  height: calc(100% - 5px);
+}
+
 /* PE jogging pants: 25px larger than the other photos. */
 .irx .irx-card__image.is-cutout.is-pe-pants {
   width: 100%;

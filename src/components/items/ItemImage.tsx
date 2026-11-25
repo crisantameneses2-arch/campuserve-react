@@ -8,6 +8,7 @@ import {
   isPePantsPhoto,
   isPeSetPhoto,
   isSkirtPhoto,
+  isSlacksPhoto,
   isSmallerPhoto,
 } from "./itemPhotos";
 
@@ -53,11 +54,12 @@ export default function ItemImage({
   const peSetClass = isPeSetPhoto(source) ? " is-pe-set" : "";
   const maleSetClass = isMaleSetPhoto(source) ? " is-male-set" : "";
   const pePantsClass = isPePantsPhoto(source) ? " is-pe-pants" : "";
+  const slacksClass = isSlacksPhoto(source) ? " is-slacks" : "";
 
   if (source) {
     return (
       <img
-        className={`${className ?? ""} ${kindClass}${sizeClass}${nudgeClass}${femaleSetClass}${skirtClass}${peSetClass}${maleSetClass}${pePantsClass}`.trim()}
+        className={`${className ?? ""} ${kindClass}${sizeClass}${nudgeClass}${femaleSetClass}${skirtClass}${peSetClass}${maleSetClass}${pePantsClass}${slacksClass}`.trim()}
         src={source}
         alt={itemName}
         loading="lazy"
