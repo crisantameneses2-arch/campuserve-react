@@ -896,7 +896,7 @@ export default function ItemReservation({
     );
 
     return (
-      <div className="irx">
+      <div className="irx irx--item-view">
         <div className="irx-topline">
           <button
             type="button"

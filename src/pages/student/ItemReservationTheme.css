@@ -1423,18 +1423,30 @@
 }
 
 /* ---------- Item view fits the screen on laptops (no page scrolling) ----------
-   The view takes the height left under the top bar (81px), the page
-   padding and the "All items" row. The photo shrinks to fit; on very
-   short screens only the details column scrolls. */
+   "All items" sits to the left of the card, and the card takes the height
+   left under the top bar (81px) and the page padding. The photo shrinks
+   to fit; on very short screens only the details column scrolls. */
 
 @media (min-width: 901px) {
-  .irx .irx-topline {
-    margin-bottom: 10px;
+  .irx.irx--item-view {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+  }
+
+  .irx.irx--item-view .irx-topline {
+    margin: 0;
+  }
+
+  /* Less empty space under the item view, so the page does not scroll. */
+  .sdx .sdx-content:has(.irx--item-view) {
+    padding-bottom: 16px;
   }
 
   .irx .irx-detail {
-    height: calc(100vh - 170px);
-    height: calc(100dvh - 170px);
+    height: calc(100vh - 128px);
+    height: calc(100dvh - 128px);
     min-height: 280px;
     grid-template-rows: minmax(0, 1fr);
   }
@@ -1453,6 +1465,8 @@
   .irx .irx-info {
     min-height: 0;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120, 150, 175, 0.45) transparent;
     padding: 24px 30px 20px 16px;
   }
 
