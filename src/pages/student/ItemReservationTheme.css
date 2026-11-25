@@ -343,10 +343,11 @@
   flex-shrink: 0; /* let it grow past the photo area instead of being squeezed back */
 }
 
-/* Male RTW set: 10px larger than the other photos. */
+/* Male RTW set: 20px larger than the other photos. */
 .irx .irx-card__image.is-cutout.is-male-set {
-  width: calc(100% - 15px);
-  height: calc(100% - 15px);
+  width: calc(100% - 5px);
+  height: calc(100% - 5px);
+  flex-shrink: 0;
 }
 
 /* Fabric sets: drawn smaller (by size, not scale, so they stay sharp). */
