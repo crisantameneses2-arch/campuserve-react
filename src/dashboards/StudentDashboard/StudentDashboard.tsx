@@ -101,9 +101,9 @@ const ACTIVE_STATUSES = [
 
 const PAGE_TITLES: Record<DashboardPage, string> = {
   dashboard: "Dashboard",
-  request: "Request a document",
+  request: "Document Request",
   requests: "Document requests",
-  itemReservation: "Item reservations",
+  itemReservation: "Item Reservation",
   claimStub: "Claim & release",
   transactions: "Transaction history",
   notifications: "Notifications",
