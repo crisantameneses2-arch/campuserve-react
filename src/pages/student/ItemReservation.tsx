@@ -753,7 +753,7 @@ export default function ItemReservation({
                       <strong>{item.itemName}</strong>
                       <small>
                         {item.size !== "N/A"
-                          ? `Size ${item.size} · `
+                          ? `Size ${sizeLabel(item.size)} · `
                           : ""}
                         {item.quantity} ×{" "}
                         {formatPrice(item.price)}
@@ -981,7 +981,7 @@ export default function ItemReservation({
                             : `${item.availableOnline} left · ${formatPrice(item.price ?? 0)}`
                         }
                       >
-                        {item.size === "N/A" ? "One" : item.size}
+                        {item.size === "N/A" ? "One" : sizeLabel(item.size)}
                       </button>
                     );
                   })}
@@ -1358,8 +1358,27 @@ const SIZE_ORDER = [
   "5XL",
 ];
 
+/** "Small" / "medium" / "Extra Large" / "2XL" … → S, M, L, XL, XXL … */
+const SIZE_NAMES: Record<string, string> = {
+  "EXTRA SMALL": "XS",
+  SMALL: "S",
+  MEDIUM: "M",
+  LARGE: "L",
+  "EXTRA LARGE": "XL",
+  "X-LARGE": "XL",
+  "XX-LARGE": "XXL",
+  "EXTRA EXTRA LARGE": "XXL",
+  "2XL": "XXL",
+  "3XL": "XXXL",
+};
+
+function sizeLabel(size: string) {
+  const upper = size.trim().toUpperCase().replace(/\s+/g, " ");
+  return SIZE_NAMES[upper] ?? upper;
+}
+
 function sizeRank(size: string) {
-  const upper = size.trim().toUpperCase();
+  const upper = sizeLabel(size);
   const index = SIZE_ORDER.indexOf(upper);
 
   if (index !== -1) return index;
