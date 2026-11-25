@@ -378,6 +378,8 @@ body.sdx-body {
 .sdx .sdx-full-btn {
   appearance: none;
   margin: 0;
+  padding: 0;
+  line-height: 0;
   display: grid;
   place-items: center;
   width: 40px;
