@@ -99,6 +99,21 @@ const ACTIVE_STATUSES = [
   "RESCHEDULED",
 ];
 
+const PAGE_TITLES: Record<DashboardPage, string> = {
+  dashboard: "Dashboard",
+  request: "Request a document",
+  requests: "Document requests",
+  itemReservation: "Item reservations",
+  claimStub: "Claim & release",
+  transactions: "Transaction history",
+  notifications: "Notifications",
+  messages: "Messages",
+  help: "Help Center & FAQs",
+  contact: "Contact support",
+  profile: "My profile",
+  settings: "Account settings",
+};
+
 /** How long a cancelled or declined request or reservation stays in Live tracking. */
 const CANCELLED_TRACKING_MS = 24 * 60 * 60 * 1000;
 
@@ -602,6 +617,8 @@ export default function StudentDashboard({
 
   useStudentBodyClass();
 
+  const pageTitle = PAGE_TITLES[activePage];
+
   useEffect(() => {
     if (!menuOpen) return;
 
@@ -640,6 +657,7 @@ export default function StudentDashboard({
 
       <div className="sdx-app">
         <StudentTopbar
+          title={pageTitle}
           studentName={studentName}
           studentEmail={account.email || ""}
           unreadNotifications={unreadNotifications}
@@ -1199,6 +1217,7 @@ function StudentSidebar({
 ========================================= */
 
 function StudentTopbar({
+  title,
   studentName,
   studentEmail,
   unreadNotifications,
@@ -1209,6 +1228,7 @@ function StudentTopbar({
   onToggleMenu,
   onNavigate,
 }: {
+  title: string;
   studentName: string;
   studentEmail: string;
   unreadNotifications: number;
@@ -1275,6 +1295,10 @@ function StudentTopbar({
         >
           <Icon name="menu" size={18} />
         </button>
+
+        <div className="sdx-topbar__title">
+          <strong>{title}</strong>
+        </div>
       </div>
 
       <div className="sdx-top-actions">
