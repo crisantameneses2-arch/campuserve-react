@@ -39,6 +39,7 @@ import {
 import {
   cancelDocumentRequest,
   canStudentCancelDocumentRequest,
+  subscribeToDocumentRequestDetails,
 } from "../../services/documentRequests";
 
 import {
@@ -426,6 +427,44 @@ export default function StudentDashboard({
     [trackingTransactions]
   );
 
+  // Live tracking shows which documents were requested, not the purpose.
+  const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
+  const trackedRequestIds = documentTrackingTransactions
+    .map((transaction) => transaction.id)
+    .join("|");
+
+  useEffect(() => {
+    if (!trackedRequestIds) return;
+
+    const unsubscribers = trackedRequestIds.split("|").map((requestId) =>
+      subscribeToDocumentRequestDetails(requestId, (details) => {
+        const names = details
+          .map((detail) => {
+            const type = String(detail.document_type || "");
+            return type === "Others"
+              ? String(detail.custom_document_name || "Other document")
+              : type;
+          })
+          .filter(Boolean)
+          .join(", ");
+
+        setDocumentNames((previous) => ({ ...previous, [requestId]: names }));
+      })
+    );
+
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [trackedRequestIds]);
+
+  const namedDocumentTrackingTransactions = useMemo(
+    () =>
+      documentTrackingTransactions.map((transaction) =>
+        documentNames[transaction.id]
+          ? { ...transaction, title: documentNames[transaction.id] }
+          : transaction
+      ),
+    [documentTrackingTransactions, documentNames]
+  );
+
   const itemTrackingTransactions = useMemo(
     () =>
       trackingTransactions.filter(
@@ -679,11 +718,9 @@ export default function StudentDashboard({
                     variant="document"
                     title="Document requests"
                     loading={transactionsLoading}
-                    transactions={documentTrackingTransactions}
+                    transactions={namedDocumentTrackingTransactions}
                     emptyTitle="No active document requests"
                     emptyText="Requests you submit will be tracked here."
-                    emptyAction="Request a document"
-                    onEmptyAction={() => go("request")}
                     onSelect={setSelectedTransaction}
                   />
 
@@ -694,8 +731,6 @@ export default function StudentDashboard({
                     transactions={itemTrackingTransactions}
                     emptyTitle="No active item reservations"
                     emptyText="Reservations you make will be tracked here."
-                    emptyAction="Reserve an item"
-                    onEmptyAction={() => go("itemReservation")}
                     onSelect={setSelectedTransaction}
                   />
                 </div>
@@ -1393,8 +1428,6 @@ function TrackingBox({
   transactions,
   emptyTitle,
   emptyText,
-  emptyAction,
-  onEmptyAction,
   onSelect,
 }: {
   variant: "document" | "item";
@@ -1403,8 +1436,6 @@ function TrackingBox({
   transactions: StudentTransaction[];
   emptyTitle: string;
   emptyText: string;
-  emptyAction: string;
-  onEmptyAction: () => void;
   onSelect: (transaction: StudentTransaction) => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -1469,14 +1500,6 @@ function TrackingBox({
           <div>
             <strong>{emptyTitle}</strong>
             <p>{emptyText}</p>
-
-            <button
-              type="button"
-              className="sdx-text-btn"
-              onClick={onEmptyAction}
-            >
-              {emptyAction} <span aria-hidden="true">↗</span>
-            </button>
           </div>
         </div>
       ) : (
