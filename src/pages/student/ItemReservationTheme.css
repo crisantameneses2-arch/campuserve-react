@@ -1429,6 +1429,8 @@
 
 @media (min-width: 901px) {
   .irx.irx--item-view {
+    /* No room needed for the reservation bar (it only shows on the list). */
+    padding-bottom: 0;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
@@ -1522,5 +1524,15 @@
     width: 52px;
     height: 52px;
     flex-basis: 52px;
+  }
+}
+
+/* The page stays put while an item is open on a laptop: the item view
+   fits the screen exactly, so the page itself never scrolls (the details
+   column still can). Very short windows keep normal scrolling. */
+@media (min-width: 901px) and (min-height: 420px) {
+  html:has(.irx--item-view),
+  html:has(.irx--item-view) body {
+    overflow: hidden;
   }
 }
