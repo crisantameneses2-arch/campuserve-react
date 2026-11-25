@@ -280,12 +280,48 @@ export default function StudentDashboard({
      COMBINED TRANSACTIONS
   ========================================= */
 
+  // Document requests are titled by the documents requested (not the purpose),
+  // everywhere on the dashboard: live tracking, history and details.
+  const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
+  const documentRequestIds = documentTransactions
+    .map((transaction) => transaction.id)
+    .join("|");
+
+  useEffect(() => {
+    if (!documentRequestIds) return;
+
+    const unsubscribers = documentRequestIds.split("|").map((requestId) =>
+      subscribeToDocumentRequestDetails(requestId, (details) => {
+        const names = details
+          .map((detail) => {
+            const type = String(detail.document_type || "");
+            return type === "Others"
+              ? String(detail.custom_document_name || "Other document")
+              : type;
+          })
+          .filter(Boolean)
+          .join(", ");
+
+        setDocumentNames((previous) => ({ ...previous, [requestId]: names }));
+      })
+    );
+
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [documentRequestIds]);
+
   const transactions = useMemo(
     () =>
-      [...documentTransactions, ...itemTransactions].sort(
+      [
+        ...documentTransactions.map((transaction) =>
+          documentNames[transaction.id]
+            ? { ...transaction, title: documentNames[transaction.id] }
+            : transaction
+        ),
+        ...itemTransactions,
+      ].sort(
         (a, b) => getTime(b.createdAt) - getTime(a.createdAt)
       ),
-    [documentTransactions, itemTransactions]
+    [documentTransactions, itemTransactions, documentNames]
   );
 
   /* The open details modal follows live updates (e.g. right after a cancel). */
@@ -425,44 +461,6 @@ export default function StudentDashboard({
         (transaction) => transaction.kind === "DOCUMENT"
       ),
     [trackingTransactions]
-  );
-
-  // Live tracking shows which documents were requested, not the purpose.
-  const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
-  const trackedRequestIds = documentTrackingTransactions
-    .map((transaction) => transaction.id)
-    .join("|");
-
-  useEffect(() => {
-    if (!trackedRequestIds) return;
-
-    const unsubscribers = trackedRequestIds.split("|").map((requestId) =>
-      subscribeToDocumentRequestDetails(requestId, (details) => {
-        const names = details
-          .map((detail) => {
-            const type = String(detail.document_type || "");
-            return type === "Others"
-              ? String(detail.custom_document_name || "Other document")
-              : type;
-          })
-          .filter(Boolean)
-          .join(", ");
-
-        setDocumentNames((previous) => ({ ...previous, [requestId]: names }));
-      })
-    );
-
-    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
-  }, [trackedRequestIds]);
-
-  const namedDocumentTrackingTransactions = useMemo(
-    () =>
-      documentTrackingTransactions.map((transaction) =>
-        documentNames[transaction.id]
-          ? { ...transaction, title: documentNames[transaction.id] }
-          : transaction
-      ),
-    [documentTrackingTransactions, documentNames]
   );
 
   const itemTrackingTransactions = useMemo(
@@ -718,7 +716,7 @@ export default function StudentDashboard({
                     variant="document"
                     title="Document requests"
                     loading={transactionsLoading}
-                    transactions={namedDocumentTrackingTransactions}
+                    transactions={documentTrackingTransactions}
                     emptyTitle="No active document requests"
                     emptyText="Requests you submit will be tracked here."
                     onSelect={setSelectedTransaction}
