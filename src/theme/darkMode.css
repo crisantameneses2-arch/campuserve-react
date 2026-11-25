@@ -1,5 +1,5 @@
 /* =========================================================
-   DARK MODE (student dashboard)
+   DARK MODE (student dashboard) — Midnight Blue
 
    The colours themselves come from darkMode.generated.css, which
    scripts/build-dark-theme.mjs builds from the student stylesheets.
@@ -11,29 +11,44 @@
 html.cs-dark {
   /* Dark scrollbars, date pickers and other built-in controls. */
   color-scheme: dark;
-  background: #161d24;
+  background: #0b1724;
 }
 
 /* ---- Hand-tuned touches the generated colours can't judge ---- */
 
-/* Item cards: darker bottom tones so the light price reads clearly,
-   and a plain shadow instead of the light-mode white top highlight. */
-html.cs-dark .irx .irx-tone--mint {
-  --irx-tone-deep: #1d4a3a;
+/* Sidebar and the active menu item. */
+html.cs-dark .sdx .sdx-side {
+  background: #102235;
+  border-right-color: #1d3549;
 }
 
-html.cs-dark .irx .irx-tone--sky {
-  --irx-tone-deep: #1a3a52;
+html.cs-dark .sdx .sdx-link.is-active {
+  background: #173c56;
+  border-color: #29475d;
 }
 
+/* Item cards: one calm look for every item, a light price, and a plain
+   shadow instead of the light-mode white top highlight. */
+html.cs-dark .irx .irx-tone--mint,
+html.cs-dark .irx .irx-tone--sky,
 html.cs-dark .irx .irx-tone--sand {
-  --irx-tone-deep: #4a3d12;
+  --irx-tone: #1d3549;
+  --irx-tone-deep: #173c56;
 }
 
 html.cs-dark .irx .irx-card {
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.3);
 }
 
 html.cs-dark .irx .irx-card__price {
-  color: #eef4f9;
+  color: #f2f6fa;
+}
+
+/* Settings toggles: a light knob so "on" and "off" are easy to tell. */
+html.cs-dark .settings-slider::before {
+  background: #f2f6fa;
+}
+
+html.cs-dark .settings-switch input:checked + .settings-slider {
+  background: #2585c5;
 }

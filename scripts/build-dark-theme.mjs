@@ -77,26 +77,72 @@ function hslToRgb(h, s, l) {
   return [f(h + 1 / 3), f(h), f(h - 1 / 3)].map((v) => Math.round(v * 255));
 }
 
-/* Lightness is flipped into a comfortable range: white becomes a deep
-   blue-grey (not pure black) and black becomes soft white. */
-function darken([r, g, b]) {
-  let [h, s, l] = rgbToHsl(r, g, b);
-  const chroma = (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
-  // The curve lifts mid-tones a little so muted text stays readable.
-  const nl = 0.085 + Math.pow(1 - l, 0.85) * 0.835;
+/* ---------- the dark palette: Midnight Blue ----------
+   Surfaces  #0B1724 background · #102235 sidebar · #162B3D cards
+             #1D3549 elevated
+   Blues     #2585C5 primary · #45A9E0 hover/links · #173C56 active item
+             #29475D borders
+   Text      #F2F6FA headings · #C0D0DE body · #849BAD muted
+   Reds, greens and yellows keep their own hue, so status colours still
+   mean the same thing. */
 
-  if (chroma < 0.035) {
-    // Greys and near-whites: one calm blue-grey for every surface.
-    h = 0.58;
-    s = 0.22;
-  } else if (l > 0.85) {
-    // Pale tints (tag and badge backgrounds) keep their hue, softly.
-    s = Math.min(s, 0.4);
-  } else {
-    s = Math.min(s, 0.75);
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const PAGE = hex("#0b1724"); // background
+const CARD = hex("#162b3d"); // cards
+const FILL = hex("#1d3549"); // elevated: fills inside cards, tags, hovers
+const LINE = hex("#29475d"); // borders
+const PRIMARY = hex("#2585c5"); // primary actions, banners
+const ACTIVE = hex("#173c56"); // active item, deep blue areas
+const INK = hex("#08111b"); // very dark spots
+const HEADING = hex("#f2f6fa"); // headings
+const TEXT = hex("#c0d0de"); // body text
+const ACCENT = hex("#45a9e0"); // links and blue labels
+const MUTED = hex("#849bad"); // muted text
+const FAINT = hex("#647d90"); // faint hints
+
+const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * Math.max(0, Math.min(1, t))));
+
+/**
+ * role: "bg" for backgrounds, "text" for text and icons,
+ *       "auto" (borders, variables): light colours act as backgrounds.
+ */
+function darken([r, g, b], role) {
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const chroma = (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
+  // Greys, blues, and greyish tints (old green-theme leftovers) all
+  // follow the navy palette.
+  const blueish = chroma < 0.06 || s < 0.22 || (h >= 0.47 && h <= 0.75);
+
+  if (role === "auto") role = l > 0.82 ? "bg" : "text";
+
+  if (role === "bg") {
+    // Strong non-blue colours (badges, status dots) keep their hue, muted.
+    if (!blueish && s > 0.45 && l < 0.8) return hslToRgb(h, Math.min(s, 0.45), 0.36);
+    // Pale status tints keep a faint hint of their hue over the card colour.
+    if (!blueish && l >= 0.8) return mix(FILL, hslToRgb(h, Math.min(s, 0.4), 0.3), 0.22);
+
+    if (l >= 0.985) return CARD;
+    if (l >= 0.955) return PAGE;
+    if (l >= 0.85) return mix(FILL, LINE, (0.955 - l) / 0.105);
+    if (l >= 0.55) return LINE;
+    // Mid blues (buttons, banner highlights) become the primary blue;
+    // deep blues become the active-item blue.
+    if (l >= 0.3) return s > 0.3 ? PRIMARY : LINE;
+    if (l >= 0.1) return ACTIVE;
+    return INK;
   }
 
-  return hslToRgb(h, s, nl);
+  // text
+  const dark = l <= 0.3 || (!blueish && l < 0.35 && s < 0.6);
+  // Dark text: strongly coloured (headings) → heading white, else body.
+  if (dark) return s > 0.45 ? HEADING : mix(HEADING, TEXT, 0.6);
+  if (!blueish) {
+    // Reds, greens, yellows: same hue, gentle and readable.
+    return hslToRgb(h, Math.min(s, 0.55), Math.min(0.74, Math.max(0.62, 1.05 - l)));
+  }
+  if (l <= 0.6) return s > 0.3 ? ACCENT : mix(TEXT, MUTED, (l - 0.3) / 0.3);
+  if (l <= 0.85) return mix(MUTED, FAINT, (l - 0.6) / 0.25);
+  return HEADING;
 }
 
 function format([r, g, b], alpha) {
@@ -116,7 +162,7 @@ function parseHex(hex) {
 const COLOR_RE =
   /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b|rgba?\(\s*[\d.]+%?\s*[, ]\s*[\d.]+%?\s*[, ]\s*[\d.]+%?\s*(?:[,/]\s*[\d.]+%?\s*)?\)|\b(?:white|black)\b/g;
 
-function convertValue(value) {
+function convertValue(value, role) {
   let changed = false;
   const out = value.replace(COLOR_RE, (match) => {
     let rgb;
@@ -138,7 +184,7 @@ function convertValue(value) {
       rgb = NAMED[match.toLowerCase()];
     }
     changed = true;
-    return format(darken(rgb), alpha);
+    return format(darken(rgb, role), alpha);
   });
   return changed ? out : null;
 }
@@ -183,6 +229,25 @@ function scopeSelector(selector) {
     .join(",\n");
 }
 
+/* Custom properties defined exactly once (e.g. --sdx-green) are filled in
+   before converting, so a colour used as a background is converted as a
+   background, and the same colour used as text is converted as text. */
+const VARS = new Map();
+const varCounts = new Map();
+
+function collectVars(css) {
+  for (const m of css.matchAll(/(--[\w-]+)\s*:\s*([^;{}]+)/g)) {
+    varCounts.set(m[1], (varCounts.get(m[1]) || 0) + 1);
+    VARS.set(m[1], m[2].trim());
+  }
+}
+
+function resolveVars(value) {
+  return value.replace(/var\((--[\w-]+)\)/g, (match, name) =>
+    varCounts.get(name) === 1 ? VARS.get(name) : match
+  );
+}
+
 function convertDeclarations(body) {
   const out = [];
   for (const raw of body.split(/;(?![^()]*\))/)) {
@@ -193,7 +258,15 @@ function convertDeclarations(body) {
     let value = raw.slice(colon + 1).trim();
     const important = /!important\s*$/.test(value);
     value = value.replace(/!important\s*$/, "").trim();
-    const converted = convertValue(value);
+    const role = /^(background|background-color|background-image)$/.test(prop)
+      ? "bg"
+      : /^(border|outline|--)/.test(prop)
+        ? "auto"
+        : "text";
+    const converted = convertValue(
+      prop.startsWith("--") ? value : resolveVars(value),
+      role
+    );
     if (converted) out.push(`  ${prop}: ${converted}${important ? " !important" : ""};`);
   }
   return out;
@@ -216,10 +289,14 @@ function convert(css) {
   return out.join("\n\n");
 }
 
-const sections = SOURCES.map((file) => {
-  const css = stripComments(readFileSync(file, "utf8").replace(/\r\n/g, "\n"));
-  return `/* ---- ${file} ---- */\n\n${convert(css)}`;
-});
+const texts = SOURCES.map((file) =>
+  stripComments(readFileSync(file, "utf8").replace(/\r\n/g, "\n"))
+);
+texts.forEach(collectVars);
+
+const sections = SOURCES.map(
+  (file, index) => `/* ---- ${file} ---- */\n\n${convert(texts[index])}`
+);
 
 writeFileSync(
   OUTPUT,
