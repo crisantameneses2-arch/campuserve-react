@@ -125,6 +125,19 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  /*
+   * The app on localhost (npm run dev) calls this deployed function, so
+   * cross-site calls are allowed. That is safe: the caller only names a
+   * notification; the recipient and content are always looked up here.
+   */
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }

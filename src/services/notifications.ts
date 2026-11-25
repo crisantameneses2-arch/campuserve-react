@@ -81,10 +81,18 @@ export const roleAudience = (role: StaffRole) =>
  * notification at most once. Fire-and-forget: email trouble never blocks
  * the app.
  */
+/* The local dev server (`npm run dev`) does not run the api/ functions,
+   so on localhost the deployed one on Vercel is used. VITE_API_BASE_URL
+   can point somewhere else if needed. */
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.DEV ? "https://campuserve-react.vercel.app" : "")
+).replace(/\/$/, "");
+
 function requestNotificationEmail(notificationId: string, audience: string) {
   if (!audience.startsWith("student:")) return;
 
-  fetch("/api/send-notification-email", {
+  fetch(`${API_BASE}/api/send-notification-email`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ notificationId }),
