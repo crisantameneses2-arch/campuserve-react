@@ -1268,7 +1268,7 @@ function StudentTopbar({
           aria-label={fullView ? "Show the menu" : "Full view (hide the menu)"}
           title={fullView ? "Show the menu" : "Full view"}
         >
-          <Icon name={fullView ? "sidebar-show" : "sidebar-hide"} size={18} />
+          <Icon name="menu" size={18} />
         </button>
 
         <div className="sdx-topbar__title">
@@ -3532,22 +3532,6 @@ function Icon({
           <rect x="4" y="3.5" width="16" height="17" rx="3" />
           <path d="M9.5 9.1a2.8 2.8 0 0 1 5 .9c0 1.5-2.5 1.9-2.5 3.7" />
           <path d="M12 17.2h.01" />
-        </svg>
-      );
-
-    case "sidebar-hide":
-      return (
-        <svg {...common}>
-          <rect x="3" y="4" width="18" height="16" rx="2.5" />
-          <path d="M9 4v16M16 10l-2 2 2 2" />
-        </svg>
-      );
-
-    case "sidebar-show":
-      return (
-        <svg {...common}>
-          <rect x="3" y="4" width="18" height="16" rx="2.5" />
-          <path d="M9 4v16M14 10l2 2-2 2" />
         </svg>
       );
 
