@@ -1296,187 +1296,181 @@ body.sdx-body {
 
 
 /* ---------- Stage animations (current stage only) ----------
-   One short, playful loop per stage icon. Origins are in the icon's
-   64 × 64 viewBox. */
+   One calm loop per stage icon. Origins are in the icon's 64 × 64 viewBox. */
 
 .sdx .sdx-anim {
   transform-box: view-box;
   transform-origin: 32px 32px;
 }
 
-/* submitted: the paper plane swoops, speed lines trail behind */
-.sdx .sdx-anim-swoop.sdx-anim {
-  animation: sdx-swoop 2.4s ease-in-out infinite;
+/* submitted: the paper plane floats and tilts */
+.sdx .sdx-a-float.sdx-anim {
+  animation: sdx-a-float 3.6s ease-in-out infinite;
 }
 
-.sdx .sdx-anim-speed.sdx-anim {
-  animation: sdx-speed 1.2s ease-out infinite;
+/* pending: the sand drains, then the hourglass turns over */
+.sdx .sdx-a-turn.sdx-anim {
+  animation: sdx-a-turn 5.2s cubic-bezier(0.6, 0, 0.3, 1) infinite;
 }
 
-/* pending: sand falls, then the hourglass turns over */
-.sdx .sdx-anim-flip.sdx-anim {
-  animation: sdx-flip 3.4s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+.sdx .sdx-a-drain.sdx-anim {
+  transform-origin: 32px 29.5px;
+  animation: sdx-a-drain 5.2s linear infinite;
 }
 
-.sdx .sdx-anim-sand.sdx-anim {
-  animation: sdx-sand 0.8s linear infinite;
+.sdx .sdx-a-fill.sdx-anim {
+  transform-origin: 32px 48.5px;
+  animation: sdx-a-fill 5.2s linear infinite;
 }
 
-/* approved: the check stamp lands on the document */
-.sdx .sdx-anim-stamp.sdx-anim {
-  transform-origin: 42px 44px;
-  animation: sdx-stamp 2.8s cubic-bezier(0.3, 1.4, 0.5, 1) infinite;
+.sdx .sdx-a-drip.sdx-anim circle {
+  animation: sdx-a-drip 0.9s linear infinite;
 }
 
-/* unpaid: the reminder badge nudges */
-.sdx .sdx-anim-nudge.sdx-anim {
-  transform-origin: 49px 19px;
-  animation: sdx-nudge 1.8s ease-in-out infinite;
+.sdx .sdx-a-drip.sdx-anim circle:nth-child(2) { animation-delay: 0.3s; }
+.sdx .sdx-a-drip.sdx-anim circle:nth-child(3) { animation-delay: 0.6s; }
+
+.sdx .sdx-a-drip.sdx-anim {
+  animation: sdx-a-drip-run 5.2s linear infinite;
 }
 
-/* paid: the coin flips over its shadow */
-.sdx .sdx-anim-coin.sdx-anim {
-  transform-origin: 32px 30px;
-  animation: sdx-coin 2.4s ease-in-out infinite;
+/* approved / claimed: the check badge pops in, holds, and resets */
+.sdx .sdx-a-badge.sdx-anim {
+  transform-origin: 45px 45px;
+  animation: sdx-a-badge 3.6s cubic-bezier(0.3, 1.5, 0.5, 1) infinite;
+}
+
+/* unpaid: the wallet sways, the warning pops up beside it */
+.sdx .sdx-a-sway.sdx-anim {
+  transform-origin: 34px 50px;
+  animation: sdx-a-sway 3.6s ease-in-out infinite;
+}
+
+.sdx .sdx-a-pop.sdx-anim {
+  transform-origin: 17px 30px;
+  animation: sdx-a-pop 3.6s cubic-bezier(0.3, 1.5, 0.5, 1) infinite;
+}
+
+/* paid: the receipt prints out of the slot, then drops away */
+.sdx .sdx-a-print.sdx-anim {
+  animation: sdx-a-print 4.4s ease-in-out infinite;
 }
 
 /* processing: two gears turn against each other */
-.sdx .sdx-anim-gear.sdx-anim {
-  animation: sdx-spin 4.5s linear infinite;
+.sdx .sdx-a-spin.sdx-anim {
+  animation: sdx-spin 7s linear infinite;
 }
 
-.sdx .sdx-anim-gear-rev.sdx-anim {
-  animation: sdx-spin 3s linear infinite reverse;
+.sdx .sdx-a-spin-rev.sdx-anim {
+  animation: sdx-spin 4.6s linear infinite reverse;
 }
 
-/* ready: the bag hops */
-.sdx .sdx-anim-hop.sdx-anim {
-  transform-origin: 32px 50px;
-  animation: sdx-hop 2.4s ease-in-out infinite;
+/* ready: the box settles, the arrow badge points to "pick me up" */
+.sdx .sdx-a-bob.sdx-anim {
+  transform-origin: 27px 46px;
+  animation: sdx-a-bob 3.4s ease-in-out infinite;
 }
 
-/* coin and bag: the ground shadow shrinks as they rise */
-.sdx .sdx-anim-shadow.sdx-anim {
-  transform-origin: 32px 54px;
-  animation: sdx-shadow 2.4s ease-in-out infinite;
+.sdx .sdx-a-arrow.sdx-anim {
+  transform-origin: 45px 45px;
+  animation: sdx-a-arrow 3.4s ease-in-out infinite;
 }
 
-/* claimed: the check pops in and draws itself */
-.sdx .sdx-anim-pop.sdx-anim {
-  animation: sdx-pop 3s cubic-bezier(0.3, 1.4, 0.5, 1) infinite;
+.sdx .sdx-a-flap.sdx-anim {
+  transform-origin: 40px 31px;
+  animation: sdx-a-flap 3.4s ease-in-out infinite;
 }
 
-.sdx .sdx-anim-draw.sdx-anim {
-  stroke-dasharray: 50;
-  animation: sdx-draw 3s ease infinite;
+/* cancelled: the badge gives a small shake */
+.sdx .sdx-a-shake.sdx-anim {
+  transform-origin: 45px 45px;
+  animation: sdx-a-shake 2.4s ease-in-out infinite;
 }
 
-/* sparkles twinkle */
-.sdx .sdx-anim-twinkle.sdx-anim,
-.sdx .sdx-anim-twinkle-late.sdx-anim {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: sdx-twinkle 1.8s ease-in-out infinite;
-}
-
-.sdx .sdx-anim-twinkle-late.sdx-anim {
-  animation-delay: 0.9s;
-}
-
-/* stopped: a small shake */
-.sdx .sdx-anim-shake.sdx-anim {
-  animation: sdx-shake 1.6s ease-in-out infinite;
-}
-
-@keyframes sdx-swoop {
+@keyframes sdx-a-float {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  35% { transform: translate(3px, -4px) rotate(-6deg); }
-  65% { transform: translate(-1px, 1px) rotate(2deg); }
+  50% { transform: translate(1.5px, -3px) rotate(-4deg); }
 }
 
-@keyframes sdx-speed {
-  0% { opacity: 0; transform: translate(2px, -1.5px); }
-  30% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-5px, 3.5px); }
+@keyframes sdx-a-turn {
+  0%, 70% { transform: rotate(0deg); }
+  86%, 100% { transform: rotate(180deg); }
 }
 
-@keyframes sdx-flip {
-  0%, 62% { transform: rotate(0deg) scale(1); }
-  76% { transform: rotate(192deg) scale(0.92); }
-  86%, 100% { transform: rotate(180deg) scale(1); }
+@keyframes sdx-a-drain {
+  0% { transform: scale(1); }
+  66%, 100% { transform: scale(0); }
 }
 
-@keyframes sdx-sand {
-  to { stroke-dashoffset: -8; }
+@keyframes sdx-a-fill {
+  0% { transform: scale(0.15); }
+  66%, 100% { transform: scale(1); }
 }
 
-@keyframes sdx-stamp {
-  0%, 8% { opacity: 0; transform: scale(0) rotate(-25deg); }
-  24% { opacity: 1; transform: scale(1.15) rotate(6deg); }
-  34%, 86% { opacity: 1; transform: scale(1) rotate(0deg); }
-  100% { opacity: 0; transform: scale(0.9) rotate(0deg); }
+@keyframes sdx-a-drip-run {
+  0%, 64% { opacity: 1; }
+  68%, 100% { opacity: 0; }
 }
 
-@keyframes sdx-nudge {
-  0%, 55%, 100% { transform: rotate(0deg) scale(1); }
-  65% { transform: rotate(-14deg) scale(1.12); }
-  75% { transform: rotate(10deg) scale(1.12); }
-  85% { transform: rotate(-4deg) scale(1); }
+@keyframes sdx-a-drip {
+  0% { opacity: 0; transform: translateY(-3px); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(3px); }
 }
 
-@keyframes sdx-coin {
-  0%, 100% { transform: translateY(0) scaleX(1); }
-  30% { transform: translateY(-5px) scaleX(0.1); }
-  50% { transform: translateY(-6px) scaleX(1); }
-  75% { transform: translateY(0) scaleX(1); }
+@keyframes sdx-a-badge {
+  0%, 10% { transform: scale(0); }
+  24% { transform: scale(1.12); }
+  32%, 82% { transform: scale(1); }
+  92%, 100% { transform: scale(0); }
 }
 
-@keyframes sdx-hop {
-  0%, 75%, 100% { transform: translateY(0) scale(1); }
-  10% { transform: translateY(0) scale(1.06, 0.94); }
-  35% { transform: translateY(-6px) scale(0.97, 1.03); }
-  58% { transform: translateY(0) scale(1.05, 0.95); }
-}
-
-@keyframes sdx-shadow {
-  0%, 75%, 100% { transform: scale(1); opacity: 0.14; }
-  35% { transform: scale(0.7); opacity: 0.08; }
-}
-
-@keyframes sdx-pop {
-  0% { opacity: 0; transform: scale(0.6); }
-  18% { opacity: 1; transform: scale(1.12); }
-  30%, 100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes sdx-draw {
-  0%, 8% { stroke-dashoffset: 50; }
-  35%, 100% { stroke-dashoffset: 0; }
-}
-
-@keyframes sdx-twinkle {
-  0%, 100% { opacity: 0.35; transform: scale(0.7) rotate(0deg); }
-  50% { opacity: 1; transform: scale(1.15) rotate(45deg); }
-}
-
-@keyframes sdx-shake {
+@keyframes sdx-a-sway {
   0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-7deg); }
-  75% { transform: rotate(7deg); }
+  50% { transform: rotate(4deg); }
+}
+
+@keyframes sdx-a-pop {
+  0%, 12% { opacity: 0; transform: scale(0) rotate(-12deg); }
+  26% { opacity: 1; transform: scale(1.15) rotate(4deg); }
+  34%, 84% { opacity: 1; transform: scale(1) rotate(0deg); }
+  94%, 100% { opacity: 0; transform: scale(0.6) rotate(0deg); }
+}
+
+@keyframes sdx-a-print {
+  0% { transform: translateY(-18px); opacity: 1; }
+  40%, 74% { transform: translateY(0); opacity: 1; }
+  88% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(-18px); opacity: 0; }
+}
+
+@keyframes sdx-a-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-1.5px) rotate(-1.5deg); }
+}
+
+@keyframes sdx-a-arrow {
+  0%, 100% { transform: translate(0, 0); opacity: 1; }
+  45% { transform: translate(-2.5px, -2.5px); opacity: 1; }
+  55% { transform: translate(-2.5px, -2.5px); opacity: 1; }
+}
+
+@keyframes sdx-a-flap {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.3); }
+}
+
+@keyframes sdx-a-shake {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  70% { transform: rotate(-10deg); }
+  80% { transform: rotate(8deg); }
+  90% { transform: rotate(-4deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sdx .sdx-anim {
+  .sdx .sdx-anim,
+  .sdx .sdx-anim circle {
     animation: none !important;
-  }
-
-  .sdx .sdx-anim-draw.sdx-anim {
-    stroke-dasharray: none;
-  }
-
-  .sdx .sdx-anim-stamp.sdx-anim,
-  .sdx .sdx-anim-pop.sdx-anim {
-    opacity: 1;
   }
 }
 

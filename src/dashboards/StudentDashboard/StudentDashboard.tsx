@@ -1791,57 +1791,42 @@ function stageKey(label: string): StageKey {
   return "pending";
 }
 
-/* Stage icons: colourful standalone objects with soft glossy gradients and
-   small dark details (no tile). `animated` (the current stage only) plays
-   one short, playful loop. */
+/* Stage icons: flat illustrated objects with soft gradients, each with its
+   own short loop on the current stage (`animated`).
+   submitted · pending · approved · unpaid · paid · processing · ready ·
+   claimed · cancelled */
 
 const GEAR_PATH =
   "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z";
 
-/* Gradient stops per part, top-left → bottom-right. */
+/* Gradient stops per part (top-left → bottom-right). */
 const PAINT = {
-  skyWing: ["#5b8cff", "#b9d2ff"],
-  skyFold: ["#1f3c99", "#3d63d6"],
-  amber: ["#f59e2b", "#ffd36b"],
-  glass: ["#e6f0ff", "#ffffff"],
-  paper: ["#e8f0ff", "#ffffff"],
-  paperFold: ["#8eaefc", "#c7d7ff"],
-  green: ["#14a85a", "#8ee6a8"],
-  coral: ["#ff7a6b", "#ffb8c6"],
-  red: ["#ef4351", "#ff8fa3"],
-  gold: ["#f5a623", "#ffe17d"],
-  violet: ["#5672f7", "#b08cff"],
-  peach: ["#ff6f91", "#ffb36b"],
-  lime: ["#1ba85e", "#b4ec72"],
-  indigo: ["#3b4fa8", "#7488e6"],
+  pinkWing: ["#ff8cc6", "#ffcbe6"],
+  pinkWingBack: ["#f56fb3", "#ffb3d9"],
+  blueFold: ["#3352f5", "#7d93ff"],
+  wood: ["#6a4a3e", "#a17a68"],
+  glass: ["#a9d4ff", "#e6f3ff"],
+  sand: ["#f58a07", "#ffc24d"],
+  folder: ["#f39a12", "#ffcc5c"],
+  paper: ["#f3f7ff", "#ffffff"],
+  ring: ["#4f6676", "#7d95a5"],
+  disc: ["#e8edf2", "#f7f9fb"],
+  check: ["#1fa952", "#7fe08f"],
+  cross: ["#e83a4b", "#ff8597"],
+  wallet: ["#f0336d", "#ff7aa5"],
+  walletFlap: ["#b81f53", "#e34c7d"],
+  bills: ["#12a34a", "#6fe08c"],
+  warn: ["#ffb300", "#ffe066"],
+  printer: ["#17b6e0", "#7fe3f8"],
+  receipt: ["#ffd96a", "#fff4cc"],
+  gearBig: ["#1fc8e3", "#8eeefa"],
+  gearSmall: ["#5422f0", "#9b6bff"],
+  box: ["#f4a90f", "#ffd65c"],
+  tape: ["#e2730a", "#f7a134"],
+  badge: ["#3346c4", "#6b7ef0"],
 } as const;
 
 type Paint = keyof typeof PAINT;
-
-/** A four-point sparkle centred on (x, y). */
-function Sparkle({
-  x,
-  y,
-  size = 1,
-  color = "#ffc53d",
-  className,
-}: {
-  x: number;
-  y: number;
-  size?: number;
-  color?: string;
-  className?: string;
-}) {
-  return (
-    <g transform={`translate(${x} ${y}) scale(${size})`}>
-      <path
-        className={className}
-        d="M0-5C.6-1.3 1.3-.6 5 0 1.3.6.6 1.3 0 5-.6 1.3-1.3.6-5 0-1.3-.6-.6-1.3 0-5Z"
-        fill={color}
-      />
-    </g>
-  );
-}
 
 function StageArt({
   stage,
@@ -1852,68 +1837,111 @@ function StageArt({
 }) {
   const uid = useId().replace(/:/g, "");
   const a = animated ? " sdx-anim" : "";
-
-  // fill={paint("green")} → url(#…) of a gradient defined below
   const used = new Set<Paint>();
   const paint = (name: Paint) => {
     used.add(name);
     return `url(#${uid}-${name})`;
   };
+  const round = {
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    fill: "none",
+  };
 
-  const DARK = "#1b2340";
-  const round = { strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
+  // Shared parts
+  const documentStack = (
+    <>
+      <rect x="11" y="12" width="28" height="36" rx="2.5" transform="rotate(-9 25 30)" fill={paint("folder")} />
+      <rect x="17" y="10" width="27" height="36" rx="2.5" transform="rotate(-4 30 28)" fill={paint("paper")} />
+      <g transform="rotate(-4 30 28)">
+        <rect x="21" y="15" width="14" height="3" rx="1.5" fill="#4f7cf0" />
+        <rect x="21" y="21" width="18" height="1.8" rx=".9" fill="#a9c0fb" />
+        <rect x="21" y="25" width="16" height="1.8" rx=".9" fill="#a9c0fb" />
+        <rect x="21" y="29" width="18" height="1.8" rx=".9" fill="#a9c0fb" />
+        <rect x="21" y="33" width="12" height="1.8" rx=".9" fill="#a9c0fb" />
+      </g>
+    </>
+  );
+
+  const box = (
+    <>
+      <rect x="10" y="16" width="34" height="30" rx="2.5" fill={paint("box")} />
+      <rect x="21" y="16" width="11" height="8" fill={paint("tape")} />
+      <rect className={`sdx-a-flap${a}`} x="40" y="16" width="4" height="30" fill="#e2730a" opacity=".75" />
+    </>
+  );
+
+  const ringBadge = (inner: JSX.Element) => (
+    <>
+      <circle cx="45" cy="45" r="12.5" fill={paint("ring")} />
+      <circle cx="45" cy="45" r="9.5" fill={paint("disc")} />
+      {inner}
+    </>
+  );
 
   const art = (() => {
     switch (stage) {
       case "submitted":
         return (
-          <>
-            <g className={`sdx-anim-speed${a}`}>
-              <path d="M9 44l6-4M13 50.5l5-3.4" stroke="#9cb9ff" strokeWidth="2.8" strokeLinecap="round" />
-            </g>
-            <g className={`sdx-anim-swoop${a}`}>
-              <path d="M11 29 52 13 40 48 31 38Z" fill={paint("skyWing")} />
-              <path d="M31 38 52 13 26 45Z" fill={paint("skyFold")} />
-            </g>
-          </>
+          <g className={`sdx-a-float${a}`}>
+            <path d="M6 30 55 13 25 38Z" fill={paint("pinkWingBack")} />
+            <path d="M55 13 21 38 26 52 32 46Z" fill={paint("blueFold")} />
+            <path d="M55 13 38 53 28 42Z" fill={paint("pinkWing")} />
+          </g>
         );
 
       case "pending":
         return (
-          <g className={`sdx-anim-flip${a}`}>
-            <path d="M22 17h20c0 9-7 11-7 15s7 6 7 15H22c0-9 7-11 7-15s-7-6-7-15Z" fill={paint("glass")} stroke="#c9dafc" strokeWidth="1.5" />
-            <path d="M26 21h12c-1 4.5-4.4 6-6 8.4-1.6-2.4-5-3.9-6-8.4Z" fill={paint("amber")} />
-            <path className={`sdx-anim-sand${a}`} d="M32 31v9" stroke="#f59e2b" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="1.5 2.5" />
-            <path d="M25.5 46.5c1.2-4.2 4-6.2 6.5-6.2s5.3 2 6.5 6.2Z" fill={paint("amber")} />
-            <rect x="18" y="11" width="28" height="6" rx="3" fill={paint("indigo")} />
-            <rect x="18" y="47" width="28" height="6" rx="3" fill={paint("indigo")} />
+          <g className={`sdx-a-turn${a}`}>
+            <path d="M22 15h20c0 9.5-7 11.5-7 17s7 7.5 7 17H22c0-9.5 7-11.5 7-17s-7-7.5-7-17Z" fill={paint("glass")} />
+            <path d="M25.5 19c.4 4.6 2.6 7 4.2 9" stroke="#fff" strokeWidth="1.6" opacity=".8" {...round} />
+            <g className={`sdx-a-drain${a}`}>
+              <path d="M25 19h14l-7 10.5Z" fill={paint("sand")} />
+            </g>
+            <g className={`sdx-a-drip${a}`}>
+              <circle cx="32" cy="34" r="1.1" fill="#f58a07" />
+              <circle cx="32" cy="38" r="1.1" fill="#f58a07" />
+              <circle cx="32" cy="42" r="1.1" fill="#f58a07" />
+            </g>
+            <g className={`sdx-a-fill${a}`}>
+              <path d="M24 48.5c1.6-5.6 4.6-8 8-8s6.4 2.4 8 8Z" fill={paint("sand")} />
+            </g>
+            <rect x="17" y="9" width="30" height="5" rx="2.2" fill={paint("wood")} />
+            <rect x="20" y="13.5" width="24" height="2.5" rx="1" fill="#5a3d33" />
+            <rect x="20" y="48" width="24" height="2.5" rx="1" fill="#5a3d33" />
+            <rect x="17" y="50" width="30" height="5" rx="2.2" fill={paint("wood")} />
           </g>
         );
 
       case "approved":
         return (
           <>
-            <path d="M20 10h16l10 10v31a3 3 0 0 1-3 3H20a3 3 0 0 1-3-3V13a3 3 0 0 1 3-3Z" fill={paint("paper")} stroke="#c9dafc" strokeWidth="1.5" />
-            <path d="M36 10v8a2 2 0 0 0 2 2h8Z" fill={paint("paperFold")} />
-            <path d="M22.5 26h12M22.5 32h8.5" stroke="#7d9cf2" strokeWidth="3" {...round} />
-            <g className={`sdx-anim-stamp${a}`}>
-              <circle cx="42" cy="44" r="10" fill={paint("green")} />
-              <path d="m37.4 44.2 3.3 3.3 5.9-6.6" stroke="#fff" strokeWidth="3" {...round} />
-            </g>
-            <Sparkle x={52} y={13} size={0.9} className={`sdx-anim-twinkle${a}`} />
+            {documentStack}
+            {ringBadge(
+              <g className={`sdx-a-badge${a}`}>
+                <circle cx="45" cy="45" r="9.5" fill={paint("check")} />
+                <path d="m40.6 45.2 3.2 3.2 5.8-6.4" stroke="#fff" strokeWidth="2.8" {...round} />
+              </g>
+            )}
           </>
         );
 
       case "unpaid":
         return (
           <>
-            <rect x="9" y="21" width="42" height="28" rx="6" fill={paint("coral")} />
-            <rect x="9" y="28" width="42" height="6.5" fill="#4a1f33" opacity=".85" />
-            <rect x="14" y="40" width="12" height="3.4" rx="1.7" fill="#fff" opacity=".9" />
-            <g className={`sdx-anim-nudge${a}`}>
-              <circle cx="49" cy="19" r="9" fill={paint("red")} />
-              <rect x="47.9" y="13.6" width="2.3" height="7" rx="1.15" fill="#fff" />
-              <circle cx="49.05" cy="23.9" r="1.45" fill="#fff" />
+            <g className={`sdx-a-sway${a}`}>
+              <g transform="rotate(-18 34 36)">
+                <rect x="20" y="16" width="26" height="12" rx="2" fill="#0e8a3e" />
+                <rect x="22" y="13" width="24" height="12" rx="2" fill={paint("bills")} />
+                <rect x="16" y="22" width="34" height="28" rx="5" fill={paint("wallet")} />
+                <rect x="40" y="30" width="12" height="11" rx="3.5" fill={paint("walletFlap")} />
+                <circle cx="46" cy="35.5" r="1.7" fill="#ffd37a" />
+              </g>
+            </g>
+            <g className={`sdx-a-pop${a}`}>
+              <path d="M17 16.5 29.5 38.5h-25Z" fill={paint("warn")} stroke="#ec4d1d" strokeWidth="2.6" strokeLinejoin="round" />
+              <rect x="15.9" y="23.5" width="2.4" height="8.2" rx="1.2" fill="#2b2b2b" />
+              <circle cx="17.1" cy="34.6" r="1.5" fill="#2b2b2b" />
             </g>
           </>
         );
@@ -1921,13 +1949,28 @@ function StageArt({
       case "paid":
         return (
           <>
-            <ellipse className={`sdx-anim-shadow${a}`} cx="32" cy="54" rx="11" ry="2.6" fill={DARK} opacity=".14" />
-            <g className={`sdx-anim-coin${a}`}>
-              <circle cx="32" cy="30" r="17" fill={paint("gold")} />
-              <circle cx="32" cy="30" r="12.5" stroke="#d98a12" strokeWidth="2" fill="none" />
-              <path d="M29.3 38.5V22h5a4.6 4.6 0 0 1 0 9.2h-5M26 26h12.8M26 29.6h12.8" stroke="#8a4c00" strokeWidth="2.6" {...round} />
+            <defs>
+              <clipPath id={`${uid}-slot`}>
+                <rect x="0" y="17" width="64" height="47" />
+              </clipPath>
+            </defs>
+            <g clipPath={`url(#${uid}-slot)`}>
+              <g className={`sdx-a-print${a}`}>
+                <path
+                  d="M17 14h30v33l-3.75 2.6-3.75-2.6-3.75 2.6-3.75-2.6-3.75 2.6-3.75-2.6-3.75 2.6-3.75-2.6Z"
+                  fill={paint("receipt")}
+                />
+                <rect x="21" y="23" width="16" height="1.8" rx=".9" fill="#fff" />
+                <rect x="21" y="27.5" width="16" height="1.8" rx=".9" fill="#fff" />
+                <rect x="21" y="32" width="16" height="1.8" rx=".9" fill="#fff" />
+                <rect x="39.5" y="23" width="3.5" height="1.8" rx=".9" fill="#fff" />
+                <rect x="39.5" y="27.5" width="3.5" height="1.8" rx=".9" fill="#fff" />
+                <rect x="39.5" y="32" width="3.5" height="1.8" rx=".9" fill="#fff" />
+                <rect x="21" y="39" width="22" height="1.8" rx=".9" fill="#fff" />
+              </g>
             </g>
-            <Sparkle x={52} y={12} size={0.85} className={`sdx-anim-twinkle${a}`} />
+            <rect x="11" y="11" width="42" height="7" rx="3.5" fill={paint("printer")} />
+            <rect x="15" y="15.5" width="34" height="2.2" rx="1.1" fill="#0b86a8" />
           </>
         );
 
@@ -1935,13 +1978,15 @@ function StageArt({
         return (
           <>
             {/* Gear outline from Lucide "settings" (ISC licence), filled. */}
-            <g className={`sdx-anim-gear${a}`} style={{ transformOrigin: "28px 28px" }}>
-              <path transform="translate(10.6 10.6) scale(1.45)" d={GEAR_PATH} fill={paint("violet")} />
-              <circle cx="28" cy="28" r="5.6" fill="#fff" />
+            <g className={`sdx-a-spin${a}`} style={{ transformOrigin: "25px 40px" }}>
+              <path transform="translate(7 22) scale(1.5)" d={GEAR_PATH} fill={paint("gearBig")} />
+              <circle cx="25" cy="40" r="8.6" fill="#a7f2fb" opacity=".7" />
+              <path d="M25 40v-6.2M25 40l5.4 3.1M25 40l-5.4 3.1" stroke="#0fb3d1" strokeWidth="3" {...round} />
+              <circle cx="25" cy="40" r="3.4" fill="#0fb3d1" />
             </g>
-            <g className={`sdx-anim-gear-rev${a}`} style={{ transformOrigin: "46px 46px" }}>
-              <path transform="translate(36.4 36.4) scale(0.8)" d={GEAR_PATH} fill={paint("peach")} />
-              <circle cx="46" cy="46" r="3" fill="#fff" />
+            <g className={`sdx-a-spin-rev${a}`} style={{ transformOrigin: "45px 20px" }}>
+              <path transform="translate(34 9) scale(0.917)" d={GEAR_PATH} fill={paint("gearSmall")} />
+              <circle cx="45" cy="20" r="4.6" fill="#2c0fb5" />
             </g>
           </>
         );
@@ -1949,32 +1994,38 @@ function StageArt({
       case "ready":
         return (
           <>
-            <ellipse className={`sdx-anim-shadow${a}`} cx="32" cy="55" rx="13" ry="2.6" fill={DARK} opacity=".14" />
-            <g className={`sdx-anim-hop${a}`}>
-              <path d="M25 23v-3a7 7 0 0 1 14 0v3" stroke="#0f6b3a" strokeWidth="3.4" {...round} />
-              <path d="M16 23h32l-2.8 25.6a3.4 3.4 0 0 1-3.4 3H22.2a3.4 3.4 0 0 1-3.4-3Z" fill={paint("lime")} />
-              <path d="m25.5 37.5 4.6 4.6 8.4-9.2" stroke="#fff" strokeWidth="3.4" {...round} />
-            </g>
-            <Sparkle x={52} y={14} size={0.95} className={`sdx-anim-twinkle${a}`} />
-            <Sparkle x={11} y={20} size={0.65} color="#ff8fb1" className={`sdx-anim-twinkle-late${a}`} />
+            <g className={`sdx-a-bob${a}`}>{box}</g>
+            <circle cx="45" cy="45" r="12" fill={paint("badge")} />
+            <path className={`sdx-a-arrow${a}`} d="M41 41l8.5 8.5M41 41h6.4M41 41v6.4" stroke="#fff" strokeWidth="2.8" {...round} />
           </>
         );
 
       case "claimed":
         return (
-          <g className={`sdx-anim-pop${a}`}>
-            <circle cx="32" cy="32" r="21" fill={paint("green")} />
-            <path className={`sdx-anim-draw${a}`} d="m22 32.5 7 7 13.5-14.5" stroke="#fff" strokeWidth="5" {...round} />
-            <Sparkle x={52} y={12} size={0.8} />
-          </g>
+          <>
+            {box}
+            {ringBadge(
+              <g className={`sdx-a-badge${a}`}>
+                <circle cx="45" cy="45" r="9.5" fill={paint("check")} />
+                <path d="m40.6 45.2 3.2 3.2 5.8-6.4" stroke="#fff" strokeWidth="2.8" {...round} />
+              </g>
+            )}
+          </>
         );
 
       case "stopped":
         return (
-          <g className={`sdx-anim-shake${a}`}>
-            <circle cx="32" cy="32" r="20" fill={paint("red")} />
-            <path d="m25 25 14 14M39 25 25 39" stroke="#fff" strokeWidth="4.6" strokeLinecap="round" />
-          </g>
+          <>
+            {documentStack}
+            <g className={`sdx-a-shake${a}`}>
+              {ringBadge(
+                <>
+                  <circle cx="45" cy="45" r="9.5" fill={paint("cross")} />
+                  <path d="m41.2 41.2 7.6 7.6M48.8 41.2l-7.6 7.6" stroke="#fff" strokeWidth="2.8" {...round} />
+                </>
+              )}
+            </g>
+          </>
         );
     }
   })();
