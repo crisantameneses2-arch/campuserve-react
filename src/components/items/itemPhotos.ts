@@ -88,3 +88,8 @@ export function isSkirtPhoto(source: string | undefined) {
 export function isPeSetPhoto(source: string | undefined) {
   return Boolean(source && source === peUniformSet);
 }
+
+/* The male ready-to-wear set: 10px larger than the other photos. */
+export function isMaleSetPhoto(source: string | undefined) {
+  return Boolean(source && source === maleUniformSet);
+}

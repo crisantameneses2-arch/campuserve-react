@@ -3,6 +3,7 @@ import ItemArt from "./ItemArt";
 import {
   getItemPhoto,
   isFemaleSetPhoto,
+  isMaleSetPhoto,
   isNudgedRightPhoto,
   isPeSetPhoto,
   isSkirtPhoto,
@@ -49,11 +50,12 @@ export default function ItemImage({
   const femaleSetClass = isFemaleSetPhoto(source) ? " is-female-set" : "";
   const skirtClass = isSkirtPhoto(source) ? " is-skirt" : "";
   const peSetClass = isPeSetPhoto(source) ? " is-pe-set" : "";
+  const maleSetClass = isMaleSetPhoto(source) ? " is-male-set" : "";
 
   if (source) {
     return (
       <img
-        className={`${className ?? ""} ${kindClass}${sizeClass}${nudgeClass}${femaleSetClass}${skirtClass}${peSetClass}`.trim()}
+        className={`${className ?? ""} ${kindClass}${sizeClass}${nudgeClass}${femaleSetClass}${skirtClass}${peSetClass}${maleSetClass}`.trim()}
         src={source}
         alt={itemName}
         loading="lazy"
