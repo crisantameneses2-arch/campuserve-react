@@ -1172,7 +1172,7 @@ export default function ItemReservation({
             !
           </span>
           <p>
-            <strong>Approved? You have 7 days to claim it!</strong>
+            <strong>Claim Period: 7 Days After Approval</strong>
             Once the General Office approves your reservation, pick up your
             items within 7 days, or it's cancelled and the items go back to
             stock.
