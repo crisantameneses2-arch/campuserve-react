@@ -70,3 +70,9 @@ html.cs-dark .sdx .sdx-service--sky {
 html.cs-dark .sdx .sdx-service--sky:hover {
   border-color: #6cc0ee;
 }
+
+/* Claim & release card: the same navy-to-tint gradient as the other two,
+   fading to a dark gold to match its yellow outline. */
+html.cs-dark .sdx .sdx-service--sun {
+  background: linear-gradient(145deg, #0b1724, #3b3a27);
+}
