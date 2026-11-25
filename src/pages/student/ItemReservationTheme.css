@@ -262,7 +262,7 @@
 .irx .irx-card {
   position: relative;
   min-width: 0;
-  min-height: 272px;
+  min-height: 232px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -291,7 +291,7 @@
   top: -36px;
   right: -6px;
   width: 74%;
-  height: 58%;
+  height: 158px; /* fixed, so a shorter card keeps the same photo size */
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -1217,14 +1217,14 @@
   }
 
   .irx .irx-card {
-    min-height: 224px;
+    min-height: 192px;
     border-radius: 20px;
   }
 
   .irx .irx-card__media {
     top: -26px;
     width: 80%;
-    height: 54%;
+    height: 121px;
   }
 
   .irx .irx-heart {
