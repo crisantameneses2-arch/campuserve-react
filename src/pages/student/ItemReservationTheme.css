@@ -365,8 +365,8 @@
 
 /* Fabric sets: drawn smaller (by size, not scale, so they stay sharp). */
 .irx .irx-card__image.is-smaller {
-  width: calc(80% - 25px);
-  height: calc(80% - 25px);
+  width: calc(80% - 5px);
+  height: calc(80% - 5px);
 }
 
 .irx .irx-hero__image.is-cutout.is-smaller {
