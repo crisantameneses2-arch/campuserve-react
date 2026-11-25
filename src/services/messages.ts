@@ -40,6 +40,9 @@ export const OFFICE_LABEL: Record<Office, string> = {
 
 export const OFFICES: Office[] = ["registrar", "general_office", "admin"];
 
+/** Offices a student can message (the Administrator is not one of them). */
+export const STUDENT_OFFICES: Office[] = ["registrar", "general_office"];
+
 export interface RelatedRef {
   kind: TransactionKind;
   id: string;

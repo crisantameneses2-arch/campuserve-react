@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import {
-  OFFICES,
+  STUDENT_OFFICES,
   OFFICE_LABEL,
   conversationIdFor,
   lookupStudent,
@@ -34,8 +34,8 @@ import "./Messaging.css";
  * One messaging screen used by both sides:
  *
  *   <MessagesPanel mode="student" studentId=… studentName=… />
- *     Students see one thread per office (Registrar, Supply Office,
- *     Administrator) and can start a conversation with any of them.
+ *     Students see one thread per office (Registrar Office, Supply Office)
+ *     and can start a conversation with either of them.
  *
  *   <MessagesPanel mode="staff" office="registrar" staffName=… />
  *     Staff see every student conversation for their office, can search
@@ -132,7 +132,7 @@ export default function MessagesPanel(props: MessagesPanelProps) {
   const threads: Thread[] = useMemo(() => {
     if (isStudent) {
       // Always show every office, even before the first message.
-      return OFFICES.map((item) => {
+      return STUDENT_OFFICES.map((item) => {
         const conversation = conversations.find(
           (row) => row.office === item
         );

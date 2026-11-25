@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   subscribeToOfficeConversations,
   subscribeToStudentConversations,
+  STUDENT_OFFICES,
   type Office,
 } from "../../services/messages";
 
@@ -20,7 +21,9 @@ export function useStudentUnreadMessages(studentId: string): number {
       studentId,
       (rows) =>
         setUnread(
-          rows.reduce((total, row) => total + (row.studentUnread || 0), 0)
+          rows
+            .filter((row) => STUDENT_OFFICES.includes(row.office))
+            .reduce((total, row) => total + (row.studentUnread || 0), 0)
         ),
       () => setUnread(0)
     );
