@@ -1344,15 +1344,25 @@ function StudentTopbar({
         </button>
 
         <div className="sdx-account" ref={accountRef}>
+          {/* The avatar opens My Profile; the name and ⌄ open the menu. */}
+          <button
+            type="button"
+            className="sdx-avatar sdx-avatar--link"
+            onClick={() => openPage("profile")}
+            aria-label="Open my profile"
+            title="My profile"
+          >
+            {getInitials(studentName)}
+          </button>
+
           <button
             type="button"
             className="sdx-account__trigger"
             aria-haspopup="menu"
             aria-expanded={accountOpen}
+            aria-label="Account menu"
             onClick={() => setAccountOpen(!accountOpen)}
           >
-            <span className="sdx-avatar">{getInitials(studentName)}</span>
-
             <span className="sdx-account__copy">
               <strong>{studentName}</strong>
               <small>My account</small>

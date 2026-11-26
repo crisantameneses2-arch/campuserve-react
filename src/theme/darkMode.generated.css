@@ -722,6 +722,10 @@ html.cs-dark .sdx .sdx-bell__count {
   color: #f2f6fa;
 }
 
+html.cs-dark .sdx .sdx-avatar--link:focus-visible {
+  outline: 3px solid #d3cf69;
+}
+
 html.cs-dark .sdx .sdx-account__trigger:hover {
   background: #1d364a;
 }
