@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 
 import StepProgress from "../../components/document-request/StepProgress";
+import PaperPlaneAnimation from "../../components/PaperPlaneAnimation/PaperPlaneAnimation";
 import StepMethod from "../../components/document-request/StepMethod";
 import StepDocuments, {
   type SelectedDocument,
@@ -169,6 +170,18 @@ export default function DocumentRequestWizard({
 
   const [successRequestId, setSuccessRequestId] =
     useState<string | null>(null);
+
+  /* Success screen phases: intro → paper plane → details. */
+  const [successPhase, setSuccessPhase] = useState<"intro" | "plane" | "details">("intro");
+
+  useEffect(() => {
+    if (!successRequestId) return undefined;
+
+    setSuccessPhase("intro");
+    const timer = window.setTimeout(() => setSuccessPhase("plane"), 1150);
+
+    return () => window.clearTimeout(timer);
+  }, [successRequestId]);
 
   /* =======================================================
      CALCULATED VALUES
@@ -1290,31 +1303,61 @@ export default function DocumentRequestWizard({
 
   /* =======================================================
      SUCCESS SCREEN
+     1. check mark + message animate in
+     2. the document folds into a paper plane and flies away
+     3. the request details appear
   ======================================================= */
 
   if (successRequestId) {
     return (
       <div className="rwx">
         <section className="rwx-shell">
-          <div className="rwx-success">
+          <div className={`rwx-success is-${successPhase}`} aria-live="polite">
             <span className="rwx-success__mark" aria-hidden="true">
               <svg viewBox="0 0 76 76" fill="none">
-                <circle cx="38" cy="38" r="35" fill="currentColor" opacity=".12" />
-                <circle cx="38" cy="38" r="26" fill="currentColor" />
-                <path d="m27 38.5 7.5 7.5L50 30.5" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle className="rwx-success__halo" cx="38" cy="38" r="35" fill="currentColor" opacity=".12" />
+                <circle className="rwx-success__disc" cx="38" cy="38" r="26" fill="currentColor" />
+                <path className="rwx-success__tick" d="m27 38.5 7.5 7.5L50 30.5" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" pathLength={1} />
               </svg>
             </span>
 
-            <span className="rwx-eyebrow">REQUEST SUBMITTED</span>
+            <span className="rwx-eyebrow rwx-success__in" style={{ animationDelay: "0.55s" }}>
+              REQUEST SUBMITTED
+            </span>
 
-            <h2>Successfully sent!</h2>
+            <h2 className="rwx-success__in" style={{ animationDelay: "0.7s" }}>
+              Successfully sent!
+            </h2>
 
-            <p>
+            <p className="rwx-success__in" style={{ animationDelay: "0.85s" }}>
               Your document request has been submitted to the
               Registrar. You can follow its progress from your
               dashboard.
             </p>
 
+            {successPhase !== "details" && (
+              <div className="rwx-success__plane">
+                {successPhase === "plane" && (
+                  <PaperPlaneAnimation
+                    size="100%"
+                    duration={4.2}
+                    loop={false}
+                    onComplete={() => setSuccessPhase("details")}
+                    style={{ background: "transparent" }}
+                  />
+                )}
+                <button
+                  type="button"
+                  className="rwx-success__skip"
+                  onClick={() => setSuccessPhase("details")}
+                >
+                  Skip
+                </button>
+              </div>
+            )}
+
+            {successPhase === "details" && (
+            <div className="rwx-success__rest">
             <div className="rwx-success__ref">
               <span>REQUEST ID</span>
               <strong>{successRequestId}</strong>
@@ -1375,6 +1418,8 @@ export default function DocumentRequestWizard({
             >
               Create another request
             </button>
+            </div>
+            )}
           </div>
         </section>
       </div>

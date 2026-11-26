@@ -11,6 +11,8 @@ import DocumentRequestList from "./pages/student/DocumentRequestList";
 
 import "./App.css";
 import LoginBrandPanel from "./components/login/LoginBrandPanel";
+import EyeIcon from "./components/login/EyeIcon";
+import AlumniAccessForm from "./components/login/AlumniAccessForm";
 
 import { useEffect, useState } from "react";
 
@@ -1321,9 +1323,7 @@ function App() {
                       : "Show password"
                   }
                 >
-                  {showPassword
-                    ? "🙈"
-                    : "👁"}
+                  <EyeIcon hidden={showPassword} />
                 </button>
 
               </div>
@@ -1415,21 +1415,7 @@ function App() {
 
             {/* ALUMNI */}
 
-            <div className="campuserve-alumni-box">
-
-              <h3>
-                Alumni Access
-              </h3>
-
-              <p>
-                Alumni registration will be
-                available here. Alumni accounts
-                require approval from the
-                Registrar or Administrator
-                before accessing CampuServe.
-              </p>
-
-            </div>
+            <AlumniAccessForm />
 
 
             {/* TESTING ONLY: dev server shortcuts, hidden on the live site */}

@@ -31,6 +31,8 @@ import {
   type AppNotification,
 } from "../../services/notifications";
 
+import OwlMascot from "../../components/login/OwlMascot";
+
 import {
   subscribeToGroupInvites,
   type GroupInvite,
@@ -704,6 +706,11 @@ export default function StudentDashboard({
 
               {/* LIVE TRACKING */}
 
+              <div className="sdx-track-wrap">
+              <div className="sdx-track-owl">
+                <OwlMascot />
+              </div>
+
               <section
                 className="sdx-track sdx-track--compact"
                 aria-labelledby="sdx-track-title"
@@ -748,6 +755,7 @@ export default function StudentDashboard({
                   />
                 </div>
               </section>
+              </div>
 
               {/* STUDENT SERVICES */}
 
@@ -965,7 +973,19 @@ export default function StudentDashboard({
               {activePage === "contact" && <ContactSupport />}
 
               {activePage === "profile" && (
-                <MyProfile account={account} />
+                <MyProfile
+                  account={account}
+                  stats={{
+                    documents: documentTransactions.length,
+                    items: itemTransactions.length,
+                    readyToClaim: transactions.filter((transaction) =>
+                      ["READY_FOR_PICKUP", "READY"].includes(
+                        normalizeStatus(transaction.status)
+                      )
+                    ).length,
+                  }}
+                  onNavigate={(page) => go(page)}
+                />
               )}
 
               {activePage === "settings" && <AccountSettings studentId={studentId} />}
@@ -1863,33 +1883,44 @@ function StageArt({
         );
 
       case "pending": {
-        // Sand levels are rects clipped to each half of the glass; moving a
-        // rect raises or lowers the sand, so it drains and fills smoothly.
+        // Like the reference hourglass: rest → small tilt → quick flip →
+        // sand drains in falling dots (top triangle shrinks, bottom mound
+        // grows) → rest. The glass is symmetric, so after the flip the
+        // group snaps back to 0° with the sand swapped, which looks the same.
         const glass = "M22 15h20c0 9.5-7 11.5-7 17s7 7.5 7 17H22c0-9.5 7-11.5 7-17s-7-7.5-7-17Z";
         return (
-          <g className={`sdx-a-turn${a}`}>
+          <g className={`sdx-a-hg${a}`}>
             <defs>
               <clipPath id={`${uid}-clip-glass`}>
                 <path d={glass} />
               </clipPath>
-              <clipPath id={`${uid}-clip-top`}>
-                <rect x="16" y="15" width="32" height="17" />
-              </clipPath>
-              <clipPath id={`${uid}-clip-bottom`}>
-                <rect x="16" y="32" width="32" height="17" />
-              </clipPath>
             </defs>
             <path d={glass} fill={paint("glass")} />
             <g clipPath={`url(#${uid}-clip-glass)`}>
-              <g clipPath={`url(#${uid}-clip-top)`}>
-                <rect className={`sdx-a-sand-top${a}`} x="16" y="16" width="32" height="16" fill={paint("sand")} />
-              </g>
-              <g clipPath={`url(#${uid}-clip-bottom)`}>
-                <rect className={`sdx-a-sand-bottom${a}`} x="16" y="32" width="32" height="16" fill={paint("sand")} />
-              </g>
-              <rect className={`sdx-a-stream${a}`} x="31.2" y="27" width="1.6" height="10" rx=".8" fill="#f58a07" />
+              {animated && (
+                <path
+                  className="sdx-a-hg-top sdx-anim"
+                  d="M23 17.5h18L32 31.2Z"
+                  fill={paint("sand")}
+                />
+              )}
+              <path
+                className={`sdx-a-hg-bottom${a}`}
+                d="M23.6 49.5c1.6-6.2 5.4-11.4 8.4-12.6 3 1.2 6.8 6.4 8.4 12.6Z"
+                fill={paint("sand")}
+              />
+              {animated && (
+                <g className="sdx-a-hg-stream sdx-anim">
+                  <g className="sdx-a-hg-drip sdx-anim">
+                    <circle cx="32" cy="29" r="1.05" fill="#f58a07" />
+                    <circle cx="32" cy="33" r="1.05" fill="#f58a07" />
+                    <circle cx="32" cy="37" r="1.05" fill="#f58a07" />
+                    <circle cx="32" cy="41" r="1.05" fill="#f58a07" />
+                  </g>
+                </g>
+              )}
             </g>
-            <path d="M25.5 19c.4 4.6 2.6 7 4.2 9" stroke="#fff" strokeWidth="1.6" opacity=".8" {...round} />
+            <path d="M25.3 18.5c.3 4.8 2.4 7.6 4.3 9.6" stroke="#fff" strokeWidth="1.7" opacity=".85" {...round} />
             <rect x="17" y="9" width="30" height="5" rx="2.2" fill={paint("wood")} />
             <rect x="20" y="13.5" width="24" height="2.5" rx="1" fill="#5a3d33" />
             <rect x="20" y="48" width="24" height="2.5" rx="1" fill="#5a3d33" />
@@ -2067,41 +2098,162 @@ function ServiceCard({
   );
 }
 
+/**
+ * Service card illustrations: folder of documents, shopping bags and a
+ * claim ticket, drawn in the soft-gradient icon style (bright gradients,
+ * no outlines, deep teal accents).
+ */
 function ServiceArt({ name }: { name: "document" | "bag" | "ticket" }) {
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const g = (key: string) => `${uid}-${key}`;
+  const url = (key: string) => `url(#${g(key)})`;
+
   if (name === "document") {
     return (
-      <svg fill="none" viewBox="0 0 190 155">
-        <ellipse cx="98" cy="132" fill="#CBE6D7" opacity=".6" rx="68" ry="12" />
-        <rect fill="#FCFFFA" height="105" rx="9" stroke="#387F68" strokeWidth="2" transform="rotate(-9 48 20)" width="82" x="48" y="20" />
-        <rect fill="#DDEFE3" height="105" rx="9" stroke="#387F68" strokeWidth="2" transform="rotate(8 77 24)" width="82" x="77" y="24" />
-        <path d="M92 54h42m-42 14h33m-33 14h42" stroke="#69A48C" strokeLinecap="round" strokeWidth="5" />
-        <circle cx="136" cy="109" fill="#F0C884" r="20" stroke="#7F6139" strokeWidth="2" />
-        <path d="m127 109 7 7 13-15" stroke="#7F6139" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+      <svg fill="none" viewBox="0 0 190 155" aria-hidden="true">
+        <defs>
+          <linearGradient id={g("back")} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#2FB463" />
+            <stop offset="1" stopColor="#14824A" />
+          </linearGradient>
+          <linearGradient id={g("front")} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#B4EC7C" />
+            <stop offset="1" stopColor="#22B24A" />
+          </linearGradient>
+          <linearGradient id={g("paperA")} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#E4EEFF" />
+            <stop offset="1" stopColor="#C9DCFA" />
+          </linearGradient>
+          <linearGradient id={g("paperB")} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#FFFFFF" />
+            <stop offset="1" stopColor="#DDF3D2" />
+          </linearGradient>
+          <linearGradient id={g("tag")} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#FFC9DF" />
+            <stop offset="1" stopColor="#F7609E" />
+          </linearGradient>
+          <linearGradient id={g("ear")} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#A9D4FF" />
+            <stop offset="1" stopColor="#258EFB" />
+          </linearGradient>
+        </defs>
+
+        <g transform="translate(16 6) scale(.82)">
+        <ellipse cx="96" cy="140" rx="62" ry="7" fill="#163B37" opacity=".1" />
+
+        {/* back of the folder */}
+        <path
+          d="M34 47a8 8 0 0 1 8-8h30l9 10h63a8 8 0 0 1 8 8v73a8 8 0 0 1-8 8H42a8 8 0 0 1-8-8Z"
+          fill={url("back")}
+        />
+
+        {/* papers */}
+        <g transform="rotate(-11 78 70)">
+          <rect x="50" y="22" width="60" height="78" rx="6" fill={url("paperA")} />
+          <path d="M60 40h30M60 51h38M60 62h26" stroke="#2F80ED" strokeWidth="4" strokeLinecap="round" opacity=".75" />
+        </g>
+        <g transform="rotate(5 112 66)">
+          <path d="M82 18h44l14 14v68a6 6 0 0 1-6 6H82a6 6 0 0 1-6-6V24a6 6 0 0 1 6-6Z" fill={url("paperB")} />
+          <path d="M126 18v14h14Z" fill={url("ear")} />
+          <rect x="86" y="30" width="22" height="9" rx="4.5" fill={url("tag")} />
+          <path d="M86 52h40M86 63h32M86 74h40" stroke="#2F80ED" strokeWidth="4" strokeLinecap="round" />
+        </g>
+
+        {/* front of the folder */}
+        <path
+          d="M28 78a7 7 0 0 1 7-8h122a7 7 0 0 1 7 8l-7 52a8 8 0 0 1-8 7H44a8 8 0 0 1-8-7Z"
+          fill={url("front")}
+        />
+        <rect x="52" y="82" width="34" height="9" rx="4.5" fill="#FFFFFF" opacity=".55" />
+        </g>
       </svg>
     );
   }
 
   if (name === "bag") {
     return (
-      <svg fill="none" viewBox="0 0 190 155">
-        <ellipse cx="102" cy="136" fill="#EED8B7" opacity=".8" rx="67" ry="11" />
-        <path d="M44 61h103l-11 64H55L44 61Z" fill="#E9B76E" stroke="#835D38" strokeLinejoin="round" strokeWidth="2.5" />
-        <path d="M65 64V51c0-21 60-21 60 0v13" stroke="#845C37" strokeLinecap="round" strokeWidth="7" />
-        <path d="M79 86h33m-33 12h25" stroke="#FFF1D8" strokeLinecap="round" strokeWidth="6" />
-        <circle cx="141" cy="43" fill="#F9F3E7" r="22" stroke="#835D38" strokeWidth="2" />
-        <path d="M132 43h18m-9-9v18" stroke="#835D38" strokeLinecap="round" strokeWidth="3" />
+      <svg fill="none" viewBox="0 0 190 155" aria-hidden="true">
+        <defs>
+          <linearGradient id={g("pink")} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#FFB3D0" />
+            <stop offset="1" stopColor="#F2558F" />
+          </linearGradient>
+          <linearGradient id={g("pinkSide")} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#E9789F" />
+            <stop offset="1" stopColor="#C93B72" />
+          </linearGradient>
+          <linearGradient id={g("blue")} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#8CC6FF" />
+            <stop offset="1" stopColor="#2C7CF2" />
+          </linearGradient>
+          <linearGradient id={g("blueSide")} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#4D95F0" />
+            <stop offset="1" stopColor="#1B5FCB" />
+          </linearGradient>
+        </defs>
+
+        <g transform="translate(14 8) scale(.86)">
+        <ellipse cx="98" cy="141" rx="64" ry="7" fill="#163B37" opacity=".1" />
+
+        {/* back bag (pink) */}
+        <path d="M62 51v-9a17 17 0 0 1 34 0v9" stroke="#B83A6C" strokeWidth="5" strokeLinecap="round" />
+        <path d="M46 50h60l-3 82H42Z" fill={url("pink")} />
+        <path d="M106 50l10 6-4 72-9 4Z" fill={url("pinkSide")} />
+        <circle cx="62" cy="58" r="3" fill="#7E1F49" opacity=".6" />
+        <circle cx="96" cy="58" r="3" fill="#7E1F49" opacity=".6" />
+
+        {/* front bag (blue) */}
+        <path d="M102 74v-11a18 18 0 0 1 36 0v11" stroke="#163B37" strokeWidth="5" strokeLinecap="round" />
+        <path d="M86 72h66l6 66H82Z" fill={url("blue")} />
+        <path d="M152 72l12 9 4 50-10 7Z" fill={url("blueSide")} />
+        <circle cx="102" cy="81" r="3.2" fill="#163B37" />
+        <circle cx="138" cy="81" r="3.2" fill="#163B37" />
+        <rect x="102" y="104" width="34" height="9" rx="4.5" fill="#FFFFFF" opacity=".55" />
+        </g>
       </svg>
     );
   }
 
   return (
-    <svg fill="none" viewBox="0 0 190 155">
-      <ellipse cx="96" cy="134" fill="#CDD7F0" opacity=".75" rx="69" ry="12" />
-      <g transform="translate(30 35) rotate(-9 65 45)">
-        <path d="M8 9h130v25c-12 2-12 21 0 23v25H8V57c12-2 12-21 0-23V9Z" fill="#E4EAFB" stroke="#5E76A8" strokeWidth="2.6" />
-        <path d="M92 9v73" stroke="#9DAED1" strokeDasharray="6 6" strokeWidth="2" />
-        <path d="M29 32h39m-39 14h30m-30 14h36" stroke="#8299C1" strokeLinecap="round" strokeWidth="5" />
-        <circle cx="115" cy="46" fill="#F2CD91" r="9" />
+    <svg fill="none" viewBox="0 0 190 155" aria-hidden="true">
+      <defs>
+        <linearGradient id={g("ticket")} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#8CC6FF" />
+          <stop offset="1" stopColor="#2C7CF2" />
+        </linearGradient>
+        <linearGradient id={g("inner")} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#F4F9FF" />
+          <stop offset="1" stopColor="#D6F2C8" />
+        </linearGradient>
+        <linearGradient id={g("dot")} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FFE38A" />
+          <stop offset="1" stopColor="#F5B82E" />
+        </linearGradient>
+      </defs>
+
+      <ellipse cx="96" cy="139" rx="62" ry="7" fill="#163B37" opacity=".1" />
+
+      <g transform="rotate(-20 96 76)">
+        {/* ticket body with notches at the tear line */}
+        <path
+          d="M30 46h32a9 9 0 0 0 18 0h70a10 10 0 0 1 10 10v44a10 10 0 0 1-10 10H80a9 9 0 0 0-18 0H30a10 10 0 0 1-10-10V56a10 10 0 0 1 10-10Z"
+          fill={url("ticket")}
+        />
+        {/* stub */}
+        <rect x="29" y="58" width="24" height="40" rx="5" fill="#FFFFFF" opacity=".35" />
+        {/* tear line */}
+        <path d="M71 60v36" stroke="#FFFFFF" strokeWidth="2.5" strokeDasharray="4 4" strokeLinecap="round" />
+        {/* main panel */}
+        <rect x="84" y="56" width="66" height="44" rx="7" fill={url("inner")} />
+        <circle cx="101" cy="72" r="7" fill={url("dot")} />
+        <path d="M95 89h26" stroke="#2F80ED" strokeWidth="4" strokeLinecap="round" />
+        {/* barcode */}
+        <path
+          d="M131 64v28M135 64v28M140 64v28M143 64v28M147 64v28"
+          stroke="#163B37"
+          strokeWidth="2"
+          opacity=".75"
+        />
       </g>
     </svg>
   );
@@ -2171,6 +2323,21 @@ function TransactionRow({
    TRANSACTION HISTORY
 ========================================= */
 
+type TxTypeFilter = "ALL" | "DOCUMENT" | "ITEM";
+
+/* Status filters. Each one matches the status badge shown on the row. */
+const TX_STATUS_FILTERS: { key: string; label: string; matches: string[] }[] = [
+  { key: "PENDING", label: "Pending", matches: ["PENDING", "DRAFT"] },
+  { key: "APPROVED", label: "Approved", matches: ["APPROVED", "RESCHEDULED"] },
+  { key: "UNPAID", label: "Unpaid", matches: ["UNPAID", "FOR_PAYMENT"] },
+  { key: "PAID", label: "Paid", matches: ["PAID"] },
+  { key: "PROCESSING", label: "Processing", matches: ["PROCESSING"] },
+  { key: "READY_FOR_PICKUP", label: "Ready for Pickup", matches: ["READY_FOR_PICKUP", "READY"] },
+  { key: "CLAIMED", label: "Claimed", matches: ["CLAIMED", "COMPLETED", "RELEASED"] },
+  { key: "CANCELLED", label: "Cancelled", matches: ["CANCELLED", "EXPIRED"] },
+  { key: "DECLINED", label: "Declined", matches: ["DECLINED", "REJECTED"] },
+];
+
 function TransactionHistory({
   transactions,
   loading,
@@ -2180,9 +2347,153 @@ function TransactionHistory({
   loading: boolean;
   onSelect: (transaction: StudentTransaction) => void;
 }) {
+  const [typeFilter, setTypeFilter] = useState<TxTypeFilter>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  // The status chips sit on one line; swipe (touch / trackpad) or drag
+  // with a mouse to see the rest. Fades show which side has more.
+  const statusRow = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const drag = useRef<{ x: number; scroll: number; moved: boolean } | null>(null);
+
+  function updateEdges() {
+    const el = statusRow.current;
+    if (!el) return;
+    setEdges({
+      left: el.scrollLeft > 2,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+    });
+  }
+
+  useEffect(() => {
+    updateEdges();
+    window.addEventListener("resize", updateEdges);
+    return () => window.removeEventListener("resize", updateEdges);
+  }, [transactions.length, loading]);
+
+  const ofType = useMemo(
+    () =>
+      typeFilter === "ALL"
+        ? transactions
+        : transactions.filter((transaction) => transaction.kind === typeFilter),
+    [transactions, typeFilter]
+  );
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const filter of TX_STATUS_FILTERS) {
+      counts[filter.key] = ofType.filter((transaction) =>
+        filter.matches.includes(normalizeStatus(transaction.status))
+      ).length;
+    }
+    return counts;
+  }, [ofType]);
+
+  const visible = useMemo(() => {
+    if (statusFilter === "ALL") return ofType;
+    const filter = TX_STATUS_FILTERS.find((item) => item.key === statusFilter);
+    if (!filter) return ofType;
+    return ofType.filter((transaction) =>
+      filter.matches.includes(normalizeStatus(transaction.status))
+    );
+  }, [ofType, statusFilter]);
+
+  const typeCounts = {
+    ALL: transactions.length,
+    DOCUMENT: transactions.filter((transaction) => transaction.kind === "DOCUMENT").length,
+    ITEM: transactions.filter((transaction) => transaction.kind === "ITEM").length,
+  };
+
+  const activeStatusLabel =
+    TX_STATUS_FILTERS.find((item) => item.key === statusFilter)?.label || "";
+
   return (
     <>
       <section className="sdx-panel">
+        {!loading && transactions.length > 0 && (
+          <div className="sdx-txf" role="group" aria-label="Filter transactions">
+            <div className="sdx-txf__types" role="tablist" aria-label="Type">
+              {(
+                [
+                  ["ALL", "All transactions", "grid"],
+                  ["DOCUMENT", "Document requests", "file"],
+                  ["ITEM", "Item reservations", "bag"],
+                ] as const
+              ).map(([key, label, icon]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={typeFilter === key}
+                  className={`sdx-txf__type ${typeFilter === key ? "is-on" : ""}`}
+                  onClick={() => setTypeFilter(key)}
+                  aria-label={`${label} (${typeCounts[key]})`}
+                  title={`${label} (${typeCounts[key]})`}
+                >
+                  <Icon name={icon} size={17} />
+                </button>
+              ))}
+            </div>
+
+            <div
+              ref={statusRow}
+              className={`sdx-txf__statuses ${edges.left ? "has-left" : ""} ${edges.right ? "has-right" : ""}`}
+              aria-label="Status"
+              onScroll={updateEdges}
+              onPointerDown={(event) => {
+                if (event.pointerType !== "mouse" || event.button !== 0) return;
+                drag.current = { x: event.clientX, scroll: event.currentTarget.scrollLeft, moved: false };
+              }}
+              onPointerMove={(event) => {
+                const d = drag.current;
+                if (!d) return;
+                const dx = event.clientX - d.x;
+                if (Math.abs(dx) > 4) d.moved = true;
+                event.currentTarget.scrollLeft = d.scroll - dx;
+              }}
+              onPointerUp={() => {
+                // Let the click through only if the mouse didn't drag.
+                const d = drag.current;
+                drag.current = null;
+                if (d?.moved) {
+                  const block = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); };
+                  window.addEventListener("click", block, { capture: true, once: true });
+                  setTimeout(() => window.removeEventListener("click", block, { capture: true }), 0);
+                }
+              }}
+              onPointerLeave={() => { drag.current = null; }}
+            >
+              <button
+                type="button"
+                className={`sdx-txf__chip ${statusFilter === "ALL" ? "is-on" : ""}`}
+                aria-pressed={statusFilter === "ALL"}
+                onClick={() => setStatusFilter("ALL")}
+              >
+                All
+              </button>
+
+              {TX_STATUS_FILTERS.map((filter) => (
+                <button
+                  key={filter.key}
+                  type="button"
+                  className={`sdx-txf__chip sdx-txf__chip--${filter.key.toLowerCase()} ${
+                    statusFilter === filter.key ? "is-on" : ""
+                  } ${statusCounts[filter.key] === 0 ? "is-empty" : ""}`}
+                  aria-pressed={statusFilter === filter.key}
+                  onClick={() =>
+                    setStatusFilter((current) =>
+                      current === filter.key ? "ALL" : filter.key
+                    )
+                  }
+                >
+                  {filter.label}
+                  <span className="sdx-txf__count">{statusCounts[filter.key]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <DashboardLoading />
         ) : transactions.length === 0 ? (
@@ -2191,9 +2502,29 @@ function TransactionHistory({
             title="No transactions yet"
             text="Your requests and reservations will appear here."
           />
+        ) : visible.length === 0 ? (
+          <div className="sdx-txf__empty">
+            <strong>
+              No {activeStatusLabel ? `${activeStatusLabel.toLowerCase()} ` : ""}
+              {typeFilter === "DOCUMENT"
+                ? "document requests"
+                : typeFilter === "ITEM"
+                  ? "item reservations"
+                  : "transactions"}
+            </strong>
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter("ALL");
+                setStatusFilter("ALL");
+              }}
+            >
+              Clear filters
+            </button>
+          </div>
         ) : (
           <div className="sdx-activity">
-            {transactions.map((transaction) => (
+            {visible.map((transaction) => (
               <TransactionRow
                 key={transaction.key}
                 transaction={transaction}

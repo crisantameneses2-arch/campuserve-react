@@ -1602,3 +1602,41 @@
     overflow: hidden;
   }
 }
+
+/* =========================================================
+   Phone: the item page fits on one screen (no scrolling).
+   Less space around "All items", and the photo area takes
+   whatever height is left after the details.
+========================================================= */
+@media (max-width: 900px) {
+  .sdx .sdx-content:has(.irx--item-view) {
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+
+  .irx.irx--item-view {
+    padding-bottom: 0;
+  }
+
+  .irx.irx--item-view .irx-topline {
+    margin-bottom: 8px;
+  }
+
+  .irx.irx--item-view .irx-back {
+    padding: 6px 11px;
+  }
+
+  .irx.irx--item-view .irx-hero {
+    min-height: 0;
+    height: clamp(150px, calc(100vh - 452px), 320px);
+    height: clamp(150px, calc(100dvh - 452px), 320px);
+    margin: 10px;
+  }
+
+  .irx.irx--item-view .irx-hero__image,
+  .irx.irx--item-view .irx-hero__image.is-cutout {
+    max-height: calc(100% - 22px);
+    width: auto;
+    max-width: 82%;
+  }
+}

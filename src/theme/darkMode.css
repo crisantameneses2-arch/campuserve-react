@@ -96,3 +96,11 @@ html.cs-dark .sdx .sdx-service--sky .sdx-service__circle {
 html.cs-dark .irx .irx-search-note {
   background: #162b3d;
 }
+
+/* Transaction History filters: the selected type / status is filled blue. */
+html.cs-dark .sdx .sdx-txf__type.is-on,
+html.cs-dark .sdx .sdx-txf__chip.is-on {
+  border-color: #2585c5;
+  background: #2585c5;
+  color: #fff;
+}

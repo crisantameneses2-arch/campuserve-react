@@ -1216,6 +1216,120 @@
   text-align: left;
 }
 
+/* ---------- Success animation ---------- */
+
+/* 1. Check mark: disc pops, then the tick draws itself */
+.rwx .rwx-success__mark {
+  animation: none;
+}
+
+.rwx .rwx-success__halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rwx-halo 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
+}
+
+.rwx .rwx-success__disc {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rwx-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1.25) both;
+}
+
+.rwx .rwx-success__tick {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: rwx-tick 0.4s ease-out 0.35s forwards;
+}
+
+@keyframes rwx-halo {
+  0% { opacity: 0; transform: scale(0.5); }
+  60% { opacity: 0.22; transform: scale(1.08); }
+  100% { opacity: 0.12; transform: scale(1); }
+}
+
+@keyframes rwx-tick {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Title and message slide in one after another */
+.rwx .rwx-success__in {
+  animation: rwx-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes rwx-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 2. Paper plane stage, below the message */
+.rwx .rwx-success__plane {
+  position: relative;
+  width: min(230px, 62vw);
+  aspect-ratio: 1;
+  margin: 4px auto 0;
+}
+
+.rwx .rwx-success__plane > div {
+  display: block !important;
+  animation: rwx-rise 0.35s ease both;
+}
+
+.rwx .rwx-success__skip {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8ea3b2;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rwx .rwx-success__skip:hover {
+  color: #1e648d;
+  background: #eef6fa;
+}
+
+.rwx .rwx-success.is-intro .rwx-success__skip {
+  visibility: hidden;
+}
+
+/* 3. The rest of the details rise in */
+.rwx .rwx-success__rest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.rwx .rwx-success__rest > * {
+  animation: rwx-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.rwx .rwx-success__rest > *:nth-child(1) { animation-delay: 0.05s; }
+.rwx .rwx-success__rest > *:nth-child(2) { animation-delay: 0.15s; }
+.rwx .rwx-success__rest > *:nth-child(3) { animation-delay: 0.25s; }
+.rwx .rwx-success__rest > *:nth-child(4) { animation-delay: 0.35s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rwx .rwx-success__halo,
+  .rwx .rwx-success__disc,
+  .rwx .rwx-success__in,
+  .rwx .rwx-success__rest > * {
+    animation: none;
+  }
+
+  .rwx .rwx-success__tick {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 900px) {

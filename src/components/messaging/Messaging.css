@@ -700,6 +700,176 @@
   margin: 0;
 }
 
+/* ---------- Photos ---------- */
+
+.msx .msx-attach {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #d8e7f0;
+  border-radius: 12px;
+  background: #f4f9fc;
+  color: #1e6896;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.msx .msx-attach:hover:not(:disabled) {
+  background: #e6f1f8;
+  color: #17496d;
+}
+
+.msx .msx-attach:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.msx .msx-attach:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.msx .msx-attach-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 6px 8px 6px 6px;
+  border: 1px solid #d8e7f0;
+  border-radius: 12px;
+  background: #f6fafd;
+}
+
+.msx .msx-attach-preview img,
+.msx .msx-attach-preview__busy {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #e3eef5;
+}
+
+.msx .msx-attach-preview__busy {
+  animation: msx-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes msx-pulse {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
+}
+
+.msx .msx-attach-preview__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--msx-muted);
+}
+
+.msx .msx-attach-preview__remove {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #e3eef5;
+  color: #17496d;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.msx .msx-photo {
+  display: block;
+  width: min(240px, 100%);
+  max-height: 320px;
+  margin: 2px 0 6px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 11px;
+  background: #e8f0f6;
+  cursor: zoom-in;
+}
+
+.msx .msx-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.msx .msx-photo:disabled {
+  cursor: default;
+}
+
+.msx .msx-photo__loading {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 90px;
+  animation: msx-pulse 1s ease-in-out infinite alternate;
+}
+
+.msx .msx-photo--failed {
+  display: inline-block;
+  width: auto;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--msx-muted);
+  cursor: default;
+}
+
+.msx .msx-msg.is-mine .msx-photo {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.msx-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 22, 36, 0.86);
+  animation: msx-fade 0.18s ease both;
+}
+
+@keyframes msx-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.msx-viewer img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.msx-viewer__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 @media (max-width: 760px) {
   .msx {
     grid-template-columns: minmax(0, 1fr);
@@ -735,4 +905,13 @@
   .msx .msx-hint {
     display: none;
   }
+}
+
+.msx-viewer__close:focus {
+  outline: none;
+}
+
+.msx-viewer__close:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
 }

@@ -40,7 +40,6 @@ export default function AccountSettings({ studentId = "" }: { studentId?: string
     <div className="account-settings-page">
       <section className="account-settings-section">
         <div className="account-settings-section-heading">
-          <div className="account-settings-section-icon">🌙</div>
           <div>
             <h3>Appearance</h3>
             <p>Choose how CampuServe looks on this device.</p>
@@ -66,7 +65,6 @@ export default function AccountSettings({ studentId = "" }: { studentId?: string
 
       <section className="account-settings-section">
         <div className="account-settings-section-heading">
-          <div className="account-settings-section-icon">🔔</div>
           <div>
             <h3>Notification Preferences</h3>
             <p>Choose which notifications you want to receive.</p>
@@ -114,7 +112,6 @@ export default function AccountSettings({ studentId = "" }: { studentId?: string
 
       <section className="account-settings-section">
         <div className="account-settings-section-heading">
-          <div className="account-settings-section-icon">🔒</div>
           <div>
             <h3>Security</h3>
             <p>Manage your account password.</p>

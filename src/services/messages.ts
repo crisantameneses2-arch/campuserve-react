@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   increment,
   onSnapshot,
@@ -60,12 +61,21 @@ export interface Conversation {
   related: RelatedRef | null;
 }
 
+/** A photo attached to a message. The picture itself is stored in
+ *  "message_images/{id}", so loading a conversation stays light. */
+export interface MessageImageRef {
+  id: string;
+  width: number;
+  height: number;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
   senderRole: "student" | "staff";
   senderName: string;
   text: string;
+  image: MessageImageRef | null;
   related: RelatedRef | null;
   createdAt?: unknown;
 }
@@ -131,17 +141,33 @@ export type SendMessageInput = {
   senderRole: "student" | "staff";
   senderName: string;
   text: string;
+  /** Optional photo, already shrunk to a JPEG data URL (see prepareChatImage). */
+  image?: { dataUrl: string; width: number; height: number } | null;
   related?: RelatedRef | null;
 };
+
+/* Firestore allows about 1 MB per document; keep photos well under that. */
+export const MAX_IMAGE_DATA_URL_LENGTH = 900_000;
 
 export async function sendMessage(
   input: SendMessageInput
 ): Promise<string> {
   const text = input.text.trim();
+  const image = input.image ?? null;
 
-  if (!text) {
+  if (!text && !image) {
     throw new Error(
-      "Please type a message first."
+      "Please type a message or add a photo first."
+    );
+  }
+
+  if (
+    image &&
+    (!image.dataUrl.startsWith("data:image/") ||
+      image.dataUrl.length > MAX_IMAGE_DATA_URL_LENGTH)
+  ) {
+    throw new Error(
+      "This photo is too large to send. Please try a smaller one."
     );
   }
 
@@ -172,6 +198,29 @@ export async function sendMessage(
 
   const batch = writeBatch(db);
 
+  let imageFields = {};
+
+  if (image) {
+    const imageRef = doc(collection(db, "message_images"));
+
+    batch.set(imageRef, {
+      conversationId,
+      studentId: input.studentId,
+      office: input.office,
+      messageId: messageRef.id,
+      dataUrl: image.dataUrl,
+      width: image.width,
+      height: image.height,
+      createdAt: serverTimestamp(),
+    });
+
+    imageFields = {
+      imageId: imageRef.id,
+      imageWidth: image.width,
+      imageHeight: image.height,
+    };
+  }
+
   batch.set(messageRef, {
     messageId: messageRef.id,
     conversationId,
@@ -180,6 +229,7 @@ export async function sendMessage(
     senderRole: input.senderRole,
     senderName: input.senderName,
     text,
+    ...imageFields,
     ...link,
     createdAt: serverTimestamp(),
   });
@@ -196,7 +246,7 @@ export async function sendMessage(
           }
         : {}),
       office: input.office,
-      lastMessage: text.slice(0, 160),
+      lastMessage: text ? text.slice(0, 160) : "📷 Photo",
       lastSenderRole:
         input.senderRole,
       lastSenderName:
@@ -325,6 +375,13 @@ export function subscribeToConversationMessages(
           senderName:
             data.senderName ?? "",
           text: data.text ?? "",
+          image: data.imageId
+            ? {
+                id: String(data.imageId),
+                width: Number(data.imageWidth ?? 0),
+                height: Number(data.imageHeight ?? 0),
+              }
+            : null,
           related:
             readRelated(data),
           createdAt:
@@ -404,4 +461,88 @@ export async function lookupStudent(
       data.name ?? id
     ),
   };
+}
+
+/* ---------------- photos ---------------- */
+
+const imageCache = new Map<string, Promise<string | null>>();
+
+/** Loads a message photo (data URL) once and remembers it. */
+export function loadMessageImage(id: string): Promise<string | null> {
+  const cached = imageCache.get(id);
+  if (cached) return cached;
+
+  const pending: Promise<string | null> = getDoc(doc(db, "message_images", id))
+    .then((snap) => {
+      const value: unknown = snap.exists() ? snap.data().dataUrl : null;
+      return typeof value === "string" ? value : null;
+    })
+    .catch((error: unknown) => {
+      imageCache.delete(id);
+      throw error;
+    });
+
+  imageCache.set(id, pending);
+  return pending;
+}
+
+/**
+ * Shrinks a picked photo so it fits in Firestore: longest side up to
+ * 1280px, JPEG, lowering quality/size until it is small enough.
+ */
+export async function prepareChatImage(
+  file: File
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Please choose a photo (JPG, PNG, WEBP…).");
+  }
+
+  if (file.size > 20 * 1024 * 1024) {
+    throw new Error("That photo is over 20 MB. Please choose a smaller one.");
+  }
+
+  const url = URL.createObjectURL(file);
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("This photo could not be opened."));
+      element.src = url;
+    });
+
+    let longest = 1280;
+    let quality = 0.82;
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const scale = Math.min(1, longest / Math.max(img.naturalWidth, img.naturalHeight));
+      const width = Math.max(1, Math.round(img.naturalWidth * scale));
+      const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("This photo could not be prepared.");
+
+      // White background so transparent PNGs don't turn black as JPEG.
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(img, 0, 0, width, height);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+
+      if (dataUrl.length <= MAX_IMAGE_DATA_URL_LENGTH) {
+        return { dataUrl, width, height };
+      }
+
+      if (quality > 0.6) quality -= 0.1;
+      else longest = Math.round(longest * 0.8);
+    }
+
+    throw new Error("This photo is too large to send. Please try a smaller one.");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

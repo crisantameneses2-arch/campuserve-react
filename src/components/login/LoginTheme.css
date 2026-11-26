@@ -232,6 +232,20 @@ body.cs-owl-login-body {
   transform: translateY(-5px);
 }
 
+/* No box around the owl when it is clicked or tapped.
+   (Keyboard users still get a soft ring from :focus-visible below.) */
+.cs-owl-login .owl-mascot,
+.cs-owl-login .owl-mascot:focus,
+.cs-owl-login .owl-mascot:active {
+  outline: none;
+  border-color: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cs-owl-login .owl-mascot:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .cs-owl-login .owl-mascot svg {
   display: block;
   width: 100%;
@@ -441,6 +455,21 @@ body.cs-owl-login-body {
   color: var(--owl-green);
 }
 
+.cs-owl-login .campuserve-password-toggle:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.cs-owl-login .cs-eye-icon {
+  display: block;
+  width: 26px;
+  height: 26px;
+  transition: transform 0.18s ease;
+}
+
+.cs-owl-login .campuserve-password-toggle:hover .cs-eye-icon {
+  transform: scale(1.08);
+}
+
 .cs-owl-login .campuserve-forgot-row {
   margin-top: -2px;
 }
@@ -520,24 +549,309 @@ body.cs-owl-login-body {
   border-color: #c3d8e7;
 }
 
+/* ---------- Alumni Access (button → verification form) ---------- */
 .cs-owl-login .campuserve-alumni-box {
   margin-top: 27px;
-  padding: 18px 20px;
+  padding: 0;
   border: 1px solid #d8e6f0;
   border-radius: 15px;
   background: #eef5fa;
   text-align: left;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.cs-owl-login .campuserve-alumni-box h3 {
-  font-size: 12.5px;
+.cs-owl-login .campuserve-alumni-box.is-open {
+  border-color: #c6dcec;
+  background: #f6fafd;
+  box-shadow: 0 10px 28px rgba(20, 55, 85, 0.07);
+}
+
+.cs-owl-login .cs-alumni-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cs-owl-login .cs-alumni-toggle:hover {
+  background: #e6f0f8;
+}
+
+.cs-owl-login .cs-alumni-toggle:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.cs-owl-login .cs-alumni-toggle__text {
+  display: grid;
+  gap: 3px;
+}
+
+.cs-owl-login .cs-alumni-toggle__text strong {
+  font-size: 13px;
   color: #2b5878;
 }
 
-.cs-owl-login .campuserve-alumni-box p {
-  font-size: 11px;
+.cs-owl-login .cs-alumni-toggle__text small {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #6f879b;
+}
+
+.cs-owl-login .cs-alumni-toggle__chev {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #d6e6f1;
+}
+
+.cs-owl-login .cs-alumni-toggle__chev::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  border-right: 2px solid #1e6896;
+  border-bottom: 2px solid #1e6896;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease, margin 0.2s ease;
+}
+
+.cs-owl-login .campuserve-alumni-box.is-open .cs-alumni-toggle__chev::before {
+  margin-top: 3px;
+  transform: rotate(-135deg);
+}
+
+.cs-owl-login .cs-alumni-body {
+  padding: 4px 18px 18px;
+  border-top: 1px solid #e1ecf4;
+  animation: cs-alumni-in 0.25s ease both;
+}
+
+@keyframes cs-alumni-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.cs-owl-login .cs-alumni-intro {
+  margin: 12px 0 4px;
+  font-size: 12px;
   line-height: 1.6;
-  color: #8397a8;
+  color: #6f879b;
+}
+
+.cs-owl-login .cs-alumni-form fieldset {
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.cs-owl-login .cs-alumni-form legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #2878a9;
+}
+
+.cs-owl-login .cs-alumni-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.cs-owl-login .cs-alumni-grid .is-wide {
+  grid-column: 1 / -1;
+}
+
+.cs-owl-login .cs-alumni-form label {
+  display: block;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #24496a;
+}
+
+.cs-owl-login .cs-alumni-form label > span {
+  margin-left: 3px;
+  font-weight: 500;
+  color: #93a5b4;
+}
+
+.cs-owl-login .cs-alumni-form label > input:not([type="radio"]):not([type="checkbox"]),
+.cs-owl-login .cs-alumni-form label > select {
+  display: block;
+  margin-top: 5px;
+}
+
+.cs-owl-login .cs-alumni-form input:not([type="radio"]):not([type="checkbox"]),
+.cs-owl-login .cs-alumni-form select {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d6e4ee;
+  border-radius: 10px;
+  background: #fff;
+  color: #1f4462;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.cs-owl-login .cs-alumni-form select:disabled {
+  background: #f1f5f8;
+  color: #9aabb9;
+}
+
+.cs-owl-login .cs-alumni-form input:focus,
+.cs-owl-login .cs-alumni-form select:focus {
+  outline: none;
+  border-color: #2878a9;
+  box-shadow: 0 0 0 3px rgba(40, 120, 169, 0.14);
+}
+
+.cs-owl-login .cs-alumni-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cs-owl-login .cs-alumni-choice label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid #d6e4ee;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cs-owl-login .cs-alumni-choice label.is-on {
+  border-color: #2878a9;
+  background: #e8f2fa;
+  color: #17496d;
+}
+
+.cs-owl-login .cs-alumni-choice input {
+  margin: 0;
+  accent-color: #1e6896;
+}
+
+.cs-owl-login .cs-alumni-year {
+  margin-top: 10px;
+  max-width: 180px;
+}
+
+.cs-owl-login .cs-alumni-consent {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 9px !important;
+  margin-top: 16px;
+  font-weight: 500 !important;
+  font-size: 11.5px !important;
+  line-height: 1.55;
+  color: #57728a !important;
+  cursor: pointer;
+}
+
+.cs-owl-login .cs-alumni-consent input {
+  margin: 2px 0 0;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  accent-color: #1e6896;
+}
+
+.cs-owl-login .cs-alumni-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff1f0;
+  border: 1px solid #f3cfcb;
+  color: #b2382b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cs-owl-login .cs-alumni-submit {
+  width: 100%;
+  height: 46px;
+  margin-top: 14px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(125deg, var(--owl-forest), var(--owl-green) 55%, #2878a9);
+  color: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cs-owl-login .cs-alumni-submit:focus:not(:focus-visible),
+.cs-owl-login .cs-alumni-secondary:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.cs-owl-login .cs-alumni-submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.cs-owl-login .cs-alumni-done {
+  padding: 14px 0 2px;
+}
+
+.cs-owl-login .cs-alumni-done strong {
+  display: block;
+  font-size: 14px;
+  color: #2e7d52;
+}
+
+.cs-owl-login .cs-alumni-done p {
+  margin: 6px 0 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #57728a;
+}
+
+.cs-owl-login .cs-alumni-secondary {
+  padding: 8px 14px;
+  border: 1px solid #c6dcec;
+  border-radius: 10px;
+  background: #fff;
+  color: #1e6896;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 450px) {
+  .cs-owl-login .cs-alumni-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .cs-owl-login .campuserve-info-box {

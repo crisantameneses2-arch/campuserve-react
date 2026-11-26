@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type FormEvent,
   type KeyboardEvent,
 } from "react";
@@ -11,8 +12,10 @@ import {
   OFFICES,
   OFFICE_LABEL,
   conversationIdFor,
+  loadMessageImage,
   lookupStudent,
   markConversationRead,
+  prepareChatImage,
   sendMessage,
   subscribeToConversationMessages,
   subscribeToOfficeConversations,
@@ -260,6 +263,40 @@ export default function MessagesPanel(props: MessagesPanelProps) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
 
+  /* Photo waiting to be sent (already shrunk). */
+  const [pendingImage, setPendingImage] = useState<{
+    dataUrl: string;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [preparingImage, setPreparingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
+
+  async function handlePickImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setPreparingImage(true);
+    setSendError("");
+
+    try {
+      setPendingImage(await prepareChatImage(file));
+    } catch (error) {
+      setSendError(
+        error instanceof Error ? error.message : "This photo could not be added."
+      );
+    } finally {
+      setPreparingImage(false);
+    }
+  }
+
+  // A photo picked for one conversation shouldn't follow you to another.
+  useEffect(() => {
+    setPendingImage(null);
+  }, [selectedConversationId]);
+
   async function handleSend(event?: FormEvent) {
     event?.preventDefault();
 
@@ -267,7 +304,7 @@ export default function MessagesPanel(props: MessagesPanelProps) {
 
     const message = text.trim();
 
-    if (!message) return;
+    if (!message && !pendingImage) return;
 
     setSending(true);
     setSendError("");
@@ -284,9 +321,11 @@ export default function MessagesPanel(props: MessagesPanelProps) {
         senderRole: side,
         senderName,
         text: message,
+        image: pendingImage,
       });
 
       setText("");
+      setPendingImage(null);
 
       // The notification is a bonus; a failure here must not
       // look like the message failed.
@@ -670,7 +709,14 @@ export default function MessagesPanel(props: MessagesPanelProps) {
                           </span>
                         )}
 
-                        <p>{message.text}</p>
+                        {message.image && (
+                          <ChatPhoto
+                            image={message.image}
+                            onOpen={setViewerSrc}
+                          />
+                        )}
+
+                        {message.text && <p>{message.text}</p>}
 
                         {message.related && (
                           <span className="msx-msg__ref">
@@ -691,7 +737,52 @@ export default function MessagesPanel(props: MessagesPanelProps) {
             <form className="msx-composer" onSubmit={handleSend}>
               {sendError && <p className="msx-error">{sendError}</p>}
 
+              {(pendingImage || preparingImage) && (
+                <div className="msx-attach-preview">
+                  {pendingImage ? (
+                    <img src={pendingImage.dataUrl} alt="Photo to send" />
+                  ) : (
+                    <span className="msx-attach-preview__busy" aria-hidden="true" />
+                  )}
+                  <span className="msx-attach-preview__label">
+                    {preparingImage ? "Preparing photo…" : "Photo ready to send"}
+                  </span>
+                  {pendingImage && (
+                    <button
+                      type="button"
+                      className="msx-attach-preview__remove"
+                      onClick={() => setPendingImage(null)}
+                      aria-label="Remove photo"
+                      disabled={sending}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="msx-composer__row">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="msx-visually-hidden"
+                  tabIndex={-1}
+                  onChange={handlePickImage}
+                  aria-hidden="true"
+                />
+
+                <button
+                  type="button"
+                  className="msx-attach"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sending || preparingImage}
+                  aria-label="Add a photo"
+                  title="Add a photo"
+                >
+                  <PhotoIcon />
+                </button>
+
                 <label className="msx-visually-hidden" htmlFor="msx-text">
                   Message
                 </label>
@@ -711,7 +802,9 @@ export default function MessagesPanel(props: MessagesPanelProps) {
                 <button
                   type="submit"
                   className="msx-btn msx-btn--primary msx-send"
-                  disabled={sending || !text.trim()}
+                  disabled={
+                    sending || preparingImage || (!text.trim() && !pendingImage)
+                  }
                 >
                   {sending ? "Sending…" : "Send"}
                 </button>
@@ -724,7 +817,92 @@ export default function MessagesPanel(props: MessagesPanelProps) {
           </>
         )}
       </div>
+
+      {viewerSrc && (
+        <div
+          className="msx-viewer"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo"
+          onClick={() => setViewerSrc(null)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setViewerSrc(null);
+          }}
+        >
+          <img src={viewerSrc} alt="Shared photo" />
+          <button
+            type="button"
+            className="msx-viewer__close"
+            onClick={() => setViewerSrc(null)}
+            aria-label="Close photo"
+            autoFocus
+          >
+            ×
+          </button>
+        </div>
+      )}
     </section>
+  );
+}
+
+/* ---------------- photos ---------------- */
+
+function ChatPhoto({
+  image,
+  onOpen,
+}: {
+  image: { id: string; width: number; height: number };
+  onOpen: (src: string) => void;
+}) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+
+    loadMessageImage(image.id)
+      .then((value) => {
+        if (!live) return;
+        if (value) setSrc(value);
+        else setFailed(true);
+      })
+      .catch(() => live && setFailed(true));
+
+    return () => {
+      live = false;
+    };
+  }, [image.id]);
+
+  const ratio =
+    image.width > 0 && image.height > 0
+      ? `${image.width} / ${image.height}`
+      : "4 / 3";
+
+  if (failed) {
+    return <span className="msx-photo msx-photo--failed">Photo unavailable</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      className="msx-photo"
+      style={{ aspectRatio: ratio }}
+      onClick={() => src && onOpen(src)}
+      disabled={!src}
+      aria-label="Open photo"
+    >
+      {src ? <img src={src} alt="Shared photo" loading="lazy" /> : <span className="msx-photo__loading" />}
+    </button>
+  );
+}
+
+function PhotoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="9" cy="10" r="1.8" fill="currentColor" />
+      <path d="m4.5 17 4.8-4.6a1.5 1.5 0 0 1 2 0l2.2 2 2.2-2a1.5 1.5 0 0 1 2 0l2.8 2.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

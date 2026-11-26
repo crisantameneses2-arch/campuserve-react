@@ -1272,53 +1272,67 @@ body.sdx-body {
   animation: sdx-a-float 2.8s ease-in-out infinite;
 }
 
-/* pending: sand drains top → bottom, the hourglass turns over, and the
-   sand keeps draining; two turns make one seamless loop (no jump back).
-   A sand rect anchored at the neck (+) or at the cap (−) sets each level. */
-.sdx .sdx-a-turn.sdx-anim {
-  animation: sdx-a-turn 6s ease-in-out infinite;
+/* pending: like the reference hourglass, one 1.4 s loop —
+   rest → small tilt → quick flip (with a little overshoot) →
+   sand drains as falling dots → rest. */
+.sdx .sdx-a-hg.sdx-anim {
+  animation: sdx-a-hg 1.4s infinite;
 }
 
-.sdx .sdx-a-sand-top.sdx-anim {
-  animation: sdx-a-sand-top 6s ease-in-out infinite;
+.sdx .sdx-a-hg-top.sdx-anim {
+  transform-origin: 32px 31.2px;
+  animation: sdx-a-hg-top 1.4s linear infinite;
 }
 
-.sdx .sdx-a-sand-bottom.sdx-anim {
-  animation: sdx-a-sand-bottom 6s ease-in-out infinite;
+.sdx .sdx-a-hg-bottom.sdx-anim {
+  transform-origin: 32px 49.5px;
+  animation: sdx-a-hg-bottom 1.4s linear infinite;
 }
 
-.sdx .sdx-a-stream.sdx-anim {
-  animation: sdx-a-stream 6s linear infinite;
+.sdx .sdx-a-hg-stream.sdx-anim {
+  animation: sdx-a-hg-stream 1.4s linear infinite;
 }
 
-@keyframes sdx-a-turn {
-  0%, 40% { transform: rotate(0deg); }
-  50%, 90% { transform: rotate(180deg); }
-  100% { transform: rotate(360deg); }
+.sdx .sdx-a-hg-drip.sdx-anim {
+  animation: sdx-a-hg-drip 0.2s linear infinite;
 }
 
-@keyframes sdx-a-sand-top {
-  0% { transform: translateY(4px); }
-  40% { transform: translateY(16px); }
-  40.1% { transform: translateY(-16px); }
-  90% { transform: translateY(-4px); }
-  100% { transform: translateY(4px); }
+@keyframes sdx-a-hg {
+  0%, 14% { transform: rotate(0deg); animation-timing-function: ease-out; }
+  20% { transform: rotate(-9deg); animation-timing-function: cubic-bezier(0.55, 0, 0.35, 1); }
+  35% { transform: rotate(190deg); animation-timing-function: ease-out; }
+  39.9% { transform: rotate(180deg); }
+  40%, 100% { transform: rotate(0deg); }
 }
 
-@keyframes sdx-a-sand-bottom {
-  0% { transform: translateY(16px); }
-  40% { transform: translateY(4px); }
-  50% { transform: translateY(-4px); }
-  90% { transform: translateY(-16px); }
-  90.1%, 100% { transform: translateY(16px); }
+@keyframes sdx-a-hg-top {
+  0%, 39.9% { transform: scale(0); }
+  40%, 43% { transform: scale(1); }
+  80%, 100% { transform: scale(0); }
 }
 
-@keyframes sdx-a-stream {
-  0%, 2% { opacity: 0; }
-  5%, 36% { opacity: 1; }
-  40%, 52% { opacity: 0; }
-  55%, 86% { opacity: 1; }
-  90%, 100% { opacity: 0; }
+@keyframes sdx-a-hg-bottom {
+  0%, 39.9% { transform: scale(1); }
+  40%, 43% { transform: scale(0.1); }
+  80%, 100% { transform: scale(1); }
+}
+
+@keyframes sdx-a-hg-stream {
+  0%, 42% { opacity: 0; }
+  44%, 78% { opacity: 1; }
+  81%, 100% { opacity: 0; }
+}
+
+@keyframes sdx-a-hg-drip {
+  from { transform: translateY(-4px); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sdx .sdx-a-hg-top,
+  .sdx .sdx-a-hg-stream {
+    display: none;
+  }
 }
 
 /* approved / claimed: the check badge pops in, holds, and resets */
@@ -2466,12 +2480,59 @@ body.sdx-body {
     font-size: 8px;
   }
 
+  /* Phone header: one size for every page, never cut off.
+     Long titles wrap to a second line instead of showing "…". */
+  .sdx .sdx-topbar {
+    gap: 10px;
+    padding: 0 14px;
+  }
+
+  .sdx .sdx-topbar__left {
+    gap: 10px;
+    flex: 1 1 auto;
+  }
+
+  .sdx .sdx-topbar__title {
+    flex: 1 1 auto;
+  }
+
   .sdx .sdx-topbar__title strong {
-    font-size: 17px;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+    line-height: 1.15;
   }
 
   .sdx .sdx-top-actions {
-    gap: 8px;
+    gap: 6px;
+    flex: none;
+  }
+
+  .sdx .sdx-menu-btn {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+  }
+
+  .sdx .sdx-bell {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 12px;
+  }
+
+  .sdx .sdx-avatar {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
   }
 
   .sdx .sdx-content {
@@ -2565,4 +2626,314 @@ body.sdx-body {
     animation: none !important;
     transition: none !important;
   }
+}
+
+
+/* =========================================================
+   Owl perched on top of Live tracking
+   (head peeks over the card's top edge, body hidden behind it)
+========================================================= */
+.sdx .sdx-track-wrap {
+  position: relative;
+  padding-top: 50px;
+}
+
+.sdx .sdx-track-wrap > .sdx-track {
+  position: relative;
+  z-index: 1;
+}
+
+.sdx .sdx-track-owl {
+  position: absolute;
+  top: 0;
+  right: clamp(110px, 16%, 190px);
+  z-index: 0;
+  width: 74px;
+  pointer-events: none;
+}
+
+.sdx .sdx-track-owl .owl-mascot {
+  pointer-events: auto;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  transform-origin: center 80%;
+  filter: drop-shadow(0 6px 8px rgba(5, 30, 52, 0.18));
+  transition: transform 0.25s ease;
+  animation: sdx-owl-peek 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sdx .sdx-track-owl .owl-mascot:hover {
+  border-color: transparent;
+  transform: translateY(-4px);
+}
+
+.sdx .sdx-track-owl .owl-mascot:focus {
+  outline: none;
+}
+
+.sdx .sdx-track-owl .owl-mascot:focus-visible {
+  outline: 3px solid var(--sdx-sun);
+  outline-offset: 2px;
+  border-radius: 14px;
+}
+
+.sdx .sdx-track-owl .owl-mascot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.sdx .sdx-track-owl .owl-mascot .wing,
+.sdx .sdx-track-owl .owl-mascot .eye {
+  transform-box: view-box;
+}
+
+@keyframes sdx-owl-peek {
+  from { transform: translateY(46px); }
+  to { transform: none; }
+}
+
+@media (max-width: 600px) {
+  .sdx .sdx-track-wrap {
+    padding-top: 42px;
+  }
+
+  .sdx .sdx-track-owl {
+    width: 62px;
+    right: 128px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sdx .sdx-track-owl .owl-mascot {
+    animation: none;
+  }
+}
+
+/* =========================================================
+   Transaction history filters
+========================================================= */
+/* Filters: square icon buttons for the type, then status chips. */
+.sdx .sdx-txf {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e6eef0;
+}
+
+.sdx .sdx-txf__types {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+}
+
+.sdx .sdx-txf__type {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid #c9d7e2;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--sdx-forest);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.sdx .sdx-txf__type:hover {
+  border-color: #9fb8ca;
+  background: #f3f8fb;
+}
+
+.sdx .sdx-txf__type.is-on {
+  border-color: var(--sdx-forest);
+  background: var(--sdx-forest);
+  color: #fff;
+}
+
+.sdx .sdx-txf__statuses {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+  user-select: none;
+}
+
+.sdx .sdx-txf__statuses:active {
+  cursor: grabbing;
+}
+
+/* Soft fades on the side(s) with more chips to swipe to. */
+.sdx .sdx-txf__statuses.has-right {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+}
+
+.sdx .sdx-txf__statuses.has-left {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 48px);
+  mask-image: linear-gradient(90deg, transparent, #000 48px);
+}
+
+.sdx .sdx-txf__statuses.has-left.has-right {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+}
+
+.sdx .sdx-txf__statuses::-webkit-scrollbar {
+  display: none;
+}
+
+.sdx .sdx-txf__chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1.5px solid #c9d7e2;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--sdx-forest);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.sdx .sdx-txf__chip:hover {
+  border-color: #9fb8ca;
+  background: #f3f8fb;
+}
+
+/* Small count after each status; hidden when there are none. */
+.sdx .sdx-txf__count {
+  font-size: 11px;
+  font-weight: 800;
+  color: #7f97aa;
+}
+
+.sdx .sdx-txf__chip.is-empty {
+  color: #9aabb6;
+}
+
+.sdx .sdx-txf__chip.is-empty .sdx-txf__count {
+  display: none;
+}
+
+.sdx .sdx-txf__chip.is-on {
+  border-color: var(--sdx-forest);
+  background: var(--sdx-forest);
+  color: #fff;
+}
+
+.sdx .sdx-txf__chip.is-on .sdx-txf__count {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.sdx .sdx-txf__type:focus:not(:focus-visible),
+.sdx .sdx-txf__chip:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.sdx .sdx-txf__empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 34px 12px;
+  text-align: center;
+  color: #6f879b;
+  font-size: 13px;
+}
+
+.sdx .sdx-txf__empty strong {
+  color: var(--sdx-forest);
+  font-size: 14px;
+}
+
+.sdx .sdx-txf__empty button {
+  padding: 8px 14px;
+  border: 1px solid #d5e4df;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--sdx-blue-deep);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* =========================================================
+   Messages on phones: fill exactly the visible screen.
+   100dvh = the real visible height (address bar excluded), so the
+   message box and composer are never pushed off-screen.
+   (Student dashboard only; staff dashboards keep their layout.)
+========================================================= */
+@media (max-width: 760px) {
+  .sdx .sdx-content:has(.msx) {
+    padding: 10px 10px 10px;
+  }
+
+  .sdx .msx {
+    height: calc(100vh - 92px);
+    height: calc(100dvh - 92px);
+    min-height: 320px;
+    border-radius: 16px;
+  }
+
+  .sdx .msx .msx-chat__head {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .sdx .msx .msx-messages {
+    padding: 12px 10px;
+  }
+
+  .sdx .msx .msx-msg {
+    max-width: 88%;
+  }
+
+  .sdx .msx .msx-composer {
+    padding: 8px 10px 10px;
+  }
+
+  .sdx .msx .msx-composer__row {
+    gap: 8px;
+  }
+
+  .sdx .msx .msx-send {
+    min-width: 0;
+    padding-inline: 14px;
+  }
+}
+
+/* No outline box after clicking or tapping a button in the student
+   dashboard (keyboard focus still shows its ring). */
+.sdx button:focus:not(:focus-visible),
+.sdx [role="button"]:focus:not(:focus-visible) {
+  outline: none;
 }
