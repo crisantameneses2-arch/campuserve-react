@@ -2990,3 +2990,21 @@ body.sdx-body {
 .sdx [role="button"]:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* ---------- Success screens (document request + item reservation) ----------
+   No spare space under the card, and the page itself stays put: the card
+   is sized to fit the screen (see the wizard / item reservation styles). */
+.sdx .sdx-content:has(.rwx-success, .irx-success) {
+  padding-bottom: 12px;
+}
+
+.sdx .sdx-content:has(.rwx-success, .irx-success) .irx {
+  padding-bottom: 0;
+}
+
+@media (min-height: 440px) {
+  html:has(.sdx .rwx-success, .sdx .irx-success),
+  html:has(.sdx .rwx-success, .sdx .irx-success) body {
+    overflow: hidden;
+  }
+}

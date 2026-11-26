@@ -1841,3 +1841,41 @@
 .irx:has(> .irx-success) {
   padding-bottom: 0;
 }
+
+/* Shorter screens: tighten the success card so it fits without scrolling. */
+@media (max-height: 760px) and (max-width: 899px) {
+  .irx .irx-success { padding: 18px 18px 18px; }
+  .irx .irx-success__mark { width: 48px; height: 48px; margin-bottom: 6px; }
+  .irx .irx-success h2 { margin: 4px 0 3px; font-size: 21px; }
+  .irx .irx-success__head > p { font-size: 11.5px; line-height: 1.45; }
+  .irx .irx-success__plane { width: min(160px, 42vw, 26vh); }
+  .irx .irx-success__ref { margin: 10px 0 8px; padding: 6px 18px; }
+  .irx .irx-success__details { margin: 0 0 10px; }
+  .irx .irx-success__details > div { padding: 5px 0; }
+}
+
+@media (max-height: 580px) and (max-width: 899px) {
+  .irx .irx-success { padding: 14px 16px; }
+  .irx .irx-success__mark { width: 40px; height: 40px; margin-bottom: 4px; }
+  .irx .irx-success h2 { font-size: 19px; }
+  .irx .irx-success__head > p { font-size: 11px; }
+  /* the detail rows sit two per line */
+  .irx .irx-success__details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 18px;
+  }
+  .irx .irx-success__details > div { padding: 4px 0; }
+  .irx .irx-success__ref { margin: 8px 0 6px; padding: 5px 16px; }
+}
+
+@media (max-height: 600px) and (min-width: 900px) {
+  .irx .irx-success { padding: 20px 36px; }
+  .irx .irx-success__body { min-height: 0; }
+  .irx .irx-success__details > div { padding: 5px 0; }
+  .irx .irx-success__ref { margin: 4px 0 8px; }
+}
+
+@media (max-height: 580px) and (max-width: 899px) {
+  .irx .irx-success__actions .irx-btn { min-height: 38px; }
+}
