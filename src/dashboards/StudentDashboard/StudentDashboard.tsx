@@ -1663,7 +1663,6 @@ function TrackingContent({
         <div className="sdx-tl__side is-prev" aria-hidden="true">
           <span className="sdx-tl__mini">
             <StageArt stage={stageKey(previousLabel)} />
-            <i className="sdx-tl__tick">✓</i>
           </span>
           <small>{previousLabel}</small>
         </div>

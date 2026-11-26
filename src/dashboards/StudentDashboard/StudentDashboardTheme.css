@@ -1180,23 +1180,6 @@ body.sdx-body {
   height: 30px;
 }
 
-.sdx .sdx-tl__tick {
-  position: absolute;
-  top: -3px;
-  right: -7px;
-  display: grid;
-  place-items: center;
-  width: 14px;
-  height: 14px;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: var(--sdx-leaf);
-  color: #fff;
-  font-size: 7px;
-  font-style: normal;
-  font-weight: 900;
-}
-
 .sdx .sdx-tl__side.is-prev {
   opacity: 0.85;
 }

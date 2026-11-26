@@ -958,12 +958,6 @@ html.cs-dark .sdx .sdx-tl__side small {
   color: #92a7b8;
 }
 
-html.cs-dark .sdx .sdx-tl__tick {
-  border: 2px solid #162b3d;
-  background: #2585c5;
-  color: #f2f6fa;
-}
-
 html.cs-dark .sdx .sdx-tl__now strong {
   color: #f2f6fa;
 }
