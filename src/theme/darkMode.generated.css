@@ -2824,37 +2824,6 @@ html.cs-dark .rwx .rwx-step-line.is-filled {
   background: #29475d;
 }
 
-html.cs-dark .rwx .rwx-recap {
-  border: 1px solid #264358;
-  border-left: 4px solid #45a9e0;
-  background: linear-gradient(145deg, #0b1724, #0b1724);
-}
-
-html.cs-dark .rwx .rwx-recap__head p {
-  color: #93a9b9;
-}
-
-html.cs-dark .rwx .rwx-recap__grid dt {
-  color: #8198aa;
-}
-
-html.cs-dark .rwx .rwx-recap__grid dd {
-  color: #f2f6fa;
-}
-
-html.cs-dark .rwx .rwx-recap__chip {
-  border: 1px solid #254157;
-  background: #162b3d;
-}
-
-html.cs-dark .rwx .rwx-recap__chip b {
-  color: #45a9e0;
-}
-
-html.cs-dark .rwx .rwx-recap__empty {
-  color: #7e95a7;
-}
-
 html.cs-dark .rwx .rwx-screen-heading h2 {
   color: #f2f6fa;
 }
