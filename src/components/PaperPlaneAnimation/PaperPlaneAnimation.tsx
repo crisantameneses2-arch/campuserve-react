@@ -27,6 +27,8 @@ type Props = {
   loop?: boolean;
   playing?: boolean;
   onComplete?: () => void;
+  /** Let the plane fly past the box and off the screen (longer flight, not clipped). */
+  escape?: boolean;
   className?: string;
   style?: CSSProperties;
 };
@@ -38,6 +40,7 @@ export default function PaperPlaneAnimation({
   loop = true,
   playing = true,
   onComplete,
+  escape = false,
   className,
   style,
 }: Props) {
@@ -78,7 +81,7 @@ export default function PaperPlaneAnimation({
     return () => cancelAnimationFrame(raf);
   }, [playing, loop, duration]);
 
-  const f = frame(t, pal);
+  const f = frame(t, pal, escape ? 4 : 1);
   const id = (name: string) => `${uid}-${name}`;
   const fill = (value: string) =>
     value.replace(/url\(#dp(\w+)\)/, (_match, name: string) => `url(#${id(name)})`);
@@ -91,7 +94,7 @@ export default function PaperPlaneAnimation({
         height: size,
         background: pal.bg,
         display: "inline-block",
-        overflow: "hidden",
+        overflow: escape ? "visible" : "hidden",
         ...style,
       }}
     >
@@ -99,6 +102,7 @@ export default function PaperPlaneAnimation({
         viewBox="0 0 400 400"
         width="100%"
         height="100%"
+        style={escape ? { overflow: "visible" } : undefined}
         role="img"
         aria-label="A document folds into a paper airplane and flies away"
       >

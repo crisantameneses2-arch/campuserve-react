@@ -1472,3 +1472,31 @@
 @media (max-height: 580px) and (max-width: 899px) {
   .rwx .rwx-success .rwx-btn { min-height: 38px; }
 }
+
+/* ---------- Bigger paper plane that flies off the screen ---------- */
+.rwx .rwx-success__plane {
+  position: relative;
+  z-index: 40; /* flies over the top bar */
+  width: min(280px, 72vw, 40vh);
+}
+
+@media (min-width: 900px) {
+  .rwx .rwx-success__plane {
+    width: min(300px, 26vw, 46vh);
+  }
+}
+
+/* While the plane is showing, nothing clips it: it leaves the screen. */
+.rwx .rwx-shell:has(.rwx-success.is-plane),
+.rwx .rwx-shell:has(.rwx-success.is-intro),
+.rwx .rwx-success.is-plane,
+.rwx .rwx-success.is-intro {
+  overflow: visible;
+}
+
+
+@media (max-height: 580px) and (max-width: 899px) {
+  .rwx .rwx-success__plane {
+    width: min(250px, 72vw, 36vh);
+  }
+}

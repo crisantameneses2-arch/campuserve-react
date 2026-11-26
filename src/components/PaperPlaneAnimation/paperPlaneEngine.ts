@@ -190,7 +190,7 @@ function planePoint(p, it, P) {
   return [200 + X + P.sx, PLANE_C[1] + Y + P.sy, Z + P.lift];
 }
 
-function frame(t, pal) {
+function frame(t, pal, fly = 1) {
   t = t * BASE / TOTAL;
   let polys = [];
   let cx = 200, cy = 200, k = K_UP, q = Q_UP, tx = 0, ty = 0, op = 1, mode = 'stack', lines = 0, trail = 0, shadow = 0;
@@ -232,6 +232,9 @@ function frame(t, pal) {
       P.pitch = -0.22 * a1 - 0.12 * f;
       P.sy = 10 * a1 - 520 * f;                              // forward = toward the nose (-y)
       P.lift += -4 * a1 + 150 * f;
+      // fly > 1: also travel across the screen (up and to the right) so the
+      // plane leaves the screen instead of only shrinking into the distance.
+      if (fly > 1) { tx = 330 * fly * f; ty = -165 * fly * f; }
       shadow = 1 - seg(t, [T_FLY[0], T_FLY[0] + 0.2]);
       trail = seg(t, [T_FLY[0] + 0.03, T_FLY[0] + 0.08]) * (1 - seg(t, [T_FLY[1] - 0.08, T_FLY[1]]));
     }
