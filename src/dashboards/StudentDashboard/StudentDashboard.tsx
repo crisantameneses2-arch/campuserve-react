@@ -1433,18 +1433,29 @@ function TrackingBox({
   const safeIndex = count === 0 ? 0 : Math.min(activeIndex, count - 1);
   const current = transactions[safeIndex];
 
-  // Automatically rotate every 5 seconds (paused on hover / focus).
+  // Which way the new card slides in from.
+  const [direction, setDirection] = useState<"next" | "prev">("next");
+
+  // Swipe: the card follows the finger, then slides to the next or
+  // previous one (or springs back if the swipe was too short).
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const pointer = useRef<{ id: number; x: number; y: number; horizontal: boolean | null } | null>(null);
+  const swiped = useRef(false);
+
+  // Automatically rotate every 5 seconds (paused on hover / focus / drag).
   useEffect(() => {
-    if (count <= 1 || paused) return;
+    if (count <= 1 || paused || dragging) return;
 
     const timer = window.setInterval(() => {
+      setDirection("next");
       setActiveIndex((index) => (index + 1) % count);
     }, 5000);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [count, paused]);
+  }, [count, paused, dragging]);
 
   // Reset when the number of tracked transactions changes.
   useEffect(() => {
@@ -1452,11 +1463,61 @@ function TrackingBox({
   }, [count]);
 
   function previous() {
-    setActiveIndex((index) => Math.max(0, index - 1));
+    if (safeIndex === 0) return;
+    setDirection("prev");
+    setActiveIndex(safeIndex - 1);
   }
 
   function next() {
-    setActiveIndex((index) => Math.min(count - 1, index + 1));
+    if (safeIndex >= count - 1) return;
+    setDirection("next");
+    setActiveIndex(safeIndex + 1);
+  }
+
+  function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (count <= 1 || (event.pointerType === "mouse" && event.button !== 0)) return;
+    pointer.current = { id: event.pointerId, x: event.clientX, y: event.clientY, horizontal: null };
+    swiped.current = false;
+  }
+
+  function onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const start = pointer.current;
+    if (!start || start.id !== event.pointerId) return;
+
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+
+    // Decide once whether this is a sideways swipe or a page scroll.
+    if (start.horizontal === null) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      start.horizontal = Math.abs(dx) > Math.abs(dy);
+      if (start.horizontal) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        setDragging(true);
+      }
+    }
+
+    if (!start.horizontal) return;
+
+    // Resist at the ends, where there is nothing to swipe to.
+    const atEdge = (dx > 0 && safeIndex === 0) || (dx < 0 && safeIndex === count - 1);
+    setDragX(atEdge ? dx * 0.25 : dx);
+  }
+
+  function onPointerEnd(event: React.PointerEvent<HTMLDivElement>) {
+    const start = pointer.current;
+    if (!start || start.id !== event.pointerId) return;
+    pointer.current = null;
+
+    if (start.horizontal) {
+      const dx = event.clientX - start.x;
+      swiped.current = Math.abs(dx) > 8; // a drag is not a click
+      if (dx <= -45) next();
+      else if (dx >= 45) previous();
+    }
+
+    setDragging(false);
+    setDragX(0);
   }
 
   return (
@@ -1492,24 +1553,37 @@ function TrackingBox({
         </div>
       ) : (
         <>
-          <div
-            className="sdx-track-slide"
-            role="button"
-            tabIndex={0}
-            key={current.key}
-            onClick={() => onSelect(current)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
+          <div className="sdx-track-viewport">
+            <div
+              className={`sdx-track-slide is-from-${direction} ${dragging ? "is-dragging" : ""}`}
+              role="button"
+              tabIndex={0}
+              key={current.key}
+              style={dragX ? { transform: `translateX(${dragX}px)` } : undefined}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerEnd}
+              onPointerCancel={onPointerEnd}
+              onClick={() => {
+                if (swiped.current) {
+                  swiped.current = false;
+                  return;
+                }
                 onSelect(current);
-              }
-            }}
-            aria-label={`View details for ${current.title}`}
-          >
-            <TrackingContent
-              transaction={current}
-              position={{ index: safeIndex + 1, count }}
-            />
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(current);
+                }
+              }}
+              aria-label={`View details for ${current.title}`}
+            >
+              <TrackingContent
+                transaction={current}
+                position={{ index: safeIndex + 1, count }}
+              />
+            </div>
           </div>
 
           {/* The card itself opens the details; arrows only when there are several. */}
