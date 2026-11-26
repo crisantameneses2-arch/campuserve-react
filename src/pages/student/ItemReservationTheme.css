@@ -1751,3 +1751,93 @@
     stroke-dashoffset: 0;
   }
 }
+
+/* ---------- Success screen fits on one screen (laptop and phone) ----------
+   Compact sizes everywhere; on wide screens the check mark, title and
+   message sit on the left and the paper plane / details on the right. */
+
+.irx .irx-success {
+  padding: 26px 22px 24px;
+}
+
+.irx .irx-success__head,
+.irx .irx-success__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.irx .irx-success__mark {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 10px;
+}
+
+.irx .irx-success h2 {
+  margin: 6px 0 4px;
+  font-size: 24px;
+}
+
+.irx .irx-success__head > p {
+  max-width: 440px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.irx .irx-success__plane {
+  width: min(190px, 46vw, 30vh);
+  margin: 6px auto 0;
+}
+
+.irx .irx-success__ref {
+  margin: 14px 0 10px;
+  padding: 9px 22px;
+}
+
+.irx .irx-success__details {
+  margin: 0 0 14px;
+}
+
+.irx .irx-success__details > div {
+  padding: 7px 0;
+}
+
+@media (min-width: 900px) {
+  .irx .irx-success {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 44px;
+    padding: 30px 40px;
+  }
+
+  .irx .irx-success__body {
+    min-height: 230px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 899px) {
+  .irx .irx-success__head > p {
+    font-size: 12px;
+  }
+}
+
+/* Item reservation: two buttons side by side, and a shorter list. */
+.irx .irx-success__actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 16px;
+}
+
+.irx .irx-success__actions .irx-btn {
+  min-height: 44px;
+}
+
+/* No room needed for the reservation bar on the success screen. */
+.irx:has(> .irx-success) {
+  padding-bottom: 0;
+}

@@ -1361,3 +1361,76 @@
 .rwx .rwx-found__invite {
   flex: 0 0 auto;
 }
+
+/* ---------- Success screen fits on one screen (laptop and phone) ----------
+   Compact sizes everywhere; on wide screens the check mark, title and
+   message sit on the left and the paper plane / details on the right. */
+
+.rwx .rwx-success {
+  padding: 26px 22px 24px;
+}
+
+.rwx .rwx-success__head,
+.rwx .rwx-success__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.rwx .rwx-success__mark {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 10px;
+}
+
+.rwx .rwx-success h2 {
+  margin: 6px 0 4px;
+  font-size: 24px;
+}
+
+.rwx .rwx-success__head > p {
+  max-width: 440px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.rwx .rwx-success__plane {
+  width: min(190px, 46vw, 30vh);
+  margin: 6px auto 0;
+}
+
+.rwx .rwx-success__ref {
+  margin: 14px 0 10px;
+  padding: 9px 22px;
+}
+
+.rwx .rwx-success__details {
+  margin: 0 0 14px;
+}
+
+.rwx .rwx-success__details > div {
+  padding: 7px 0;
+}
+
+@media (min-width: 900px) {
+  .rwx .rwx-success {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 44px;
+    padding: 30px 40px;
+  }
+
+  .rwx .rwx-success__body {
+    min-height: 230px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 899px) {
+  .rwx .rwx-success__head > p {
+    font-size: 12px;
+  }
+}

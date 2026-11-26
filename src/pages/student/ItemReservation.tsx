@@ -669,6 +669,7 @@ export default function ItemReservation({
     return (
       <div className="irx">
         <section className={`irx-success is-${successPhase}`} aria-live="polite">
+          <div className="irx-success__head">
           <span className="irx-success__mark" aria-hidden="true">
             <svg viewBox="0 0 76 76" fill="none">
               <circle className="irx-success__halo" cx="38" cy="38" r="35" fill="currentColor" opacity=".12" />
@@ -700,6 +701,9 @@ export default function ItemReservation({
             its progress from your dashboard.
           </p>
 
+          </div>
+
+          <div className="irx-success__body">
           {successPhase !== "details" && (
             <div className="irx-success__plane">
               {successPhase === "plane" && (
@@ -765,6 +769,7 @@ export default function ItemReservation({
               </div>
             </div>
           )}
+          </div>
         </section>
       </div>
     );

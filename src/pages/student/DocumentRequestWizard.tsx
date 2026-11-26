@@ -1319,6 +1319,7 @@ export default function DocumentRequestWizard({
       <div className="rwx">
         <section className="rwx-shell">
           <div className={`rwx-success is-${successPhase}`} aria-live="polite">
+            <div className="rwx-success__head">
             <span className="rwx-success__mark" aria-hidden="true">
               <svg viewBox="0 0 76 76" fill="none">
                 <circle className="rwx-success__halo" cx="38" cy="38" r="35" fill="currentColor" opacity=".12" />
@@ -1341,6 +1342,9 @@ export default function DocumentRequestWizard({
               dashboard.
             </p>
 
+            </div>
+
+            <div className="rwx-success__body">
             {successPhase !== "details" && (
               <div className="rwx-success__plane">
                 {successPhase === "plane" && (
@@ -1426,6 +1430,7 @@ export default function DocumentRequestWizard({
             </button>
             </div>
             )}
+            </div>
           </div>
         </section>
       </div>
