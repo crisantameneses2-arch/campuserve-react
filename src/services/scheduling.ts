@@ -1,7 +1,7 @@
 import { collection, doc, getDocs, runTransaction } from "firebase/firestore";
 
 import { db } from "../../firebase";
-import { MAX_RESCHEDULES, RESCHEDULE_WINDOW_DAYS } from "../constants/policies";
+import { getPolicies } from "./settings";
 import { normalizeStatus } from "../utils/format";
 
 /* =========================================================
@@ -46,37 +46,72 @@ export const sameSlot = (
  * with free capacity, not already in the past, and not the current slot.
  * Sorted soonest first, so index 0 is the "next available slot".
  */
+
 export async function getAvailableSlots(current?: {
   date?: string;
   time?: string;
 }): Promise<ClaimSlot[]> {
-  const snapshot = await getDocs(collection(db, "claimingSchedules"));
+  const { rescheduleWindowDays } = await getPolicies();
+
+  // Retrieve available claiming schedules from Firestore.
+  const schedulesRef = collection(db, "claimingSchedules");
+  const snapshot = await getDocs(schedulesRef);
 
   const now = new Date();
+
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
+
   const last = new Date(today);
-  last.setDate(last.getDate() + RESCHEDULE_WINDOW_DAYS);
+  last.setDate(last.getDate() + rescheduleWindowDays);
+
   const minutesNow = now.getHours() * 60 + now.getMinutes();
 
   return snapshot.docs
     .map((d) => {
       const data = d.data();
+
       return {
         id: d.id,
         claimDate: String(data.claimDate ?? ""),
         timeSlot: String(data.timeSlot ?? ""),
-        availableSlot: Number(data.availableSlot ?? data.availableSlots ?? 0),
-      } as ClaimSlot;
+        availableSlot: Number(
+          data.availableSlot ?? data.availableSlots ?? 0
+        ),
+      };
     })
     .filter((slot) => {
-      if (!slot.claimDate || !slot.timeSlot || slot.availableSlot <= 0) return false;
-      const date = new Date(`${slot.claimDate}T00:00:00`);
-      if (Number.isNaN(date.getTime()) || date < today || date > last) return false;
-      if (date.getTime() === today.getTime() && startMinutes(slot.timeSlot) <= minutesNow) {
+      if (
+        !slot.claimDate ||
+        !slot.timeSlot ||
+        slot.availableSlot <= 0
+      ) {
         return false;
       }
-      return !sameSlot(slot.claimDate, slot.timeSlot, current?.date, current?.time);
+
+      const date = new Date(`${slot.claimDate}T00:00:00`);
+
+      if (
+        Number.isNaN(date.getTime()) ||
+        date < today ||
+        date > last
+      ) {
+        return false;
+      }
+
+      if (
+        date.getTime() === today.getTime() &&
+        startMinutes(slot.timeSlot) <= minutesNow
+      ) {
+        return false;
+      }
+
+      return !sameSlot(
+        slot.claimDate,
+        slot.timeSlot,
+        current?.date,
+        current?.time
+      );
     })
     .sort(
       (a, b) =>
@@ -154,6 +189,7 @@ export async function rescheduleWithSlot(args: {
   newSlot: ClaimSlot;
 }): Promise<{ date: string; time: string; count: number; previousStatus: string }> {
   const { fields: f, docId, allowedStatuses, newSlot } = args;
+  const { maxReschedules } = await getPolicies();
 
   return runTransaction(db, async (tx) => {
     const ref = doc(db, f.collection, docId);
@@ -167,11 +203,12 @@ export async function rescheduleWithSlot(args: {
     }
 
     const count = Number(data[f.countField] ?? 0);
-    if (count >= MAX_RESCHEDULES) {
-      throw new Error(
-        `You have already used all ${MAX_RESCHEDULES} rescheduling attempts for this transaction.`
-      );
-    }
+    
+    if (count >= maxReschedules) {
+  throw new Error(
+    `You have reached the maximum of ${maxReschedules} reschedule(s).`
+  );
+}
 
     const currentDate = String(data[f.dateField] ?? "");
     const currentTime = String(data[f.timeField] ?? "");

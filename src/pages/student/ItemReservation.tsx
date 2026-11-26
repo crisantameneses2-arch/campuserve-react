@@ -13,6 +13,11 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
+import {
+  assertFeatureEnabled,
+  assertReservationSizeAllowed,
+} from "../../services/settings";
+import { logActivity } from "../../services/activityLog";
 
 import ItemImage from "../../components/items/ItemImage";
 import { getItemCardTone } from "../../components/items/itemArtKind";
@@ -454,6 +459,12 @@ export default function ItemReservation({
 
     try {
       setReserving(true);
+      
+      // Stop here if the administrator turned reservations off.
+      await assertFeatureEnabled("itemReservations");
+      await assertReservationSizeAllowed(
+        cart.reduce((total, item) => total + item.quantity, 0)
+      );
 
       // Generate reservation ID
       const reservationId = `IR-${Date.now()}`;
@@ -565,11 +576,49 @@ export default function ItemReservation({
       // SUCCESS
       // ========================================
 
+      // ========================================
+      // SUCCESS
+      // ========================================
+
       setSuccess({
         reservationId,
-        itemCount: cart.reduce((count, item) => count + item.quantity, 0),
-        total: cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        itemCount: cart.reduce(
+          (count, item) => count + item.quantity,
+          0
+        ),
+        total: cart.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0
+        ),
       });
+
+      // Record the reservation in the activity logs.
+      // Logging errors should not undo or misreport a successful reservation.
+      try {
+        await logActivity(
+          {
+            id: studentId,
+            name: fullName.trim() || studentId,
+            role: "student",
+          },
+          "RESERVATION_CREATED",
+          `Reserved ${cart.length} item${
+            cart.length === 1 ? "" : "s"
+          } (${reservationId}).`,
+          {
+            totalAmount: cart.reduce(
+              (total, item) => total + item.price * item.quantity,
+              0
+            ),
+          }
+        );
+      } catch (logError) {
+        console.error(
+          "Reservation was created, but activity logging failed:",
+          logError
+        );
+      }
+
 
       // Clear reservation data
       setCart([]);

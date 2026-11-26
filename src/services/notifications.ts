@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
+import { isNotificationAllowed } from "./settings";
 import { millis, normalizeStatus, type TransactionKind } from "../utils/format";
 
 /* =========================================================
@@ -109,7 +110,15 @@ function requestNotificationEmail(notificationId: string, audience: string) {
 export async function notify(
   input: NewNotification | NewNotification[]
 ): Promise<void> {
-  const list = Array.isArray(input) ? input : [input];
+    const requested = Array.isArray(input) ? input : [input];
+
+  // Skip anything the administrator has switched off in System Settings.
+  const allowed = await Promise.all(
+    requested.map((item) => isNotificationAllowed(item.audience))
+  );
+  const list = requested.filter((_, index) => allowed[index]);
+
+  if (list.length === 0) return;
 
   await Promise.all(
     list.map(async (item) => {
@@ -139,6 +148,7 @@ export async function notifyOnce(
   item: NewNotification
 ): Promise<void> {
   try {
+        if (!(await isNotificationAllowed(item.audience))) return;
     const ref = doc(db, "notifications", id);
     const existing = await getDoc(ref);
 

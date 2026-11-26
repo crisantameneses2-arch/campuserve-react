@@ -13,6 +13,7 @@ import { auth, db } from "../../../firebase";
 
 import UserAccounts from "./UserAccounts";
 import RolesPermissions from "./RolesPermissions";
+import { fetchPermissionsForRole } from "../../services/roles";
 import DocumentRequests from "./DocumentRequests";
 import ItemReservations from "./ItemReservations";
 import ReportsAnalytics from "./ReportsAnalytics";
@@ -68,6 +69,46 @@ function AdminDashboard({
   const [currentPage, setCurrentPage] =
     useState("dashboard");
 
+  /*
+    Pages this account's role may open. `null` means "not loaded yet
+    or unknown", which shows everything so nobody gets locked out.
+  */
+  const [allowedPages, setAllowedPages] =
+    useState<string[] | null>(null);
+
+  const [permissionsVersion, setPermissionsVersion] =
+    useState(0);
+
+  const can = (page: string) =>
+    allowedPages === null || allowedPages.includes(page);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchPermissionsForRole(account.role || "admin")
+      .then((permissions) => {
+        if (!cancelled) setAllowedPages(permissions);
+      })
+      .catch((error) => {
+        console.error("Error loading permissions:", error);
+        if (!cancelled) setAllowedPages(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [account.role, permissionsVersion]);
+
+  // If the current page is no longer allowed, go back to the dashboard.
+  useEffect(() => {
+    if (
+      allowedPages !== null &&
+      !allowedPages.includes(currentPage)
+    ) {
+      setCurrentPage("dashboard");
+    }
+  }, [allowedPages, currentPage]);
+
   const [dashboardStats, setDashboardStats] = useState({
     totalStudents: 0,
     pendingRequests: 0,
@@ -122,7 +163,7 @@ function AdminDashboard({
       // ==============================
 
       const requestsSnapshot = await getDocs(
-        collection(db, "document_requests")
+        collection(db, "documentRequests")
       );
 
       const pendingRequests =
@@ -335,7 +376,8 @@ function AdminDashboard({
 
           {/* ================= DASHBOARD ================= */}
 
-          <button
+          {can("dashboard") && (
+<button
             className={`sidebar-item ${
               currentPage === "dashboard"
                 ? "active"
@@ -348,10 +390,12 @@ function AdminDashboard({
             <span>▣</span>
             Dashboard
           </button>
+)}
 
           {/* ================= USER ACCOUNTS ================= */}
 
-          <button
+          {can("userAccounts") && (
+<button
             className={`sidebar-item ${
               currentPage === "userAccounts"
                 ? "active"
@@ -364,10 +408,12 @@ function AdminDashboard({
             <span>👤</span>
             User accounts
           </button>
+)}
 
           {/* ================= ROLES & PERMISSIONS ================= */}
 
-          <button
+          {can("rolesPermissions") && (
+<button
             className={`sidebar-item ${
               currentPage === "rolesPermissions"
                 ? "active"
@@ -380,10 +426,12 @@ function AdminDashboard({
             <span>🔐</span>
             Roles & permissions
           </button>
+)}
 
           {/* ================= DOCUMENT REQUESTS ================= */}
 
-          <button
+          {can("documentRequests") && (
+<button
             className={`sidebar-item ${
               currentPage === "documentRequests"
                 ? "active"
@@ -396,10 +444,12 @@ function AdminDashboard({
             <span>📄</span>
             Document requests
           </button>
+)}
 
           {/* ================= ITEM RESERVATIONS ================= */}
 
-          <button
+          {can("itemReservations") && (
+<button
             className={`sidebar-item ${
               currentPage === "itemReservations"
                 ? "active"
@@ -412,10 +462,12 @@ function AdminDashboard({
             <span>📦</span>
             Item reservations
           </button>
+)}
 
           {/* ================= REPORTS & ANALYTICS ================= */}
 
-          <button
+          {can("reportsAnalytics") && (
+<button
             className={`sidebar-item ${
               currentPage === "reportsAnalytics"
                 ? "active"
@@ -428,26 +480,30 @@ function AdminDashboard({
             <span>📊</span>
             Reports & analytics
           </button>
+)}
 
           {/* ================= ACTIVITY LOGS ================= */}
 
-          <button
-            className={`sidebar-item ${
-              currentPage === "activityLogs"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setCurrentPage("activityLogs")
-            }
-          >
-            <span>📝</span>
-            Activity logs
-          </button>
+                    {can("activityLogs") && (
+            <button
+              className={`sidebar-item ${
+                currentPage === "activityLogs"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() =>
+                setCurrentPage("activityLogs")
+              }
+            >
+              <span>📝</span>
+              Activity logs
+            </button>
+          )}
 
           {/* ================= SYSTEM SETTINGS ================= */}
 
-          <button
+          {can("systemSettings") && (
+<button
             className={`sidebar-item ${
               currentPage === "systemSettings"
                 ? "active"
@@ -460,6 +516,7 @@ function AdminDashboard({
             <span>⚙</span>
             System settings
           </button>
+)}
 
         </nav>
 
@@ -595,7 +652,15 @@ function AdminDashboard({
 
           ) : currentPage === "rolesPermissions" ? (
 
-            <RolesPermissions />
+            <RolesPermissions
+              actor={{
+                id: account.firebaseUid || account.email,
+                name: account.name || account.email,
+              }}
+              onRolesChanged={() =>
+                setPermissionsVersion((version) => version + 1)
+              }
+            />
 
           /* DOCUMENT REQUESTS */
 
@@ -625,7 +690,13 @@ function AdminDashboard({
 
           ) : currentPage === "systemSettings" ? (
 
-            <SystemSettings />
+            <SystemSettings
+  actor={{
+    id: account.firebaseUid || account.email || "unknown-admin",
+    name: account.name || account.email || "Administrator",
+    role: "admin",
+  }}
+/>
 
           /* DASHBOARD */
 
