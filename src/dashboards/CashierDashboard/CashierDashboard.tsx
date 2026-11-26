@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   collection,
   getDocs,
@@ -18,6 +19,22 @@ type CashierDashboardProps = {
     email?: string;
     firebaseUid?: string;
   };
+};
+
+type StudentInfo = {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
+  email?: string;
+  student_id?: string;
+  contactNumber?: string;
+  campus?: string;
+  college?: string;
+  program?: string;
+  yearLevel?: string;
+  section?: string;
+  semester?: string;
 };
 
 type PaymentRecord = {
@@ -47,6 +64,8 @@ type PaymentRecord = {
   created_at?: Timestamp | Date | null;
   createdAt?: Timestamp | Date | null;
   payment_confirmed_at?: Timestamp | Date | null;
+
+  studentInfo?: StudentInfo;
 };
 
 const generateCode = (prefix: string) => {
@@ -120,6 +139,9 @@ function CashierDashboard({ account }: CashierDashboardProps) {
   const [processingId, setProcessingId] = useState("");
   const [message, setMessage] = useState("");
 
+  const [selectedPayment, setSelectedPayment] =
+  useState<PaymentRecord | null>(null);
+
   const isPaid = (payment: PaymentRecord) =>
     payment.recordType === "Document Request"
       ? payment.payment_status?.toUpperCase() === "PAID"
@@ -130,28 +152,61 @@ function CashierDashboard({ account }: CashierDashboardProps) {
     setMessage("");
 
     try {
-      const [documentsSnapshot, reservationsSnapshot] = await Promise.all([
-        getDocs(collection(db, "document_requests")),
-        getDocs(collection(db, "itemReservations")),
-      ]);
+      const [
+  documentsSnapshot,
+  reservationsSnapshot,
+  accountsSnapshot,
+] = await Promise.all([
+  getDocs(collection(db, "document_requests")),
+  getDocs(collection(db, "itemReservations")),
+  getDocs(collection(db, "accounts")),
+]);
+
+const accountsByStudentId = new Map<string, StudentInfo>();
+
+accountsSnapshot.docs.forEach((accountDoc) => {
+  const data = accountDoc.data() as StudentInfo;
+  const studentId = String(data.student_id || "")
+    .trim()
+    .toUpperCase();
+
+  if (studentId) {
+    accountsByStudentId.set(studentId, data);
+  }
+});
+
+const attachStudentInfo = (
+  payment: PaymentRecord
+): PaymentRecord => {
+  const studentId = String(
+    payment.student_id || payment.studentId || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  return {
+    ...payment,
+    studentInfo: accountsByStudentId.get(studentId),
+  };
+};
 
       const documents: PaymentRecord[] = documentsSnapshot.docs.map(
-        (item) =>
-          ({
-            id: item.id,
-            ...item.data(),
-            recordType: "Document Request",
-          }) as PaymentRecord
-      );
+  (item) =>
+    attachStudentInfo({
+      id: item.id,
+      ...item.data(),
+      recordType: "Document Request",
+    } as PaymentRecord)
+);
 
       const reservations: PaymentRecord[] = reservationsSnapshot.docs.map(
-        (item) =>
-          ({
-            id: item.id,
-            ...item.data(),
-            recordType: "Item Reservation",
-          }) as PaymentRecord
-      );
+  (item) =>
+    attachStudentInfo({
+      id: item.id,
+      ...item.data(),
+      recordType: "Item Reservation",
+    } as PaymentRecord)
+);
 
       // Oldest document request first
       setDocumentRequests(
@@ -337,20 +392,32 @@ function CashierDashboard({ account }: CashierDashboardProps) {
 
       {/* Summary Cards */}
       <div className="cashier-summary">
-        <div className="cashier-summary-card">
+        <button
+          type="button"
+          className={`cashier-summary-card ${activeTab === "documents" ? "selected" : ""}`}
+          onClick={() => setActiveTab("documents")}
+        >
           <span>Unpaid Document Requests</span>
           <strong>{documentRequests.length}</strong>
-        </div>
+        </button>
 
-        <div className="cashier-summary-card">
+        <button
+          type="button"
+          className={`cashier-summary-card ${activeTab === "reservations" ? "selected" : ""}`}
+          onClick={() => setActiveTab("reservations")}
+        >
           <span>Unpaid Item Reservations</span>
           <strong>{itemReservations.length}</strong>
-        </div>
+        </button>
 
-        <div className="cashier-summary-card">
+        <button
+          type="button"
+          className={`cashier-summary-card ${activeTab === "history" ? "selected" : ""}`}
+          onClick={() => setActiveTab("history")}
+        >
           <span>Completed Payments</span>
           <strong>{paymentHistory.length}</strong>
-        </div>
+        </button>
       </div>
 
       {/* Dashboard Tabs */}
@@ -400,7 +467,7 @@ function CashierDashboard({ account }: CashierDashboardProps) {
 
                 {activeTab === "history" && <th>Claiming Code</th>}
                 {activeTab === "history" && <th>Transaction Type</th>}
-                {activeTab !== "history" && <th>Action</th>}
+                <th>Action</th>
               </tr>
             </thead>
 
@@ -439,24 +506,140 @@ function CashierDashboard({ account }: CashierDashboardProps) {
                     <td>{payment.recordType}</td>
                   )}
 
-                  {activeTab !== "history" && (
-                    <td>
-                      <button
-                        disabled={processingId === payment.id}
-                        onClick={() => confirmPayment(payment)}
-                      >
-                        {processingId === payment.id
-                          ? "Processing..."
-                          : "Payment Completed"}
-                      </button>
-                    </td>
-                  )}
+                  <td>
+  <div className="cashier-action-buttons">
+    <button
+      type="button"
+      className="cashier-view-button"
+      onClick={() => setSelectedPayment(payment)}
+    >
+      View
+    </button>
+
+    {activeTab !== "history" && (
+      <button
+        type="button"
+        disabled={processingId === payment.id}
+        onClick={() => confirmPayment(payment)}
+      >
+        {processingId === payment.id
+          ? "Processing..."
+          : "Payment Completed"}
+      </button>
+    )}
+  </div>
+</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
+            )}
+
+      {selectedPayment &&
+        createPortal(
+          <div
+            className="cashier-modal-backdrop"
+            onClick={() => setSelectedPayment(null)}
+          >
+            <div
+              className="cashier-student-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="cashier-student-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="cashier-modal-header">
+                <div>
+                  <h2 id="cashier-student-title">
+                    Student Information
+                  </h2>
+                  <p>
+                    {selectedPayment.recordType}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="cashier-modal-close"
+                  aria-label="Close"
+                  onClick={() => setSelectedPayment(null)}
+                >
+                  ×
+                </button>
+              </div>
+
+              {(() => {
+                const student = selectedPayment.studentInfo;
+                const fullName = [
+                  student?.firstName,
+                  student?.middleName,
+                  student?.lastName,
+                  student?.suffix,
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+
+                const displayName =
+                  fullName ||
+                  selectedPayment.fullName ||
+                  selectedPayment.name ||
+                  "Unknown Student";
+
+                const studentId =
+                  student?.student_id ||
+                  selectedPayment.student_id ||
+                  selectedPayment.studentId ||
+                  "Not available";
+
+                const details = [
+                  ["Full Name", displayName],
+                  ["Student ID", studentId],
+                  ["Email", student?.email || "Not available"],
+                  ["Contact Number", student?.contactNumber || "Not available"],
+                  ["Campus", student?.campus || "Not available"],
+                  ["College", student?.college || "Not available"],
+                  ["Program", student?.program || "Not available"],
+                  ["Year Level", student?.yearLevel || "Not available"],
+                  ["Section", student?.section || "Not available"],
+                  ["Semester", student?.semester || "Not available"],
+                ];
+
+                return (
+                  <dl className="cashier-student-facts">
+                    {details.map(([label, value]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                );
+              })()}
+
+              <div className="cashier-student-transaction">
+                <h3>Transaction Information</h3>
+                <p>
+                  <strong>Reference:</strong>{" "}
+                  {getReference(selectedPayment)}
+                </p>
+                <p>
+                  <strong>Transaction Type:</strong>{" "}
+                  {selectedPayment.recordType}
+                </p>
+                <p>
+                  <strong>Amount:</strong>{" "}
+                  ₱
+                  {getAmount(selectedPayment).toLocaleString("en-PH", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
