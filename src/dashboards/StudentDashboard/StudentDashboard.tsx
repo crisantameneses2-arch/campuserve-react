@@ -1586,30 +1586,8 @@ function TrackingBox({
             </div>
           </div>
 
-          {/* The card itself opens the details; arrows only when there are several. */}
-          {count > 1 && (
-            <div className="sdx-box-bottom sdx-box-bottom--center">
-              <button
-                type="button"
-                className="sdx-mini-btn"
-                onClick={previous}
-                disabled={safeIndex === 0}
-                aria-label="Previous transaction"
-              >
-                ←
-              </button>
-
-              <button
-                type="button"
-                className="sdx-mini-btn"
-                onClick={next}
-                disabled={safeIndex === count - 1}
-                aria-label="Next transaction"
-              >
-                →
-              </button>
-            </div>
-          )}
+          {/* Swipe (or drag, or use the arrow keys) to move between cards;
+              the card itself opens the details. */}
         </>
       )}
     </section>
