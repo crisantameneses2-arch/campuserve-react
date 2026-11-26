@@ -1671,6 +1671,11 @@ body.sdx-body {
   margin-top: auto;
 }
 
+/* Room between a panel's content (e.g. the last row's line) and its button. */
+.sdx .sdx-panel.sdx-compact > :has(+ .sdx-text-btn) {
+  margin-bottom: 16px;
+}
+
 .sdx .sdx-compact h3 {
   margin: 8px 0 12px;
   font-size: 20px;
