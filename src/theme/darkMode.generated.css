@@ -1352,14 +1352,13 @@ html.cs-dark .sdx .sdx-txf {
 }
 
 html.cs-dark .sdx .sdx-txf__type {
-  border: 1.5px solid #29475d;
-  background: #162b3d;
+  border: 1px solid #244055;
+  background: #0b1724;
   color: #f2f6fa;
 }
 
 html.cs-dark .sdx .sdx-txf__type:hover {
-  border-color: #768ea0;
-  background: #0b1724;
+  background: #1f384c;
 }
 
 html.cs-dark .sdx .sdx-txf__type.is-on {
@@ -1369,14 +1368,14 @@ html.cs-dark .sdx .sdx-txf__type.is-on {
 }
 
 html.cs-dark .sdx .sdx-txf__chip {
-  border: 1.5px solid #29475d;
+  border: 1px solid #223d52;
   background: #162b3d;
-  color: #f2f6fa;
+  color: #aabccc;
 }
 
 html.cs-dark .sdx .sdx-txf__chip:hover {
-  border-color: #768ea0;
-  background: #0b1724;
+  border-color: #233e48;
+  color: #45a9e0;
 }
 
 html.cs-dark .sdx .sdx-txf__count {
