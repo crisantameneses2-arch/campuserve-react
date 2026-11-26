@@ -1816,6 +1816,7 @@ const PAINT = {
   box: ["#f4a90f", "#ffd65c"],
   tape: ["#e2730a", "#f7a134"],
   badge: ["#3346c4", "#6b7ef0"],
+  boxSide: ["#d9650a", "#f59a2c"],
 } as const;
 
 type Paint = keyof typeof PAINT;
@@ -2008,11 +2009,30 @@ function StageArt({
         );
 
       case "ready":
+        // Parcel with a "pick up" badge: the box dips and turns to show its
+        // side, while the arrow shoots out of the badge and slides back in.
         return (
           <>
-            <g className={`sdx-a-bob${a}`}>{box}</g>
+            <defs>
+              <clipPath id={`${uid}-clip-badge`}>
+                <circle cx="45" cy="45" r="12" />
+              </clipPath>
+            </defs>
+            <g className={`sdx-a-parcel${a}`}>
+              <g className={`sdx-a-front${a}`}>
+                <rect x="9" y="13" width="35" height="33" fill={paint("box")} />
+                <rect x="20" y="13" width="13" height="8.5" fill={paint("tape")} />
+              </g>
+              <rect className={`sdx-a-side${a}`} x="36" y="13" width="8" height="33" fill={paint("boxSide")} />
+            </g>
             <circle cx="45" cy="45" r="12" fill={paint("badge")} />
-            <path className={`sdx-a-arrow${a}`} d="M41 41l8.5 8.5M41 41h6.4M41 41v6.4" stroke="#fff" strokeWidth="2.8" {...round} />
+            <g clipPath={`url(#${uid}-clip-badge)`}>
+              <path
+                className={`sdx-a-dart${a}`}
+                d="M40.6 39.6 48.5 41 46.2 43 50.6 48.2 48.8 49.8 44.4 44.6 42.3 46.6Z"
+                fill="#fff"
+              />
+            </g>
           </>
         );
 

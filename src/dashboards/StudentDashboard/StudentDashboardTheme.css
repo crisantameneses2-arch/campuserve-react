@@ -1382,6 +1382,59 @@ body.sdx-body {
   animation: sdx-a-flap 2.6s ease-in-out infinite;
 }
 
+/* ready: the parcel dips and turns to show its side while the arrow shoots
+   out of the badge (top-left) and slides back in from the bottom-right.
+   One cycle every 2s (the reference runs about 1s). */
+.sdx .sdx-a-parcel.sdx-anim {
+  transform-origin: 26px 46px;
+  animation: sdx-a-parcel 2s ease-in-out infinite;
+}
+
+.sdx .sdx-a-front.sdx-anim {
+  transform-origin: 9px 30px;
+  animation: sdx-a-front 2s ease-in-out infinite;
+}
+
+.sdx .sdx-a-side.sdx-anim {
+  transform-origin: 44px 30px;
+  animation: sdx-a-side 2s ease-in-out infinite;
+}
+
+.sdx .sdx-a-dart.sdx-anim {
+  animation: sdx-a-dart 2s cubic-bezier(0.5, 0, 0.3, 1) infinite;
+}
+
+/* reduced motion and side icons: the box shows a little of its side */
+.sdx .sdx-a-side:not(.sdx-anim) {
+  transform-origin: 44px 30px;
+  transform: scaleX(0);
+}
+
+@keyframes sdx-a-parcel {
+  0%, 100% { transform: scale(1, 1); }
+  10% { transform: scale(1.03, 0.94); }
+  20% { transform: scale(1, 1); }
+}
+
+@keyframes sdx-a-front {
+  0%, 12% { transform: scaleX(1); }
+  30%, 70% { transform: scaleX(0.77); }
+  88%, 100% { transform: scaleX(1); }
+}
+
+@keyframes sdx-a-side {
+  0%, 12% { transform: scaleX(0); }
+  30%, 70% { transform: scaleX(1); }
+  88%, 100% { transform: scaleX(0); }
+}
+
+@keyframes sdx-a-dart {
+  0%, 22% { transform: translate(0, 0); }
+  36% { transform: translate(-15px, -15px); }
+  36.01%, 52% { transform: translate(15px, 15px); }
+  70%, 100% { transform: translate(0, 0); }
+}
+
 /* cancelled: the badge gives a small shake */
 .sdx .sdx-a-shake.sdx-anim {
   transform-origin: 45px 45px;
