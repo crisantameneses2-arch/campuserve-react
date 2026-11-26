@@ -722,12 +722,12 @@ html.cs-dark .sdx .sdx-bell__count {
   color: #f2f6fa;
 }
 
-html.cs-dark .sdx .sdx-avatar--link:focus-visible {
-  outline: 3px solid #d3cf69;
+html.cs-dark .sdx .sdx-account:hover {
+  background: #1d364a;
 }
 
-html.cs-dark .sdx .sdx-account__trigger:hover {
-  background: #1d364a;
+html.cs-dark .sdx .sdx-account:focus-visible {
+  outline: 3px solid #d3cf69;
 }
 
 html.cs-dark .sdx .sdx-avatar {
@@ -742,44 +742,6 @@ html.cs-dark .sdx .sdx-account__copy strong {
 
 html.cs-dark .sdx .sdx-account__copy small {
   color: #8fa5b6;
-}
-
-html.cs-dark .sdx .sdx-account__chevron {
-  color: #45a9e0;
-}
-
-html.cs-dark .sdx .sdx-account__menu {
-  background: #162b3d;
-  border: 1px solid #233e53;
-}
-
-html.cs-dark .sdx .sdx-account__user {
-  border-bottom: 1px solid #1e374b;
-}
-
-html.cs-dark .sdx .sdx-account__user strong {
-  color: #f2f6fa;
-}
-
-html.cs-dark .sdx .sdx-account__user small {
-  color: #8299ab;
-}
-
-html.cs-dark .sdx .sdx-account__menu button {
-  color: #45a9e0;
-}
-
-html.cs-dark .sdx .sdx-account__menu button:hover {
-  background: #1e374b;
-}
-
-html.cs-dark .sdx .sdx-account__menu .sdx-account__signout {
-  border-top: 1px solid #1e374b;
-  color: #c77f75;
-}
-
-html.cs-dark .sdx .sdx-account__menu .sdx-account__signout:hover {
-  background: #1d3549;
 }
 
 html.cs-dark .sdx .sdx-tag {

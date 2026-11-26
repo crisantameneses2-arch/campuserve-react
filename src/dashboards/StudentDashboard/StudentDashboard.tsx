@@ -52,7 +52,6 @@ import {
 
 import "./StudentDashboard.css";
 import "./StudentDashboardTheme.css";
-import { logout } from "../../services/logout";
 import AccountSettings from "../../pages/student/AccountSettings";
 import { useApplyDarkMode } from "../../theme/darkMode";
 import MyProfile from "../../pages/student/MyProfile";
@@ -661,7 +660,6 @@ export default function StudentDashboard({
         <StudentTopbar
           title={pageTitle}
           studentName={studentName}
-          studentEmail={account.email || ""}
           unreadNotifications={unreadNotifications}
           unreadMessages={unreadMessages}
           fullView={fullView}
@@ -1222,7 +1220,6 @@ function StudentSidebar({
 function StudentTopbar({
   title,
   studentName,
-  studentEmail,
   unreadNotifications,
   unreadMessages,
   fullView,
@@ -1233,7 +1230,6 @@ function StudentTopbar({
 }: {
   title: string;
   studentName: string;
-  studentEmail: string;
   unreadNotifications: number;
   unreadMessages: number;
   fullView: boolean;
@@ -1242,39 +1238,6 @@ function StudentTopbar({
   onToggleMenu: () => void;
   onNavigate: (page: DashboardPage) => void;
 }) {
-  const [accountOpen, setAccountOpen] = useState(false);
-  const accountRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!accountOpen) return;
-
-    function handlePointer(event: MouseEvent) {
-      if (
-        accountRef.current &&
-        !accountRef.current.contains(event.target as Node)
-      ) {
-        setAccountOpen(false);
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setAccountOpen(false);
-    }
-
-    document.addEventListener("mousedown", handlePointer);
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointer);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [accountOpen]);
-
-  function openPage(page: DashboardPage) {
-    setAccountOpen(false);
-    onNavigate(page);
-  }
-
   return (
     <header className="sdx-topbar">
       <div className="sdx-topbar__left">
@@ -1343,73 +1306,21 @@ function StudentTopbar({
           )}
         </button>
 
-        <div className="sdx-account" ref={accountRef}>
-          {/* The avatar opens My Profile; the name and ⌄ open the menu. */}
-          <button
-            type="button"
-            className="sdx-avatar sdx-avatar--link"
-            onClick={() => openPage("profile")}
-            aria-label="Open my profile"
-            title="My profile"
-          >
-            {getInitials(studentName)}
-          </button>
+        {/* The avatar and name open My Profile. */}
+        <button
+          type="button"
+          className="sdx-account"
+          onClick={() => onNavigate("profile")}
+          aria-label="Open my profile"
+          title="My profile"
+        >
+          <span className="sdx-avatar">{getInitials(studentName)}</span>
 
-          <button
-            type="button"
-            className="sdx-account__trigger"
-            aria-haspopup="menu"
-            aria-expanded={accountOpen}
-            aria-label="Account menu"
-            onClick={() => setAccountOpen(!accountOpen)}
-          >
-            <span className="sdx-account__copy">
-              <strong>{studentName}</strong>
-              <small>My account</small>
-            </span>
-
-            <span className="sdx-account__chevron" aria-hidden="true">
-              ⌄
-            </span>
-          </button>
-
-          {accountOpen && (
-            <div className="sdx-account__menu" role="menu">
-              <div className="sdx-account__user">
-                <strong>{studentName}</strong>
-                {studentEmail && <small>{studentEmail}</small>}
-              </div>
-
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => openPage("profile")}
-              >
-                My profile
-              </button>
-
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => openPage("settings")}
-              >
-                Account settings
-              </button>
-
-              <button
-                type="button"
-                role="menuitem"
-                className="sdx-account__signout"
-                onClick={async () => {
-                  setAccountOpen(false);
-                  await logout();
-                }}
-              >
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
+          <span className="sdx-account__copy">
+            <strong>{studentName}</strong>
+            <small>My profile</small>
+          </span>
+        </button>
       </div>
     </header>
   );
