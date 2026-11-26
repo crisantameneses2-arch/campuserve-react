@@ -1490,7 +1490,7 @@
 
 /* ---------- Item view fits the screen on laptops (no page scrolling) ----------
    "All items" sits to the left of the card, and the card takes the height
-   left under the top bar (71px) and the page padding. The photo shrinks
+   left under the top bar (61px) and the page padding. The photo shrinks
    to fit; on very short screens only the details column scrolls. */
 
 @media (min-width: 901px) {
@@ -1513,8 +1513,8 @@
   }
 
   .irx .irx-detail {
-    height: calc(100vh - 118px);
-    height: calc(100dvh - 118px);
+    height: calc(100vh - 108px);
+    height: calc(100dvh - 108px);
     min-height: 280px;
     grid-template-rows: minmax(0, 1fr);
   }
