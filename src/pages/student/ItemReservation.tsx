@@ -939,9 +939,7 @@ export default function ItemReservation({
       ? formatPrice(selectedInventory.price ?? 0)
       : prices.length === 0
         ? formatPrice(0)
-        : Math.min(...prices) === Math.max(...prices)
-          ? formatPrice(prices[0])
-          : `from ${formatPrice(Math.min(...prices))}`;
+        : formatPrice(Math.min(...prices)); // lowest size price until a size is chosen
 
     const maxQuantity = selectedInventory
       ? Math.min(5, selectedInventory.availableOnline)
@@ -1344,9 +1342,7 @@ export default function ItemReservation({
                   </small>
 
                   <span className="irx-card__price">
-                    {product.minPrice !== product.maxPrice
-                      ? `from ${formatPrice(product.minPrice)}`
-                      : formatPrice(product.minPrice)}
+                    {formatPrice(product.minPrice)}
                   </span>
                 </span>
 
