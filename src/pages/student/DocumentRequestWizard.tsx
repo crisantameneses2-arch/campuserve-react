@@ -171,6 +171,12 @@ export default function DocumentRequestWizard({
   const [successRequestId, setSuccessRequestId] =
     useState<string | null>(null);
 
+  // Each step (and the success screen) starts at the top of the page,
+  // not wherever the previous step was scrolled to.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [currentStep, successRequestId]);
+
   /* Success screen phases: intro → paper plane → details. */
   const [successPhase, setSuccessPhase] = useState<"intro" | "plane" | "details">("intro");
 
