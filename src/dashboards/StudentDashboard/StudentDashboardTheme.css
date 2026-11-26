@@ -315,7 +315,7 @@ body.sdx-body {
   position: sticky;
   top: 0;
   z-index: 20;
-  height: 81px;
+  height: 71px; /* phones also 71px (see max-width: 800px) */
   display: flex;
   align-items: center;
   justify-content: space-between;
