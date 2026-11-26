@@ -2235,6 +2235,15 @@ html.cs-dark .irx .irx-actions {
 }
 }
 
+html.cs-dark .irx .irx-success__skip {
+  color: #8098aa;
+}
+
+html.cs-dark .irx .irx-success__skip:hover {
+  color: #45a9e0;
+  background: #0b1724;
+}
+
 /* ---- src/pages/student/ItemStocks.css ---- */
 
 html.cs-dark .item-stocks-header p {

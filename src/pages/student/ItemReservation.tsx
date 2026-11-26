@@ -20,6 +20,7 @@ import {
 import { logActivity } from "../../services/activityLog";
 
 import ItemImage from "../../components/items/ItemImage";
+import PaperPlaneAnimation from "../../components/PaperPlaneAnimation/PaperPlaneAnimation";
 import { getItemCardTone } from "../../components/items/itemArtKind";
 
 // Kept for compatibility: other screens share a few of its class names.
@@ -119,6 +120,19 @@ export default function ItemReservation({
     itemCount: number;
     total: number;
   } | null>(null);
+
+  /* Success screen phases (like the document request): check mark →
+     paper plane folds and flies away → the reservation details. */
+  const [successPhase, setSuccessPhase] = useState<"intro" | "plane" | "details">("intro");
+
+  useEffect(() => {
+    if (!success) return undefined;
+
+    setSuccessPhase("intro");
+    const timer = window.setTimeout(() => setSuccessPhase("plane"), 1150);
+
+    return () => window.clearTimeout(timer);
+  }, [success]);
 
   // Opening an item, the checkout or the success screen starts at the top
   // of the page, not wherever the item list was scrolled to.
@@ -654,72 +668,103 @@ export default function ItemReservation({
   if (success) {
     return (
       <div className="irx">
-        <section className="irx-success">
+        <section className={`irx-success is-${successPhase}`} aria-live="polite">
           <span className="irx-success__mark" aria-hidden="true">
             <svg viewBox="0 0 76 76" fill="none">
-              <circle cx="38" cy="38" r="35" fill="currentColor" opacity=".12" />
-              <circle cx="38" cy="38" r="26" fill="currentColor" />
+              <circle className="irx-success__halo" cx="38" cy="38" r="35" fill="currentColor" opacity=".12" />
+              <circle className="irx-success__disc" cx="38" cy="38" r="26" fill="currentColor" />
               <path
+                className="irx-success__tick"
                 d="m27 38.5 7.5 7.5L50 30.5"
                 stroke="#fff"
                 strokeWidth="5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                pathLength={1}
               />
             </svg>
           </span>
 
-          <span className="irx-success__eyebrow">RESERVATION SUBMITTED</span>
+          <span className="irx-success__eyebrow irx-success__in" style={{ animationDelay: "0.55s" }}>
+            RESERVATION SUBMITTED
+          </span>
 
-          <h2>Successfully reserved!</h2>
+          <h2 className="irx-success__in" style={{ animationDelay: "0.7s" }}>
+            Successfully reserved!
+          </h2>
 
-          <p>
+          <p className="irx-success__in" style={{ animationDelay: "0.85s" }}>
             Your reservation has been sent to the General Office. Pay at the
             Cashier; once the General Office approves it, claim your items
             within seven (7) days, or it will be cancelled. You can follow
             its progress from your dashboard.
           </p>
 
-          <div className="irx-success__ref">
-            <span>RESERVATION ID</span>
-            <strong>{success.reservationId}</strong>
-          </div>
+          {successPhase !== "details" && (
+            <div className="irx-success__plane">
+              {successPhase === "plane" && (
+                <PaperPlaneAnimation
+                  size="100%"
+                  duration={4.2}
+                  loop={false}
+                  onComplete={() => setSuccessPhase("details")}
+                  style={{ background: "transparent" }}
+                />
+              )}
+              <button
+                type="button"
+                className="irx-success__skip"
+                onClick={() => setSuccessPhase("details")}
+              >
+                Skip
+              </button>
+            </div>
+          )}
 
-          <dl className="irx-success__details">
-            <div>
-              <dt>Student ID</dt>
-              <dd>{studentId}</dd>
-            </div>
-            <div>
-              <dt>Items</dt>
-              <dd>
-                {success.itemCount} item{success.itemCount === 1 ? "" : "s"}
-              </dd>
-            </div>
-            <div>
-              <dt>Total</dt>
-              <dd>{formatPrice(success.total)}</dd>
-            </div>
-            <div>
-              <dt>Status</dt>
-              <dd>
-                <span className="irx-success__status">Unpaid</span>
-              </dd>
-            </div>
-          </dl>
+          {successPhase === "details" && (
+            <div className="irx-success__rest">
+              <div className="irx-success__ref">
+                <span>RESERVATION ID</span>
+                <strong>{success.reservationId}</strong>
+              </div>
 
-          <div className="irx-success__actions">
-            <button
-              type="button"
-              className="irx-btn irx-btn--primary"
-              onClick={() => setSuccess(null)}
-            >
-              Reserve more items
-            </button>
-            <button type="button" className="irx-link-btn" onClick={onBack}>
-              Go to dashboard
-            </button>
-          </div>
+              <dl className="irx-success__details">
+                <div>
+                  <dt>Student ID</dt>
+                  <dd>{studentId}</dd>
+                </div>
+                <div>
+                  <dt>Items</dt>
+                  <dd>
+                    {success.itemCount} item{success.itemCount === 1 ? "" : "s"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Total</dt>
+                  <dd>{formatPrice(success.total)}</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>
+                    <span className="irx-success__status">Unpaid</span>
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="irx-success__actions">
+                <button
+                  type="button"
+                  className="irx-btn irx-btn--primary"
+                  onClick={() => setSuccess(null)}
+                >
+                  Reserve more items
+                </button>
+                <button type="button" className="irx-link-btn" onClick={onBack}>
+                  Go to dashboard
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     );

@@ -1640,3 +1640,114 @@
     max-width: 82%;
   }
 }
+
+/* ---------- Reservation success animation (same as document request) ----------
+   1. the check mark pops and draws, 2. the paper plane folds and flies,
+   3. the details rise in. */
+
+.irx .irx-success__mark {
+  animation: none;
+}
+
+.irx .irx-success__halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: irx-halo 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
+}
+
+.irx .irx-success__disc {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: irx-success-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1.25) both;
+}
+
+.irx .irx-success__tick {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: irx-tick 0.4s ease-out 0.35s forwards;
+}
+
+@keyframes irx-halo {
+  0% { opacity: 0; transform: scale(0.5); }
+  60% { opacity: 0.22; transform: scale(1.08); }
+  100% { opacity: 0.12; transform: scale(1); }
+}
+
+@keyframes irx-tick {
+  to { stroke-dashoffset: 0; }
+}
+
+.irx .irx-success__in {
+  animation: irx-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes irx-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.irx .irx-success__plane {
+  position: relative;
+  width: min(230px, 62vw);
+  aspect-ratio: 1;
+  margin: 4px auto 0;
+}
+
+.irx .irx-success__plane > div {
+  display: block !important;
+  animation: irx-rise 0.35s ease both;
+}
+
+.irx .irx-success__skip {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8ea3b2;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.irx .irx-success__skip:hover {
+  color: #1e648d;
+  background: #eef6fa;
+}
+
+.irx .irx-success.is-intro .irx-success__skip {
+  visibility: hidden;
+}
+
+.irx .irx-success__rest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.irx .irx-success__rest > * {
+  animation: irx-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.irx .irx-success__rest > *:nth-child(1) { animation-delay: 0.05s; }
+.irx .irx-success__rest > *:nth-child(2) { animation-delay: 0.15s; }
+.irx .irx-success__rest > *:nth-child(3) { animation-delay: 0.25s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .irx .irx-success__halo,
+  .irx .irx-success__disc,
+  .irx .irx-success__in,
+  .irx .irx-success__rest > * {
+    animation: none;
+  }
+
+  .irx .irx-success__tick {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
