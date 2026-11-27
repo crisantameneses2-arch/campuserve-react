@@ -945,26 +945,32 @@ export default function StudentDashboard({
 
                 <div className="sdx-services" data-tour="services">
                   <ServiceCard
-                    tone="green"
+                    tone="blue"
                     art="document"
+                    eyebrow="Registrar"
                     title="Request a document"
                     text="Certificates, records, and forms—without the long lines."
+                    action="Start request"
                     onClick={() => go("request")}
                   />
 
                   <ServiceCard
-                    tone="sky"
+                    tone="green"
                     art="bag"
+                    eyebrow="Campus items"
                     title="Reserve an item"
                     text="Find and book campus items for when you need them."
+                    action="Browse items"
                     onClick={() => go("itemReservation")}
                   />
 
                   <ServiceCard
                     tone="sun"
                     art="ticket"
+                    eyebrow="Pick-up"
                     title="Claim & release"
                     text="Have a claim stub? You're one step closer."
+                    action="Open claim stub"
                     onClick={() => go("claimStub")}
                   />
                 </div>
@@ -2330,17 +2336,24 @@ function StageArt({
    SERVICE CARD (illustrated)
 ========================================= */
 
+type ServiceTone = "blue" | "green" | "sun";
+type ServiceArtName = "document" | "bag" | "ticket";
+
 function ServiceCard({
   tone,
   art,
+  eyebrow,
   title,
   text,
+  action,
   onClick,
 }: {
-  tone: "green" | "sky" | "sun";
-  art: "document" | "bag" | "ticket";
+  tone: ServiceTone;
+  art: ServiceArtName;
+  eyebrow: string;
   title: string;
   text: string;
+  action: string;
   onClick: () => void;
 }) {
   return (
@@ -2350,173 +2363,156 @@ function ServiceCard({
       data-tour={`service-${art}`}
       onClick={onClick}
     >
-      <span className="sdx-service__circle" aria-hidden="true">
-        ↗
+      <span className="sdx-service__copy">
+        <small className="sdx-service__eyebrow">{eyebrow}</small>
+        <strong>{title}</strong>
+        <p>{text}</p>
+
+        <span className="sdx-service__chip">
+          {action}
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </span>
 
       <span className="sdx-service__art" aria-hidden="true">
-        <ServiceArt name={art} />
+        <ServiceArt name={art} tone={tone} />
       </span>
-
-      <strong>{title}</strong>
-      <p>{text}</p>
     </button>
   );
 }
 
 /**
- * Service card illustrations: folder of documents, shopping bags and a
- * claim ticket, drawn in the soft-gradient icon style (bright gradients,
- * no outlines, deep teal accents).
+ * Tones for each card's illustration: every shape is drawn in shades of
+ * the card's own colour, strong enough to stand out on the tinted card.
+ *   hi   – pale tint, the brightest face
+ *   lt   – light tint
+ *   mid  – the card's main colour
+ *   deep – the card's darkest shade, for lines and details
  */
-function ServiceArt({ name }: { name: "document" | "bag" | "ticket" }) {
+const SERVICE_ART_TONES: Record<
+  ServiceTone,
+  { hi: string; lt: string; mid: string; deep: string }
+> = {
+  blue: { hi: "#D9EAF8", lt: "#A3C8E9", mid: "#5F9AD0", deep: "#245782" },
+  green: { hi: "#D6EFE2", lt: "#9ED4B8", mid: "#57AC82", deep: "#1F6146" },
+  sun: { hi: "#FBEDC6", lt: "#F1D184", mid: "#D6A443", deep: "#7D5A14" },
+};
+
+/**
+ * Service card illustrations: a folder of documents, shopping bags and a
+ * claim ticket, in soft gradients of the card's colour.
+ */
+function ServiceArt({ name, tone }: { name: ServiceArtName; tone: ServiceTone }) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const g = (key: string) => `${uid}-${key}`;
   const url = (key: string) => `url(#${g(key)})`;
+  const c = SERVICE_ART_TONES[tone];
+
+  const defs = (
+    <defs>
+      <linearGradient id={g("hi")} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#FFFFFF" />
+        <stop offset="1" stopColor={c.hi} />
+      </linearGradient>
+      <linearGradient id={g("mid")} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor={c.lt} />
+        <stop offset="1" stopColor={c.mid} />
+      </linearGradient>
+      <linearGradient id={g("glass")} x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor={c.hi} />
+        <stop offset="1" stopColor={c.lt} />
+      </linearGradient>
+    </defs>
+  );
 
   if (name === "document") {
     return (
-      <svg fill="none" viewBox="0 0 190 155" aria-hidden="true">
-        <defs>
-          <linearGradient id={g("back")} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#2FB463" />
-            <stop offset="1" stopColor="#14824A" />
-          </linearGradient>
-          <linearGradient id={g("front")} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#B4EC7C" />
-            <stop offset="1" stopColor="#22B24A" />
-          </linearGradient>
-          <linearGradient id={g("paperA")} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#E4EEFF" />
-            <stop offset="1" stopColor="#C9DCFA" />
-          </linearGradient>
-          <linearGradient id={g("paperB")} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#FFFFFF" />
-            <stop offset="1" stopColor="#DDF3D2" />
-          </linearGradient>
-          <linearGradient id={g("tag")} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#FFC9DF" />
-            <stop offset="1" stopColor="#F7609E" />
-          </linearGradient>
-          <linearGradient id={g("ear")} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#A9D4FF" />
-            <stop offset="1" stopColor="#258EFB" />
-          </linearGradient>
-        </defs>
-
-        <g transform="translate(16 6) scale(.82)">
-        <ellipse cx="96" cy="140" rx="62" ry="7" fill="#163B37" opacity=".1" />
+      <svg fill="none" viewBox="0 0 160 160" aria-hidden="true">
+        {defs}
 
         {/* back of the folder */}
         <path
-          d="M34 47a8 8 0 0 1 8-8h30l9 10h63a8 8 0 0 1 8 8v73a8 8 0 0 1-8 8H42a8 8 0 0 1-8-8Z"
-          fill={url("back")}
+          d="M18 46a9 9 0 0 1 9-9h34l10 11h62a9 9 0 0 1 9 9v76a9 9 0 0 1-9 9H27a9 9 0 0 1-9-9Z"
+          fill={url("mid")}
         />
 
         {/* papers */}
-        <g transform="rotate(-11 78 70)">
-          <rect x="50" y="22" width="60" height="78" rx="6" fill={url("paperA")} />
-          <path d="M60 40h30M60 51h38M60 62h26" stroke="#2F80ED" strokeWidth="4" strokeLinecap="round" opacity=".75" />
+        <g transform="rotate(-9 64 64)">
+          <rect x="36" y="18" width="58" height="78" rx="7" fill={c.lt} />
+          <path d="M47 36h30M47 47h36M47 58h24" stroke={c.mid} strokeWidth="4" strokeLinecap="round" />
         </g>
-        <g transform="rotate(5 112 66)">
-          <path d="M82 18h44l14 14v68a6 6 0 0 1-6 6H82a6 6 0 0 1-6-6V24a6 6 0 0 1 6-6Z" fill={url("paperB")} />
-          <path d="M126 18v14h14Z" fill={url("ear")} />
-          <rect x="86" y="30" width="22" height="9" rx="4.5" fill={url("tag")} />
-          <path d="M86 52h40M86 63h32M86 74h40" stroke="#2F80ED" strokeWidth="4" strokeLinecap="round" />
+        <g transform="rotate(6 100 62)">
+          <path d="M70 14h42l14 14v68a7 7 0 0 1-7 7H70a7 7 0 0 1-7-7V21a7 7 0 0 1 7-7Z" fill={url("hi")} />
+          <path d="M112 14v14h14Z" fill={c.mid} />
+          <rect x="74" y="27" width="22" height="8" rx="4" fill={c.deep} opacity=".85" />
+          <path d="M74 48h40M74 59h30M74 70h40" stroke={c.mid} strokeWidth="4" strokeLinecap="round" />
         </g>
 
-        {/* front of the folder */}
+        {/* front of the folder: frosted */}
         <path
-          d="M28 78a7 7 0 0 1 7-8h122a7 7 0 0 1 7 8l-7 52a8 8 0 0 1-8 7H44a8 8 0 0 1-8-7Z"
-          fill={url("front")}
+          d="M12 80a8 8 0 0 1 8-9h122a8 8 0 0 1 8 9l-7 54a9 9 0 0 1-9 8H28a9 9 0 0 1-9-8Z"
+          fill={url("glass")}
         />
-        <rect x="52" y="82" width="34" height="9" rx="4.5" fill="#FFFFFF" opacity=".55" />
-        </g>
+        <rect x="34" y="86" width="34" height="8" rx="4" fill={c.deep} opacity=".55" />
       </svg>
     );
   }
 
   if (name === "bag") {
     return (
-      <svg fill="none" viewBox="0 0 190 155" aria-hidden="true">
-        <defs>
-          <linearGradient id={g("pink")} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#FFB3D0" />
-            <stop offset="1" stopColor="#F2558F" />
-          </linearGradient>
-          <linearGradient id={g("pinkSide")} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#E9789F" />
-            <stop offset="1" stopColor="#C93B72" />
-          </linearGradient>
-          <linearGradient id={g("blue")} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#8CC6FF" />
-            <stop offset="1" stopColor="#2C7CF2" />
-          </linearGradient>
-          <linearGradient id={g("blueSide")} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#4D95F0" />
-            <stop offset="1" stopColor="#1B5FCB" />
-          </linearGradient>
-        </defs>
+      <svg fill="none" viewBox="0 0 160 160" aria-hidden="true">
+        {defs}
 
-        <g transform="translate(14 8) scale(.86)">
-        <ellipse cx="98" cy="141" rx="64" ry="7" fill="#163B37" opacity=".1" />
+        {/* back bag */}
+        <path d="M38 48v-9a17 17 0 0 1 34 0v9" stroke={c.mid} strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M22 47h62l-3 86H19Z" fill={url("mid")} />
+        <circle cx="38" cy="56" r="3.2" fill={c.deep} opacity=".55" />
+        <circle cx="72" cy="56" r="3.2" fill={c.deep} opacity=".55" />
 
-        {/* back bag (pink) */}
-        <path d="M62 51v-9a17 17 0 0 1 34 0v9" stroke="#B83A6C" strokeWidth="5" strokeLinecap="round" />
-        <path d="M46 50h60l-3 82H42Z" fill={url("pink")} />
-        <path d="M106 50l10 6-4 72-9 4Z" fill={url("pinkSide")} />
-        <circle cx="62" cy="58" r="3" fill="#7E1F49" opacity=".6" />
-        <circle cx="96" cy="58" r="3" fill="#7E1F49" opacity=".6" />
-
-        {/* front bag (blue) */}
-        <path d="M102 74v-11a18 18 0 0 1 36 0v11" stroke="#163B37" strokeWidth="5" strokeLinecap="round" />
-        <path d="M86 72h66l6 66H82Z" fill={url("blue")} />
-        <path d="M152 72l12 9 4 50-10 7Z" fill={url("blueSide")} />
-        <circle cx="102" cy="81" r="3.2" fill="#163B37" />
-        <circle cx="138" cy="81" r="3.2" fill="#163B37" />
-        <rect x="102" y="104" width="34" height="9" rx="4.5" fill="#FFFFFF" opacity=".55" />
-        </g>
+        {/* front bag: frosted */}
+        <path d="M82 72v-11a19 19 0 0 1 38 0v11" stroke={c.deep} strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M64 70h72l7 72H57Z" fill={url("glass")} />
+        <circle cx="82" cy="80" r="3.4" fill={c.deep} />
+        <circle cx="120" cy="80" r="3.4" fill={c.deep} />
+        <rect x="80" y="104" width="40" height="8" rx="4" fill={c.deep} opacity=".55" />
       </svg>
     );
   }
 
   return (
-    <svg fill="none" viewBox="0 0 190 155" aria-hidden="true">
-      <defs>
-        <linearGradient id={g("ticket")} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8CC6FF" />
-          <stop offset="1" stopColor="#2C7CF2" />
-        </linearGradient>
-        <linearGradient id={g("inner")} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#F4F9FF" />
-          <stop offset="1" stopColor="#D6F2C8" />
-        </linearGradient>
-        <linearGradient id={g("dot")} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FFE38A" />
-          <stop offset="1" stopColor="#F5B82E" />
-        </linearGradient>
-      </defs>
+    <svg fill="none" viewBox="0 0 160 160" aria-hidden="true">
+      {defs}
 
-      <ellipse cx="96" cy="139" rx="62" ry="7" fill="#163B37" opacity=".1" />
-
-      <g transform="rotate(-20 96 76)">
+      <g transform="rotate(-18 80 80)">
         {/* ticket body with notches at the tear line */}
         <path
-          d="M30 46h32a9 9 0 0 0 18 0h70a10 10 0 0 1 10 10v44a10 10 0 0 1-10 10H80a9 9 0 0 0-18 0H30a10 10 0 0 1-10-10V56a10 10 0 0 1 10-10Z"
-          fill={url("ticket")}
+          d="M18 50h30a9 9 0 0 0 18 0h70a10 10 0 0 1 10 10v44a10 10 0 0 1-10 10H66a9 9 0 0 0-18 0H18a10 10 0 0 1-10-10V60a10 10 0 0 1 10-10Z"
+          fill={url("glass")}
         />
         {/* stub */}
-        <rect x="29" y="58" width="24" height="40" rx="5" fill="#FFFFFF" opacity=".35" />
+        <rect x="17" y="62" width="23" height="40" rx="5" fill={c.mid} opacity=".75" />
         {/* tear line */}
-        <path d="M71 60v36" stroke="#FFFFFF" strokeWidth="2.5" strokeDasharray="4 4" strokeLinecap="round" />
+        <path d="M57 64v36" stroke={c.mid} strokeWidth="2.5" strokeDasharray="4 4" strokeLinecap="round" />
         {/* main panel */}
-        <rect x="84" y="56" width="66" height="44" rx="7" fill={url("inner")} />
-        <circle cx="101" cy="72" r="7" fill={url("dot")} />
-        <path d="M95 89h26" stroke="#2F80ED" strokeWidth="4" strokeLinecap="round" />
+        <rect x="70" y="60" width="66" height="44" rx="7" fill={url("hi")} />
+        <circle cx="86" cy="76" r="7" fill={c.mid} />
+        <path d="M80 93h26" stroke={c.deep} strokeWidth="4" strokeLinecap="round" opacity=".7" />
         {/* barcode */}
         <path
-          d="M131 64v28M135 64v28M140 64v28M143 64v28M147 64v28"
-          stroke="#163B37"
+          d="M117 68v28M121 68v28M126 68v28M129 68v28M133 68v28"
+          stroke={c.deep}
           strokeWidth="2"
           opacity=".75"
         />

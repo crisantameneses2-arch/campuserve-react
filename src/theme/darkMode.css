@@ -53,43 +53,47 @@ html.cs-dark .settings-switch input:checked + .settings-slider {
   background: #2585c5;
 }
 
-/* Dashboard service cards: a coloured outline on each, like the yellow
-   one on Claim & release: blue for documents, green for items.
-   ("--green" is the document card and "--sky" the item card.) */
+/* Dashboard service cards in dark mode: a dark navy card fading into a
+   dark tint of its colour, with the coloured outline (blue documents,
+   green items, yellow claim & release). Set here by hand so the colours
+   stay calm rather than what the generator would make of them. */
+html.cs-dark .sdx .sdx-service {
+  --svc-bg-from: #0b1724;
+  --svc-bg-to: #1c3549;
+  --svc-border: #3f8fc2;
+  --svc-border-hover: #6cb5e3;
+  --svc-accent: #6cb5e3;
+  --svc-title: #f2f6fa;
+  --svc-text: #a6b9c9;
+  --svc-halo: rgba(69, 169, 224, 0.12);
+  box-shadow: none;
+}
+
 html.cs-dark .sdx .sdx-service--green {
-  border-color: #45a9e0;
-  background: linear-gradient(145deg, #0b1724, #20394e);
+  --svc-bg-from: #0b1724;
+  --svc-bg-to: #1b3a38;
+  --svc-border: #449f78;
+  --svc-border-hover: #6fd0a5;
+  --svc-accent: #6fc39d;
+  --svc-halo: rgba(76, 185, 138, 0.12);
 }
 
-html.cs-dark .sdx .sdx-service--green:hover {
-  border-color: #6cc0ee;
-}
-
-html.cs-dark .sdx .sdx-service--sky {
-  border-color: #4cb98a;
-  background: linear-gradient(145deg, #0b1724, #214048);
-}
-
-html.cs-dark .sdx .sdx-service--sky:hover {
-  border-color: #6fd0a5;
-}
-
-/* Claim & release card: the same navy-to-tint gradient as the other two,
-   fading to a dark gold to match its yellow outline. */
 html.cs-dark .sdx .sdx-service--sun {
-  background: linear-gradient(145deg, #0b1724, #3b3a27);
+  --svc-bg-from: #0b1724;
+  --svc-bg-to: #34331f;
+  --svc-border: #b9a24e;
+  --svc-border-hover: #d8c06a;
+  --svc-accent: #d8bc6a;
+  --svc-halo: rgba(216, 188, 106, 0.12);
 }
 
-/* Service card arrow boxes: outlined in each card's colour with a light
-   arrow, like the yellow one on Claim & release. */
-html.cs-dark .sdx .sdx-service--green .sdx-service__circle {
-  border-color: #45a9e0;
-  color: #d4dfe9;
+html.cs-dark .sdx .sdx-service:hover {
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
 }
 
-html.cs-dark .sdx .sdx-service--sky .sdx-service__circle {
-  border-color: #4cb98a;
-  color: #d4dfe9;
+html.cs-dark .sdx .sdx-service__chip {
+  background: var(--svc-accent);
+  color: #0b1724;
 }
 
 /* Item Reservation reminder card: a card surface, not the page colour. */
