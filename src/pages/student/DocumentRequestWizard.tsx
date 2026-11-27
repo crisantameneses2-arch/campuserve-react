@@ -1364,7 +1364,7 @@ export default function DocumentRequestWizard({
                   size="100%"
                   loop={false}
                   escape
-                  holdSeconds={2}
+                  holdSeconds={1}
                   foldSeconds={2}
                   onComplete={() => setSuccessPhase("details")}
                   style={{ background: "transparent" }}

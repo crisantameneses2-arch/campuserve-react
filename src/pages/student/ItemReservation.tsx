@@ -709,9 +709,10 @@ export default function ItemReservation({
               {successPhase === "plane" && (
                 <PaperPlaneAnimation
                   size="100%"
-                  duration={4.2}
                   loop={false}
                   escape
+                  holdSeconds={1}
+                  foldSeconds={2}
                   onComplete={() => setSuccessPhase("details")}
                   style={{ background: "transparent" }}
                 />
