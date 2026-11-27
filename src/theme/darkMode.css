@@ -55,8 +55,8 @@ html.cs-dark .settings-switch input:checked + .settings-slider {
 
 /* Dashboard service cards in dark mode: a dark navy card fading into a
    dark tint of its colour, with the coloured outline (blue documents,
-   green items, yellow claim & release). Set here by hand so the colours
-   stay calm rather than what the generator would make of them. */
+   green items, yellow claim & release). Set here by hand, after the
+   generated file, so the colours stay calm. */
 html.cs-dark .sdx .sdx-service {
   --svc-bg-from: #0b1724;
   --svc-bg-to: #1c3549;
@@ -65,12 +65,15 @@ html.cs-dark .sdx .sdx-service {
   --svc-accent: #6cb5e3;
   --svc-title: #f2f6fa;
   --svc-text: #a6b9c9;
+  --svc-chip-text: #0b1724;
   --svc-halo: rgba(69, 169, 224, 0.12);
+  --svc-glow: rgba(0, 0, 0, 0.4);
+  border: 1.5px solid var(--svc-border);
+  background: linear-gradient(145deg, var(--svc-bg-from), var(--svc-bg-to));
   box-shadow: none;
 }
 
 html.cs-dark .sdx .sdx-service--green {
-  --svc-bg-from: #0b1724;
   --svc-bg-to: #1b3a38;
   --svc-border: #449f78;
   --svc-border-hover: #6fd0a5;
@@ -79,7 +82,6 @@ html.cs-dark .sdx .sdx-service--green {
 }
 
 html.cs-dark .sdx .sdx-service--sun {
-  --svc-bg-from: #0b1724;
   --svc-bg-to: #34331f;
   --svc-border: #b9a24e;
   --svc-border-hover: #d8c06a;
@@ -88,12 +90,23 @@ html.cs-dark .sdx .sdx-service--sun {
 }
 
 html.cs-dark .sdx .sdx-service:hover {
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+  border-color: var(--svc-border-hover);
 }
 
-html.cs-dark .sdx .sdx-service__chip {
-  background: var(--svc-accent);
-  color: #0b1724;
+html.cs-dark .sdx .sdx-service::before {
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.05), transparent);
+}
+
+html.cs-dark .sdx .sdx-service__eyebrow {
+  color: var(--svc-accent);
+}
+
+html.cs-dark .sdx .sdx-service strong {
+  color: var(--svc-title);
+}
+
+html.cs-dark .sdx .sdx-service p {
+  color: var(--svc-text);
 }
 
 /* Item Reservation reminder card: a card surface, not the page colour. */
