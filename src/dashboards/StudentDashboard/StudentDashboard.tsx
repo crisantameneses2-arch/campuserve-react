@@ -10,7 +10,7 @@ import {
   where,
 } from "firebase/firestore";
 
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 
 import ItemStocks from "../../pages/student/ItemStocks";
 import ItemReservation from "../../pages/student/ItemReservation";
@@ -33,6 +33,7 @@ import {
   studentAudience,
   ALL_STUDENTS_AUDIENCE,
   type AppNotification,
+  API_BASE,
 } from "../../services/notifications";
 
 import OwlMascot from "../../components/login/OwlMascot";
@@ -424,8 +425,30 @@ export default function StudentDashboard({
           isDocument
             ? { receipt_seen_at: serverTimestamp() }
             : { receiptSeenAt: serverTimestamp() }
-        ).catch((error) => {
-          console.error("Could not save receipt as seen:", error);
+        ).catch(async (error) => {
+          // The browser may not be allowed to write to the record, so let
+          // the server save it (it checks the record is this student's).
+          try {
+            const token = await auth.currentUser?.getIdToken();
+
+            if (!token) throw error;
+
+            const response = await fetch(`${API_BASE}/api/mark-receipt-seen`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                kind: isDocument ? "DOCUMENT" : "ITEM",
+                id: docId,
+              }),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          } catch (fallbackError) {
+            console.error("Could not save receipt as seen:", fallbackError);
+          }
         });
       }
 

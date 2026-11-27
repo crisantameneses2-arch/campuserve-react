@@ -85,7 +85,7 @@ export const roleAudience = (role: StaffRole) =>
 /* The local dev server (`npm run dev`) does not run the api/ functions,
    so on localhost the deployed one on Vercel is used. VITE_API_BASE_URL
    can point somewhere else if needed. */
-const API_BASE = (
+export const API_BASE = (
   import.meta.env.VITE_API_BASE_URL ??
   (import.meta.env.DEV ? "https://campuserve-react.vercel.app" : "")
 ).replace(/\/$/, "");
