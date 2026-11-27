@@ -1410,6 +1410,18 @@ html.cs-dark .sdx .sdx-txf__empty button {
   color: #f2f6fa;
 }
 
+html.cs-dark .sdx .sdx-tl__updated {
+  color: #9aaebf;
+}
+
+html.cs-dark .sdx .sdx-tl__updated time {
+  color: #d4dfe9;
+}
+
+html.cs-dark .sdx .sdx-tl__updated-dot {
+  background: #2585c5;
+}
+
 /* ---- src/pages/student/ItemReservation.css ---- */
 
 html.cs-dark {
@@ -3230,6 +3242,16 @@ html.cs-dark .rwx .rwx-success__skip {
 html.cs-dark .rwx .rwx-success__skip:hover {
   color: #45a9e0;
   background: #0b1724;
+}
+
+html.cs-dark .rwx .rwx-invite-count {
+  background: #0b1724;
+  color: #45a9e0;
+}
+
+html.cs-dark .rwx .rwx-invite-count.is-full {
+  background: #2e3c43;
+  color: #ddb88a;
 }
 
 /* ---- src/components/messaging/Messaging.css ---- */

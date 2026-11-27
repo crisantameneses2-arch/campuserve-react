@@ -25,6 +25,7 @@ import {
   createDocumentRequest,
   createDraftGroupDocumentRequest,
   createGroupMember,
+  MAX_GROUP_INVITES,
   finalizeDraftGroupDocumentRequest,
   subscribeToDocumentRequest,
   subscribeToGroupRequestMembers,
@@ -177,16 +178,14 @@ export default function DocumentRequestWizard({
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [currentStep, successRequestId]);
 
-  /* Success screen phases: intro → paper plane → details. */
-  const [successPhase, setSuccessPhase] = useState<"intro" | "plane" | "details">("intro");
+  /* Success screen phases:
+     1. "plane": a big paper plane in the middle of the screen — the
+        document shows for 2 s, then folds and flies away in 2 s;
+     2. "details": "Successfully sent!" with the request details. */
+  const [successPhase, setSuccessPhase] = useState<"plane" | "details">("plane");
 
   useEffect(() => {
-    if (!successRequestId) return undefined;
-
-    setSuccessPhase("intro");
-    const timer = window.setTimeout(() => setSuccessPhase("plane"), 1150);
-
-    return () => window.clearTimeout(timer);
+    if (successRequestId) setSuccessPhase("plane");
   }, [successRequestId]);
 
   /* =======================================================
@@ -457,6 +456,18 @@ export default function DocumentRequestWizard({
     ) {
       setError(
         "This student is already in the group request."
+      );
+      return;
+    }
+
+    const activeInvites = groupMembers.filter(
+      (member) =>
+        String(member.invitation_status || "").toUpperCase() !== "DECLINED"
+    ).length;
+
+    if (activeInvites >= MAX_GROUP_INVITES) {
+      setError(
+        `You can invite up to ${MAX_GROUP_INVITES} students in one group request.`
       );
       return;
     }
@@ -1319,6 +1330,7 @@ export default function DocumentRequestWizard({
       <div className="rwx">
         <section className="rwx-shell">
           <div className={`rwx-success is-${successPhase}`} aria-live="polite">
+            {successPhase === "details" && (
             <div className="rwx-success__head">
             <span className="rwx-success__mark" aria-hidden="true">
               <svg viewBox="0 0 76 76" fill="none">
@@ -1328,35 +1340,35 @@ export default function DocumentRequestWizard({
               </svg>
             </span>
 
-            <span className="rwx-eyebrow rwx-success__in" style={{ animationDelay: "0.55s" }}>
+            <span className="rwx-eyebrow rwx-success__in" style={{ animationDelay: "0.3s" }}>
               REQUEST SUBMITTED
             </span>
 
-            <h2 className="rwx-success__in" style={{ animationDelay: "0.7s" }}>
+            <h2 className="rwx-success__in" style={{ animationDelay: "0.4s" }}>
               Successfully sent!
             </h2>
 
-            <p className="rwx-success__in" style={{ animationDelay: "0.85s" }}>
+            <p className="rwx-success__in" style={{ animationDelay: "0.5s" }}>
               Your document request has been submitted to the
               Registrar. You can follow its progress from your
               dashboard.
             </p>
 
             </div>
+            )}
 
             <div className="rwx-success__body">
             {successPhase !== "details" && (
               <div className="rwx-success__plane">
-                {successPhase === "plane" && (
-                  <PaperPlaneAnimation
-                    size="100%"
-                    duration={4.2}
-                    loop={false}
-                    escape
-                    onComplete={() => setSuccessPhase("details")}
-                    style={{ background: "transparent" }}
-                  />
-                )}
+                <PaperPlaneAnimation
+                  size="100%"
+                  loop={false}
+                  escape
+                  holdSeconds={2}
+                  foldSeconds={2}
+                  onComplete={() => setSuccessPhase("details")}
+                  style={{ background: "transparent" }}
+                />
                 <button
                   type="button"
                   className="rwx-success__skip"

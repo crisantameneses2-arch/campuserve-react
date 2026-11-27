@@ -1186,3 +1186,55 @@ body.cs-owl-login-body {
   background: #eef5fa;
   border-color: #a9cbe2;
 }
+
+
+/* ---------- Alumni Access: own page ---------- */
+
+/* On the login page the box is a link to the Alumni Access page. */
+.cs-owl-login .cs-alumni-toggle--link .cs-alumni-toggle__chev::before {
+  margin-top: 0;
+  margin-left: -3px;
+  transform: rotate(-45deg);
+}
+
+.cs-owl-login .cs-alumni-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 18px;
+  padding: 7px 12px;
+  border: 1px solid #d8e6f0;
+  border-radius: 999px;
+  background: #f4f9fc;
+  color: #1e6896;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cs-owl-login .cs-alumni-back:hover {
+  background: #e8f2f9;
+}
+
+.cs-owl-login .cs-alumni-back:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* On its own page the form isn't boxed in. */
+.cs-owl-login .campuserve-alumni-box.is-standalone {
+  margin-top: 4px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.cs-owl-login .campuserve-alumni-box.is-standalone .cs-alumni-body {
+  padding: 0;
+  border-top: 0;
+}
+
+.cs-owl-login .campuserve-alumni-box.is-standalone .cs-alumni-intro {
+  display: none;
+}

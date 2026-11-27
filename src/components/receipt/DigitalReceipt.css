@@ -375,3 +375,37 @@
     transform: rotate(-12deg);
   }
 }
+
+/* ---------- Download ---------- */
+
+.rcp-actions--three {
+  gap: 8px;
+}
+
+.rcp-actions--three .rcp-btn {
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+
+.rcp-btn--download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.rcp-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.rcp-error {
+  width: calc(100% - 52px);
+  margin: 14px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #b2382b;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}

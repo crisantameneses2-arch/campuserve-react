@@ -1,8 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   collection,
+  doc,
+  getDocs,
   onSnapshot,
   query,
+  serverTimestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
 
@@ -57,12 +61,19 @@ import "./StudentDashboardTheme.css";
 import AccountSettings from "../../pages/student/AccountSettings";
 import { useApplyDarkMode } from "../../theme/darkMode";
 import MyProfile from "../../pages/student/MyProfile";
+import StudentGuide from "../../components/guide/StudentGuide";
+import UserGuidePage from "../../components/guide/UserGuidePage";
+import type { GuideStep } from "../../components/guide/guideSteps";
+import { DASHBOARD_TOUR } from "../../components/guide/guideSteps";
 
 type StudentDashboardProps = {
   account: {
     name?: string;
     email?: string;
     student_id?: string;
+    firebaseUid?: string;
+    /** Set once the student answered "Want a quick tour?". */
+    guide_prompt_seen_at?: unknown;
   };
 };
 
@@ -76,6 +87,7 @@ type DashboardPage =
   | "notifications"
   | "messages"
   | "help"
+  | "guide"
   | "contact"
   | "profile"
   | "settings";
@@ -111,6 +123,7 @@ const PAGE_TITLES: Record<DashboardPage, string> = {
   notifications: "Notifications",
   messages: "Messages",
   help: "Help Center & FAQs",
+  guide: "User Guide",
   contact: "Contact support",
   profile: "My profile",
   settings: "Account settings",
@@ -381,6 +394,9 @@ export default function StudentDashboard({
         (transaction) =>
           isPaidTransaction(transaction) &&
           !seen.includes(transaction.key) &&
+          // Dismissed on any device → saved on the record itself.
+          !transaction.details?.receipt_seen_at &&
+          !transaction.details?.receiptSeenAt &&
           getTime(transaction.details?.payment_confirmed_at) > weekAgo
       )
       .sort(
@@ -394,6 +410,25 @@ export default function StudentDashboard({
 
   function closeReceipt() {
     if (receiptTransaction) {
+      // Remember "seen" on the request/reservation in Firestore, so the
+      // receipt doesn't pop up again on the student's other devices.
+      // (It can still be opened from the transaction details.)
+      const docId = receiptTransaction.key.slice(
+        receiptTransaction.key.indexOf("-") + 1
+      );
+      const isDocument = receiptTransaction.kind === "DOCUMENT";
+
+      if (docId && !receiptTransaction.details?.receipt_seen_at && !receiptTransaction.details?.receiptSeenAt) {
+        updateDoc(
+          doc(db, isDocument ? "document_requests" : "itemReservations", docId),
+          isDocument
+            ? { receipt_seen_at: serverTimestamp() }
+            : { receiptSeenAt: serverTimestamp() }
+        ).catch((error) => {
+          console.error("Could not save receipt as seen:", error);
+        });
+      }
+
       try {
         const seen: string[] = JSON.parse(
           localStorage.getItem(receiptSeenKey) || "[]"
@@ -569,9 +604,61 @@ export default function StudentDashboard({
      NOTIFICATION CLICK
   ========================================= */
 
+  /* Tapping a notification opens what it is about:
+     - a message      → Messages, on that office's conversation
+     - a group invite → Messages, on Group Requests
+     - a request / reservation → its details (or the list if not found)
+     - low stock      → Item Reservation */
+  function openNotificationTarget(notification: AppNotification) {
+    const title = String(notification.title || "");
+
+    if (title.startsWith("Message from")) {
+      const office = title.includes("General Office")
+        ? "general_office"
+        : "registrar";
+      setOpenMessagesOffice(office);
+      go("messages");
+      return;
+    }
+
+    if (notification.type === "GROUP_REQUEST") {
+      go("messages", { groupInvites: true });
+      return;
+    }
+
+    if (notification.type === "STOCK") {
+      go("itemReservation");
+      return;
+    }
+
+    if (notification.relatedId) {
+      const match = transactions.find(
+        (transaction) =>
+          transaction.id === notification.relatedId ||
+          transaction.key.endsWith(`-${notification.relatedId}`)
+      );
+
+      if (match) {
+        // A group request still being set up continues in the wizard.
+        if (normalizeStatus(match.status) === "DRAFT") {
+          setSelectedDraftRequestId(match.id);
+          go("request");
+          return;
+        }
+
+        setSelectedTransaction(match);
+        return;
+      }
+
+      go("transactions");
+    }
+  }
+
   async function handleNotificationClick(
     notification: AppNotification
   ) {
+    openNotificationTarget(notification);
+
     if (
       !studentId ||
       notification.readBy.includes(studentId)
@@ -598,9 +685,71 @@ export default function StudentDashboard({
 
   // Set by the dashboard invitation banner so Messages opens on Group Requests.
   const [openGroupInvites, setOpenGroupInvites] = useState(false);
+  // Set by a "Message from …" notification so Messages opens that office.
+  const [openMessagesOffice, setOpenMessagesOffice] =
+    useState<"registrar" | "general_office" | null>(null);
+
+  /* =========================================
+     USER GUIDE
+     New students are asked once (on any device) whether they want a
+     walkthrough. The User Guide page can start it again, or a short
+     guide for one task, at any time.
+  ========================================= */
+
+  const [guideSteps, setGuideSteps] = useState<GuideStep[] | null>(null);
+  const guideAskKey = `campuserve-guide-asked-${studentId}`;
+  const [askGuide, setAskGuide] = useState(false);
+
+  useEffect(() => {
+    if (!studentId || account.guide_prompt_seen_at) return;
+
+    try {
+      if (localStorage.getItem(guideAskKey)) return;
+    } catch {
+      // storage unavailable: rely on the saved account flag only
+    }
+
+    const timer = window.setTimeout(() => setAskGuide(true), 900);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId]);
+
+  /** Remember the answer on this device and on the account (all devices). */
+  function rememberGuideAnswer(answer: "TOUR" | "LATER") {
+    setAskGuide(false);
+
+    try {
+      localStorage.setItem(guideAskKey, answer);
+    } catch {
+      // ignore
+    }
+
+    (async () => {
+      const byUid = account.firebaseUid
+        ? await getDocs(
+            query(collection(db, "accounts"), where("firebaseUid", "==", account.firebaseUid))
+          )
+        : null;
+      const snapshot =
+        byUid && !byUid.empty
+          ? byUid
+          : await getDocs(
+              query(collection(db, "accounts"), where("student_id", "==", studentId))
+            );
+
+      const accountDoc = snapshot.docs[0];
+      if (!accountDoc) return;
+
+      await updateDoc(doc(db, "accounts", accountDoc.id), {
+        guide_prompt_seen_at: serverTimestamp(),
+        guide_prompt_answer: answer,
+      });
+    })().catch((error) => console.warn("Could not save the guide answer:", error));
+  }
 
   function go(page: DashboardPage, options?: { groupInvites?: boolean }) {
     setOpenGroupInvites(Boolean(options?.groupInvites));
+    if (page !== "messages") setOpenMessagesOffice(null);
     setMenuOpen(false);
     setActivePage(page);
 
@@ -712,6 +861,7 @@ export default function StudentDashboard({
               </div>
 
               <section
+                data-tour="tracking"
                 className="sdx-track sdx-track--compact"
                 aria-labelledby="sdx-track-title"
               >
@@ -770,7 +920,7 @@ export default function StudentDashboard({
                   <small>QUICK ACCESS / 01—03</small>
                 </div>
 
-                <div className="sdx-services">
+                <div className="sdx-services" data-tour="services">
                   <ServiceCard
                     tone="green"
                     art="document"
@@ -961,11 +1111,17 @@ export default function StudentDashboard({
                   studentId={studentId}
                   studentName={studentName}
                   openGroupInvites={openGroupInvites}
+                  openOffice={openMessagesOffice}
+                  key={`msx-${openMessagesOffice || ""}-${openGroupInvites ? "g" : ""}`}
                   onContinueDraft={(requestId) => {
                     setSelectedDraftRequestId(requestId);
                     go("request");
                   }}
                 />
+              )}
+
+              {activePage === "guide" && (
+                <UserGuidePage onStart={(topic) => setGuideSteps(topic.steps)} />
               )}
 
               {activePage === "help" && <HelpCenter />}
@@ -1054,6 +1210,60 @@ export default function StudentDashboard({
           onClose={closeReceipt}
         />
       )}
+
+      {/* First visit: offer the walkthrough (not over a receipt). */}
+      {askGuide && !receiptTransaction && !guideSteps && (
+        <div className="sgd-ask" role="dialog" aria-modal="true" aria-labelledby="sgd-ask-title">
+          <div className="sgd-ask__card">
+            <div className="sgd-ask__art" aria-hidden="true">🦉</div>
+            <h2 id="sgd-ask-title">
+              Welcome{account.name ? `, ${account.name.trim().split(" ")[0]}` : ""}!
+            </h2>
+            <p>
+              Want a quick walkthrough of your dashboard? We'll show you
+              where to request documents, reserve items, and track
+              everything.
+            </p>
+
+            <div className="sgd-ask__actions">
+              <button
+                type="button"
+                className="sgd-btn sgd-btn--primary"
+                autoFocus
+                onClick={() => {
+                  rememberGuideAnswer("TOUR");
+                  go("dashboard");
+                  setGuideSteps(DASHBOARD_TOUR);
+                }}
+              >
+                Yes, show me around
+              </button>
+              <button
+                type="button"
+                className="sgd-btn sgd-btn--ghost"
+                onClick={() => rememberGuideAnswer("LATER")}
+              >
+                No thanks
+              </button>
+            </div>
+
+            <p className="sgd-ask__note">
+              You can open it any time from <b>User Guide</b> in the menu.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {guideSteps && (
+        <StudentGuide
+          steps={guideSteps}
+          onClose={() => setGuideSteps(null)}
+          onNavigate={(page) => {
+            if (page !== activePage) go(page);
+          }}
+          onMenu={setMenuOpen}
+        />
+      )}
     </div>
   );
 }
@@ -1110,6 +1320,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { page: "messages", label: "Messages", icon: "chat" },
       { page: "notifications", label: "Notifications", icon: "bell" },
+      { page: "guide", label: "User Guide", icon: "compass" },
       { page: "help", label: "Help Center & FAQs", icon: "help" },
       { page: "contact", label: "Contact Support", icon: "chat" },
     ],
@@ -1201,6 +1412,7 @@ function StudentSidebar({
                   key={item.page}
                   type="button"
                   className={`sdx-link ${active ? "is-active" : ""}`}
+                  data-tour={`nav-${item.page}`}
                   aria-current={active ? "page" : undefined}
                   onClick={() => onNavigate(item.page)}
                 >
@@ -1264,6 +1476,7 @@ function StudentTopbar({
         <button
           type="button"
           className="sdx-menu-btn"
+          data-tour="menu"
           onClick={onToggleMenu}
           aria-label="Open navigation"
           aria-expanded={menuOpen}
@@ -1291,6 +1504,7 @@ function StudentTopbar({
         <button
           type="button"
           className="sdx-bell sdx-bell--chat"
+          data-tour="chat"
           onClick={() => onNavigate("messages")}
           aria-label={
             unreadMessages > 0
@@ -1310,6 +1524,7 @@ function StudentTopbar({
         <button
           type="button"
           className="sdx-bell"
+          data-tour="bell"
           onClick={() => onNavigate("notifications")}
           aria-label={
             unreadNotifications > 0
@@ -1330,6 +1545,7 @@ function StudentTopbar({
         <button
           type="button"
           className="sdx-account"
+          data-tour="account"
           onClick={() => onNavigate("profile")}
           aria-label="Open my profile"
           title="My profile"
@@ -1497,6 +1713,7 @@ function TrackingBox({
           <div className="sdx-track-viewport">
             <div
               className={`sdx-track-slide is-from-${direction} ${dragging ? "is-dragging" : ""}`}
+              data-tour="tracking-card"
               role="button"
               tabIndex={0}
               key={current.key}
@@ -1651,6 +1868,8 @@ function TrackingContent({
     ? `${formatClaimDate(transaction.date)}${transaction.time ? ` · ${formatClaimTime(transaction.time)}` : ""}`
     : "";
 
+  const lastUpdate = latestUpdateTime(transaction);
+
   return (
     <div className={`sdx-tl ${isStopped ? "is-stopped" : ""}`}>
       {/* HEADER — item name tab + position counter */}
@@ -1715,6 +1934,9 @@ function TrackingContent({
           )}
         </div>
       </div>
+
+      {/* When this request last changed. */}
+      {lastUpdate > 0 && <LastUpdated time={lastUpdate} />}
 
       {/* Claiming details appear only once staff have set them. */}
 
@@ -2102,6 +2324,7 @@ function ServiceCard({
     <button
       type="button"
       className={`sdx-service sdx-service--${tone}`}
+      data-tour={`service-${art}`}
       onClick={onClick}
     >
       <span className="sdx-service__circle" aria-hidden="true">
@@ -2543,7 +2766,7 @@ function TransactionHistory({
             </button>
           </div>
         ) : (
-          <div className="sdx-activity">
+          <div className="sdx-activity" data-tour="tx-list">
             {visible.map((transaction) => (
               <TransactionRow
                 key={transaction.key}
@@ -3767,6 +3990,81 @@ function getKindLabel(kind: StudentTransaction["kind"]) {
     : "Item Reservation";
 }
 
+/* Latest change on a request / reservation: the newest of every
+   timestamp staff or the student may have set on it. (Some status
+   changes don't touch updated_at, so we look at all of them.) */
+const UPDATE_TIME_FIELDS = [
+  "updated_at",
+  "updatedAt",
+  "created_at",
+  "createdAt",
+  "submitted_at",
+  "approved_at",
+  "approvedAt",
+  "payment_confirmed_at",
+  "processing_started_at",
+  "ready_for_pickup_at",
+  "claiming_schedule_assigned_at",
+  "rescheduled_at",
+  "claimedAt",
+  "claimed_at",
+  "cancelled_at",
+  "cancelledAt",
+  "declined_at",
+];
+
+function latestUpdateTime(transaction: StudentTransaction): number {
+  const details = transaction.details || {};
+  let latest = getTime(transaction.createdAt);
+
+  for (const field of UPDATE_TIME_FIELDS) {
+    latest = Math.max(latest, getTime(details[field]));
+  }
+
+  return latest;
+}
+
+function formatRelative(time: number, now: number): string {
+  const seconds = Math.max(0, Math.round((now - time) / 1000));
+  if (seconds < 60) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return "";
+}
+
+/** "Updated 5 min ago · Nov 27, 1:36 AM" — refreshes every minute. */
+function LastUpdated({ time }: { time: number }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const date = new Date(time);
+  const exact = date.toLocaleString("en-PH", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const relative = formatRelative(time, now);
+
+  return (
+    <p className="sdx-tl__updated">
+      <span className="sdx-tl__updated-dot" aria-hidden="true" />
+      Updated{" "}
+      <time dateTime={date.toISOString()} title={date.toLocaleString("en-PH")}>
+        {relative ? `${relative} · ${exact}` : exact}
+      </time>
+    </p>
+  );
+}
+
 function getTime(value: unknown): number {
   if (!value) return 0;
 
@@ -3858,6 +4156,14 @@ function Icon({
   };
 
   switch (name) {
+    case "compass":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="m15.5 8.5-2 5-5 2 2-5z" />
+        </svg>
+      );
+
     case "menu":
       return (
         <svg {...common}>

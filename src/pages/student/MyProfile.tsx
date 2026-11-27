@@ -176,15 +176,6 @@ export default function MyProfile({ account, stats, onNavigate }: MyProfileProps
           <section className="mpx-card mpx-actions">
             <button
               type="button"
-              className="mpx-action"
-              onClick={() => onNavigate?.("settings")}
-            >
-              <span>Account settings</span>
-              <small>Appearance and notifications</small>
-            </button>
-
-            <button
-              type="button"
               className="mpx-logout"
               disabled={loggingOut}
               onClick={async () => {

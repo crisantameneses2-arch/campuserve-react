@@ -3016,3 +3016,38 @@ body.sdx-body {
     overflow: hidden;
   }
 }
+
+/* Live tracking: when the request last changed */
+.sdx .sdx-tl__updated {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6f8b7a;
+  text-align: center;
+}
+
+.sdx .sdx-tl__updated time {
+  font-weight: 800;
+  color: #3f6a55;
+}
+
+.sdx .sdx-tl__updated-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #42a76f;
+  box-shadow: 0 0 0 3px rgba(66, 167, 111, 0.18);
+  animation: sdx-updated-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sdx-updated-pulse {
+  50% { box-shadow: 0 0 0 5px rgba(66, 167, 111, 0.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sdx .sdx-tl__updated-dot { animation: none; }
+}

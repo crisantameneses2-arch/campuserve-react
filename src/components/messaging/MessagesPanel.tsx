@@ -57,6 +57,8 @@ type MessagesPanelProps =
       onContinueDraft?: (requestId: string) => void;
       /** Open the Group Requests conversation first. */
       openGroupInvites?: boolean;
+      /** Open this office's conversation first (e.g. from a notification). */
+      openOffice?: Office | null;
     }
   | {
       mode: "staff";
@@ -191,7 +193,9 @@ export default function MessagesPanel(props: MessagesPanelProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(
     props.mode === "student" && props.openGroupInvites
       ? GROUP_THREAD_KEY
-      : null
+      : props.mode === "student" && props.openOffice
+        ? props.openOffice
+        : null
   );
 
   /* Group request invitations: a conversation of their own (students only). */

@@ -470,10 +470,33 @@ export async function createDocumentDetails(
  * The actual Gmail invitation will be handled by
  * the secure backend / Resend integration.
  */
+/** Most students one group request can invite (declined ones don't count). */
+export const MAX_GROUP_INVITES = 20;
+
 export async function createGroupMember(
   request_id: string,
   student_id: string
 ): Promise<string> {
+  // Count the group's current invitations from Firestore itself, so the
+  // limit holds even if the screen is out of date.
+  const existing = await getDocs(
+    query(
+      collection(db, "group_request_members"),
+      where("request_id", "==", request_id)
+    )
+  );
+
+  const activeInvites = existing.docs.filter(
+    (member) =>
+      String(member.data().invitation_status || "").toUpperCase() !== "DECLINED"
+  ).length;
+
+  if (activeInvites >= MAX_GROUP_INVITES) {
+    throw new Error(
+      `A group request can invite up to ${MAX_GROUP_INVITES} students.`
+    );
+  }
+
   const member_id = crypto.randomUUID();
 
   const invitation_token = crypto.randomUUID();

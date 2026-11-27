@@ -77,8 +77,20 @@ function validate(form: FormState): string {
   return "";
 }
 
-export default function AlumniAccessForm() {
-  const [open, setOpen] = useState(false);
+/**
+ * On the login page (default) it is a button that opens the Alumni Access
+ * page (onOpen). On that page it is rendered with `standalone` and shows
+ * the form straight away.
+ */
+export default function AlumniAccessForm({
+  standalone = false,
+  onOpen,
+}: {
+  standalone?: boolean;
+  onOpen?: () => void;
+} = {}) {
+  // The form shows only on the Alumni Access page itself.
+  const open = standalone;
   const [form, setForm] = useState<FormState>(EMPTY);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -138,23 +150,24 @@ export default function AlumniAccessForm() {
   }
 
   return (
-    <div className={`campuserve-alumni-box${open ? " is-open" : ""}`}>
-      <button
-        type="button"
-        className="cs-alumni-toggle"
-        aria-expanded={open}
-        aria-controls="cs-alumni-form"
-        onClick={() => {
-          setOpen((value) => !value);
-          setError("");
-        }}
-      >
-        <span className="cs-alumni-toggle__text">
-          <strong>Alumni Access</strong>
-          <small>Former PSU student? Request an alumni account.</small>
-        </span>
-        <span className="cs-alumni-toggle__chev" aria-hidden="true" />
-      </button>
+    <div
+      className={`campuserve-alumni-box${open ? " is-open" : ""}${
+        standalone ? " is-standalone" : ""
+      }`}
+    >
+      {!standalone && (
+        <button
+          type="button"
+          className="cs-alumni-toggle cs-alumni-toggle--link"
+          onClick={() => onOpen?.()}
+        >
+          <span className="cs-alumni-toggle__text">
+            <strong>Alumni Access</strong>
+            <small>Former PSU student? Request an alumni account.</small>
+          </span>
+          <span className="cs-alumni-toggle__chev" aria-hidden="true" />
+        </button>
+      )}
 
       {open && (
         <div id="cs-alumni-form" className="cs-alumni-body">

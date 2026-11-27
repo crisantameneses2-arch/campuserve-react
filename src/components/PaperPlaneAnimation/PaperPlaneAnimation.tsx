@@ -15,6 +15,9 @@ import { frame, TOTAL, PALETTES } from "./paperPlaneEngine";
  *  - onComplete called once when a non-looping run ends. Also called right
  *               away when the device asks for reduced motion, so screens
  *               waiting on it never get stuck.
+ *  - holdSeconds + foldSeconds  (optional, play-once mode) show the flat
+ *               document for holdSeconds, then fold it and fly it away in
+ *               foldSeconds, then call onComplete.
  *  - className, style  passed to the wrapper
  */
 
@@ -29,6 +32,8 @@ type Props = {
   onComplete?: () => void;
   /** Let the plane fly past the box and off the screen (longer flight, not clipped). */
   escape?: boolean;
+  holdSeconds?: number;
+  foldSeconds?: number;
   className?: string;
   style?: CSSProperties;
 };
@@ -41,6 +46,8 @@ export default function PaperPlaneAnimation({
   playing = true,
   onComplete,
   escape = false,
+  holdSeconds,
+  foldSeconds,
   className,
   style,
 }: Props) {
@@ -64,6 +71,36 @@ export default function PaperPlaneAnimation({
     let raf = 0;
     const start = performance.now();
 
+    /* Play-once "show, then fold & fly" mode.
+       The engine's timeline is written for 3 s (BASE): 0–0.2 s the document
+       floats, 0.2–2.8 s it lies down, folds and flies off. We stretch those
+       two parts to holdSeconds and foldSeconds. */
+    if (holdSeconds && foldSeconds) {
+      const BASE = 3;
+      const toEngine = (baseT: number) => (baseT * TOTAL) / BASE;
+
+      const timed = (now: number) => {
+        const elapsed = (now - start) / 1000;
+        let baseT: number;
+
+        if (elapsed < holdSeconds) {
+          baseT = 0.2 * (elapsed % 1); // gentle float, one bob per second
+        } else if (elapsed < holdSeconds + foldSeconds) {
+          baseT = 0.2 + ((elapsed - holdSeconds) / foldSeconds) * (2.8 - 0.2);
+        } else {
+          setT(toEngine(2.8)); // the plane has left; empty frame
+          doneRef.current?.();
+          return;
+        }
+
+        setT(toEngine(baseT));
+        raf = requestAnimationFrame(timed);
+      };
+
+      raf = requestAnimationFrame(timed);
+      return () => cancelAnimationFrame(raf);
+    }
+
     const tick = (now: number) => {
       const elapsed = (now - start) / 1000;
 
@@ -79,7 +116,7 @@ export default function PaperPlaneAnimation({
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, loop, duration]);
+  }, [playing, loop, duration, holdSeconds, foldSeconds]);
 
   const f = frame(t, pal, escape ? 4 : 1);
   const id = (name: string) => `${uid}-${name}`;

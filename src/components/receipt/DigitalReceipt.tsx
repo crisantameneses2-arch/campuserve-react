@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { subscribeToDocumentRequestDetails } from "../../services/documentRequests";
 import { toDate } from "../../utils/format";
+import { downloadReceiptImage } from "./receiptImage";
 
 import "./DigitalReceipt.css";
 
@@ -47,6 +48,22 @@ export default function DigitalReceipt({
   const [run, setRun] = useState(0); // bump to print again
   const [printed, setPrinted] = useState(false);
   const [lines, setLines] = useState<ReceiptLine[]>(receipt.lines ?? []);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  async function handleDownload() {
+    setSaving(true);
+    setSaveError("");
+    try {
+      await downloadReceiptImage(receipt, lines, toDate(receipt.paidAt));
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "Couldn't download the receipt."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
 
   // Document requests keep their documents in a separate collection.
   useEffect(() => {
@@ -240,7 +257,13 @@ export default function DigitalReceipt({
           </article>
         </div>
 
-        <div className="rcp-actions">
+        {saveError && (
+          <p className="rcp-error" role="alert">
+            {saveError}
+          </p>
+        )}
+
+        <div className="rcp-actions rcp-actions--three">
           <button
             type="button"
             className="rcp-btn rcp-btn--soft"
@@ -248,6 +271,17 @@ export default function DigitalReceipt({
             disabled={!printed}
           >
             Print again
+          </button>
+          <button
+            type="button"
+            className="rcp-btn rcp-btn--soft rcp-btn--download"
+            onClick={handleDownload}
+            disabled={!printed || saving}
+          >
+            <svg viewBox="0 0 20 20" width="15" height="15" fill="none" aria-hidden="true">
+              <path d="M10 3v9m0 0-3.5-3.5M10 12l3.5-3.5M4 15.5h12" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {saving ? "Saving…" : "Download"}
           </button>
           <button
             type="button"

@@ -119,6 +119,9 @@ function App() {
   const [showPassword, setShowPassword] =
     useState(false);
 
+  // Alumni Access page (opened from the login page).
+  const [showAlumniAccess, setShowAlumniAccess] = useState(false);
+
   const [showForgotPassword, setShowForgotPassword] =
     useState(false);
 
@@ -1123,6 +1126,41 @@ function App() {
     }
 
     // ----------------------------------------------
+    // ALUMNI ACCESS SCREEN
+    // ----------------------------------------------
+
+    if (showAlumniAccess) {
+      return (
+        <div className="campuserve-login-page cs-owl-login">
+          <LoginBrandPanel />
+
+          <div className="campuserve-login-area">
+            <div className="campuserve-login-card cs-alumni-page">
+              <button
+                type="button"
+                className="cs-alumni-back"
+                onClick={() => setShowAlumniAccess(false)}
+              >
+                <span aria-hidden="true">←</span> Back to log in
+              </button>
+
+              <div className="campuserve-login-heading">
+                <h2>Alumni Access</h2>
+                <p>
+                  Studied at PSU before? Send your details and the
+                  Registrar will check them against school records
+                  before your alumni account is created.
+                </p>
+              </div>
+
+              <AlumniAccessForm standalone />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ----------------------------------------------
     // FORGOT PASSWORD SCREEN
     // ----------------------------------------------
 
@@ -1415,7 +1453,14 @@ function App() {
 
             {/* ALUMNI */}
 
-            <AlumniAccessForm />
+            <AlumniAccessForm
+              onOpen={() => {
+                setShowAlumniAccess(true);
+                setError("");
+                setMessage("");
+                window.scrollTo({ top: 0 });
+              }}
+            />
 
 
             {/* TESTING ONLY: dev server shortcuts, hidden on the live site */}

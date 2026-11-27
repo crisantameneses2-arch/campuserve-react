@@ -7,6 +7,7 @@ import {
   lookupGroupStudent,
   type GroupStudent,
 } from "../../services/groupRequests";
+import { MAX_GROUP_INVITES } from "../../services/documentRequests";
 
 /* =========================================================
    TYPES
@@ -78,6 +79,12 @@ export default function StepMethod({
 
   const [studentIdInput, setStudentIdInput] =
     useState("");
+
+  // Declined invitations don't count toward the limit.
+  const activeInviteCount = groupMembers.filter(
+    (member) => member.invitation_status !== "DECLINED"
+  ).length;
+  const groupFull = activeInviteCount >= MAX_GROUP_INVITES;
 
   const [
     searchedStudent,
@@ -523,18 +530,33 @@ export default function StepMethod({
           )}
 
           <div className="rwx-group__head">
-            <h3>Add students</h3>
+            <h3>
+              Add students
+              <span
+                className={`rwx-invite-count${groupFull ? " is-full" : ""}`}
+                aria-label={`${activeInviteCount} of ${MAX_GROUP_INVITES} students invited`}
+              >
+                {activeInviteCount}/{MAX_GROUP_INVITES}
+              </span>
+            </h3>
 
             <p>
               {canEditMembers
-                ? "Search for another student using their Student ID. Once you add them, an invitation will be sent to their dashboard."
+                ? `Search for another student using their Student ID. Once you add them, an invitation will be sent to their dashboard. You can invite up to ${MAX_GROUP_INVITES} students.`
                 : "The students already included in this request are shown below."}
             </p>
           </div>
 
+          {canEditMembers && groupFull && (
+            <div className="rwx-notice" role="status">
+              This group already has {MAX_GROUP_INVITES} invited students, the
+              most one request can have. Remove someone to invite another.
+            </div>
+          )}
+
           {/* SEARCH AREA */}
 
-          {canEditMembers && (
+          {canEditMembers && !groupFull && (
             <div className="rwx-search">
               <label
                 className="rwx-visually-hidden"
@@ -581,7 +603,7 @@ export default function StepMethod({
 
           {/* SEARCHED STUDENT */}
 
-          {searchedStudent && canEditMembers && (
+          {searchedStudent && canEditMembers && !groupFull && (
             <div className="rwx-found">
               <span className="rwx-avatar">
                 {getInitials(searchedStudent.name || searchedStudent.studentId)}

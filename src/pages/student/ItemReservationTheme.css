@@ -1907,3 +1907,63 @@
     width: min(250px, 72vw, 36vh);
   }
 }
+
+/* =========================================================
+   Item page: the photo always stays inside its card.
+   The card is a grid; without a fixed row height the photo's
+   percentage max-height is ignored and tall photos (slacks,
+   jogging pants) spill out and make the page scroll.
+========================================================= */
+.irx.irx--item-view .irx-hero {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  overflow: hidden;
+}
+
+.irx.irx--item-view .irx-hero__image,
+.irx.irx--item-view .irx-hero__image.is-cutout {
+  width: auto;
+  height: auto;
+  max-width: 82%;
+  max-height: calc(100% - 22px);
+  object-fit: contain;
+}
+
+/* Phone: the whole item page fits the visible screen — no page scroll.
+   The details column scrolls on its own only if it ever has to. */
+@media (max-width: 900px) {
+  .sdx:has(.irx--item-view) .sdx-content {
+    overflow: hidden;
+  }
+
+  /* Card = exactly the space under "All items". The details keep
+     their natural height and the photo takes whatever is left. */
+  .irx.irx--item-view .irx-detail {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 71px - 24px - 38px);
+    height: calc(100dvh - 71px - 24px - 38px);
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .irx.irx--item-view .irx-hero {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 110px;
+  }
+
+  .irx.irx--item-view .irx-info {
+    flex: none;
+    min-height: 0;
+    max-height: 72%;
+    overflow-y: auto;
+  }
+
+  .irx.irx--item-view .irx-info h2,
+  .irx.irx--item-view .irx-info h1 {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+}
