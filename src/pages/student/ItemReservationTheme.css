@@ -1967,3 +1967,37 @@
     line-height: 1.2;
   }
 }
+
+/* ---------- Success: big centred paper plane first (as in document request) ----------
+   While the plane plays, it is the only thing on the card, large and in
+   the middle of the screen. "Successfully reserved!" and the details come
+   after it has flown away. */
+.irx .irx-success.is-plane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 170px);
+  min-height: calc(100dvh - 170px);
+  padding: 20px;
+}
+
+.irx .irx-success.is-plane .irx-success__body {
+  flex: 1;
+  justify-content: center;
+}
+
+.irx .irx-success.is-plane .irx-success__plane {
+  width: min(440px, 86vw, 56vh);
+  width: min(440px, 86vw, 56dvh);
+  margin: 0 auto;
+}
+
+.irx .irx-success.is-plane .irx-success__skip {
+  bottom: -28px;
+}
+
+/* Details phase: the rest follows the title in. */
+.irx .irx-success.is-details .irx-success__rest > *:nth-child(1) { animation-delay: 0.6s; }
+.irx .irx-success.is-details .irx-success__rest > *:nth-child(2) { animation-delay: 0.7s; }
+.irx .irx-success.is-details .irx-success__rest > *:nth-child(3) { animation-delay: 0.8s; }

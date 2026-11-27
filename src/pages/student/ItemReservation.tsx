@@ -121,17 +121,14 @@ export default function ItemReservation({
     total: number;
   } | null>(null);
 
-  /* Success screen phases (like the document request): check mark →
-     paper plane folds and flies away → the reservation details. */
-  const [successPhase, setSuccessPhase] = useState<"intro" | "plane" | "details">("intro");
+  /* Success screen phases (same as the document request):
+     1. "plane": a big paper plane in the middle of the screen — the paper
+        shows for 1 s, then folds and flies away in 2 s;
+     2. "details": "Successfully reserved!" with the reservation details. */
+  const [successPhase, setSuccessPhase] = useState<"plane" | "details">("plane");
 
   useEffect(() => {
-    if (!success) return undefined;
-
-    setSuccessPhase("intro");
-    const timer = window.setTimeout(() => setSuccessPhase("plane"), 1150);
-
-    return () => window.clearTimeout(timer);
+    if (success) setSuccessPhase("plane");
   }, [success]);
 
   // Opening an item, the checkout or the success screen starts at the top
@@ -669,6 +666,7 @@ export default function ItemReservation({
     return (
       <div className="irx">
         <section className={`irx-success is-${successPhase}`} aria-live="polite">
+          {successPhase === "details" && (
           <div className="irx-success__head">
           <span className="irx-success__mark" aria-hidden="true">
             <svg viewBox="0 0 76 76" fill="none">
@@ -686,15 +684,15 @@ export default function ItemReservation({
             </svg>
           </span>
 
-          <span className="irx-success__eyebrow irx-success__in" style={{ animationDelay: "0.55s" }}>
+          <span className="irx-success__eyebrow irx-success__in" style={{ animationDelay: "0.3s" }}>
             RESERVATION SUBMITTED
           </span>
 
-          <h2 className="irx-success__in" style={{ animationDelay: "0.7s" }}>
+          <h2 className="irx-success__in" style={{ animationDelay: "0.4s" }}>
             Successfully reserved!
           </h2>
 
-          <p className="irx-success__in" style={{ animationDelay: "0.85s" }}>
+          <p className="irx-success__in" style={{ animationDelay: "0.5s" }}>
             Your reservation has been sent to the General Office. Pay at the
             Cashier; once the General Office approves it, claim your items
             within seven (7) days, or it will be cancelled. You can follow
@@ -702,21 +700,20 @@ export default function ItemReservation({
           </p>
 
           </div>
+          )}
 
           <div className="irx-success__body">
           {successPhase !== "details" && (
             <div className="irx-success__plane">
-              {successPhase === "plane" && (
-                <PaperPlaneAnimation
-                  size="100%"
-                  loop={false}
-                  escape
-                  holdSeconds={1}
-                  foldSeconds={2}
-                  onComplete={() => setSuccessPhase("details")}
-                  style={{ background: "transparent" }}
-                />
-              )}
+              <PaperPlaneAnimation
+                size="100%"
+                loop={false}
+                escape
+                holdSeconds={1}
+                foldSeconds={2}
+                onComplete={() => setSuccessPhase("details")}
+                style={{ background: "transparent" }}
+              />
               <button
                 type="button"
                 className="irx-success__skip"
