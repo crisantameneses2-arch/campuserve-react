@@ -888,7 +888,9 @@ export default function StudentDashboard({
                 <div className="sdx-welcome">
                   {isNewStudent ? (
                     <>
-                      <h2>We're glad you're here!</h2>
+                      <h2>
+                        We're glad you're here!
+                      </h2>
                       <p>
                         Explore a more convenient way to manage your campus
                         needs, track your requests, and stay connected with
@@ -897,7 +899,9 @@ export default function StudentDashboard({
                     </>
                   ) : (
                     <>
-                      <h2>Welcome back!</h2>
+                      <h2>
+                        Welcome back!
+                      </h2>
                       <p>
                         We're here to make your campus experience easier,
                         smoother, and more convenient every step of the way.

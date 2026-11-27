@@ -2694,8 +2694,8 @@ body.sdx-body {
 }
 
 .sdx .sdx-track-wrap {
-  --ofc-w: 196px;
-  --ofc-right: 22px;
+  --ofc-w: 146px;
+  --ofc-right: 52px;
   position: relative;
 }
 
@@ -2726,16 +2726,21 @@ body.sdx-body {
 
 .sdx .sdx-welcome h2 {
   margin: 0 0 6px;
-  font-size: 24px;
-  font-weight: 850;
-  letter-spacing: -0.5px;
+  /* same pairing as the login headline: bold tight Inter heading,
+     Georgia italic line underneath */
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
   line-height: 1.15;
   color: var(--sdx-forest, #173f60);
 }
 
 .sdx .sdx-welcome p {
   margin: 0;
-  font-size: 13.5px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 15px;
   line-height: 1.55;
   color: #557085;
 }
