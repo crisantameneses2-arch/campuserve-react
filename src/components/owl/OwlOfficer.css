@@ -1,0 +1,68 @@
+/* =========================================================
+   Owl officer behind the Live tracking card.
+   .ofc has no position/z-index on purpose: its two SVGs are positioned
+   against the Live tracking wrapper, so the owl can sit BEHIND the card
+   (z-index 0) while his resting wing lies ON the card (z-index 2).
+
+   Geometry (viewBox 440 105 490 355):
+     height = width × 0.7245
+     desk line (card top) = width × 0.6856 from the top of the SVG
+========================================================= */
+
+.ofc-back,
+.ofc-front {
+  position: absolute;
+  top: 0;
+  right: var(--ofc-right, 18px);
+  width: var(--ofc-w, 220px);
+  height: auto;
+  aspect-ratio: 490 / 355;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ofc-back {
+  z-index: 0;
+  cursor: pointer;
+  outline: none;
+  filter: drop-shadow(0 6px 10px rgba(5, 30, 52, 0.14));
+}
+
+.ofc-back:focus-visible {
+  outline: 3px solid #f5de57;
+  outline-offset: 2px;
+  border-radius: 16px;
+}
+
+.ofc-front {
+  z-index: 2;
+  cursor: pointer;
+  pointer-events: none;
+}
+
+/* Only the wing itself catches taps, so the card under it stays usable. */
+.ofc-front #ofc-wing-rest {
+  pointer-events: visiblePainted;
+}
+
+/* Parts that rotate/squash around points given in SVG units. */
+.ofc-back g[style*="transform-origin"],
+.ofc-back .ofc-eye,
+.ofc-move {
+  transform-box: view-box;
+}
+
+.ofc-move {
+  animation: ofc-bob 2.6s ease-in-out infinite;
+}
+
+@keyframes ofc-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ofc-move {
+    animation: none;
+  }
+}

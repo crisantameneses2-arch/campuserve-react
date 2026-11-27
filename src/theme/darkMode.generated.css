@@ -1001,40 +1001,70 @@ html.cs-dark .sdx .sdx-heading small {
 }
 
 html.cs-dark .sdx .sdx-service {
-  --svc-bg-from: #0b1724;
-  --svc-bg-to: #20394e;
-  --svc-border: #688194;
-  --svc-border-hover: #7a91a4;
-  --svc-accent: #45a9e0;
-  --svc-title: #f2f6fa;
-  --svc-text: #a0b4c4;
-  --svc-halo: rgba(69, 169, 224, 0.14);
+  border: 1px solid #27445a;
+  background: linear-gradient(145deg, #0b1724, #214048);
 }
 
-html.cs-dark .sdx .sdx-service--green {
-  --svc-bg-from: #0b1724;
-  --svc-bg-to: #214149;
-  --svc-border: #7bc19b;
-  --svc-border-hover: #7ac29e;
-  --svc-accent: #81cca9;
-  --svc-title: #f2f6fa;
-  --svc-text: #a7b9c9;
-  --svc-halo: rgba(119, 200, 166, 0.14);
+html.cs-dark .sdx .sdx-service:hover {
+  border-color: #7dbf9a;
+}
+
+html.cs-dark .sdx .sdx-service--sky {
+  background: linear-gradient(145deg, #0b1724, #20394e);
+  border-color: #264258;
+}
+
+html.cs-dark .sdx .sdx-service--sky:hover {
+  border-color: #6d8698;
 }
 
 html.cs-dark .sdx .sdx-service--sun {
-  --svc-bg-from: #0b1724;
-  --svc-bg-to: #2e3e43;
-  --svc-border: #d3b769;
-  --svc-border-hover: #d3b669;
-  --svc-accent: #d4b16a;
-  --svc-title: #f2f6fa;
-  --svc-text: #beac89;
-  --svc-halo: rgba(211, 176, 105, 0.16);
+  background: linear-gradient(145deg, #2e4143, #2e4043);
+  border-color: #d3cd69;
 }
 
-html.cs-dark .sdx .sdx-service__chip {
+html.cs-dark .sdx .sdx-service--sun:hover {
+  border-color: #d3cd69;
+}
+
+html.cs-dark .sdx .sdx-service__circle {
+  border: 1px solid #27445a;
+  background: rgba(22, 43, 61, 0.82);
+  color: #45a9e0;
+}
+
+html.cs-dark .sdx .sdx-service--sky .sdx-service__circle {
+  border-color: #264358;
+  color: #45a9e0;
+}
+
+html.cs-dark .sdx .sdx-service--sun .sdx-service__circle {
+  border-color: #d3cd69;
+  color: #d4dfe9;
+}
+
+html.cs-dark .sdx .sdx-service strong {
   color: #f2f6fa;
+}
+
+html.cs-dark .sdx .sdx-service p {
+  color: #a6b9c9;
+}
+
+html.cs-dark .sdx .sdx-service--sky strong {
+  color: #f2f6fa;
+}
+
+html.cs-dark .sdx .sdx-service--sky p {
+  color: #9fb3c3;
+}
+
+html.cs-dark .sdx .sdx-service--sun strong {
+  color: #d4dfe9;
+}
+
+html.cs-dark .sdx .sdx-service--sun p {
+  color: #b1c3d2;
 }
 
 html.cs-dark .sdx .sdx-panel {
@@ -1313,8 +1343,12 @@ html.cs-dark .sdx .sdx-backdrop {
 }
 }
 
-html.cs-dark .sdx .sdx-track-owl .owl-mascot:focus-visible {
-  outline: 3px solid #d3cf69;
+html.cs-dark .sdx .sdx-welcome h2 {
+  color: var(--sdx-forest, #f2f6fa);
+}
+
+html.cs-dark .sdx .sdx-welcome p {
+  color: #a7b9c9;
 }
 
 html.cs-dark .sdx .sdx-txf {

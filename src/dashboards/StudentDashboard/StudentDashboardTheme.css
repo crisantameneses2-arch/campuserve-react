@@ -1582,152 +1582,126 @@ body.sdx-body {
   gap: 17px;
 }
 
-/* Service cards: a soft tinted card with a coloured outline, text on the
-   left and a large illustration in the bottom-right corner.
-   Blue = documents, green = items, yellow = claim & release. */
 .sdx .sdx-service {
-  --svc-bg-from: #f3f8fd;
-  --svc-bg-to: #e3eef8;
-  --svc-border: #b7d3ea;
-  --svc-border-hover: #7fb2dc;
-  --svc-accent: #3f80b6;
-  --svc-title: #1f4f7a;
-  --svc-text: #5a7690;
-  --svc-halo: rgba(63, 128, 182, 0.14);
-
   position: relative;
   overflow: hidden;
-  isolation: isolate;
   min-width: 0;
-  height: 178px;
+  height: 203px;
   display: flex;
-  align-items: stretch;
-  padding: 20px 22px;
-  border: 1px solid var(--svc-border);
-  border-radius: 20px;
-  background: linear-gradient(135deg, var(--svc-bg-from), var(--svc-bg-to));
-  text-align: left;
-  box-shadow: 0 7px 20px rgba(23, 63, 96, 0.05);
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 23px 23px 22px;
+  border: 1px solid #cfe0eb;
+  border-radius: 19px;
+  background: linear-gradient(145deg, #f0f8f1, #e1f1e7);
+  box-shadow: 0 7px 20px rgba(23, 63, 96, 0.045);
   transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
 }
 
-/* A soft halo of the card's colour behind the illustration. */
-.sdx .sdx-service::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  right: -60px;
-  bottom: -60px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, var(--svc-halo), transparent);
-  pointer-events: none;
-}
-
 .sdx .sdx-service:hover {
-  transform: translateY(-4px);
-  border-color: var(--svc-border-hover);
-  box-shadow: 0 16px 32px rgba(23, 63, 96, 0.1);
+  transform: translateY(-5px);
+  border-color: #a9d5bc;
+  box-shadow: 0 18px 35px rgba(23, 73, 109, 0.12);
 }
 
-.sdx .sdx-service--green {
-  --svc-bg-from: #f2f9f5;
-  --svc-bg-to: #e1f2e9;
-  --svc-border: #b3dbc5;
-  --svc-border-hover: #7cc39f;
-  --svc-accent: #3a9068;
-  --svc-title: #1f6146;
-  --svc-text: #5b7f6d;
-  --svc-halo: rgba(62, 154, 115, 0.14);
+.sdx .sdx-service--sky {
+  background: linear-gradient(145deg, #f1f8fc, #e4f0f7);
+  border-color: #d1e5ef;
+}
+
+.sdx .sdx-service--sky:hover {
+  border-color: #a9cfe4;
 }
 
 .sdx .sdx-service--sun {
-  --svc-bg-from: #fdfaf0;
-  --svc-bg-to: #f7eed3;
-  --svc-border: #e8d49e;
-  --svc-border-hover: #d9b75f;
-  --svc-accent: #b0842a;
-  --svc-title: #6e4f12;
-  --svc-text: #86714a;
-  --svc-halo: rgba(211, 162, 62, 0.16);
+  background: linear-gradient(145deg, #fbfbea, #f2f0ce);
+  border-color: #e8e4a8;
 }
 
-.sdx .sdx-service__copy {
-  position: relative;
+.sdx .sdx-service--sun:hover {
+  border-color: #d9d37a;
+}
+
+.sdx .sdx-service__circle {
+  position: absolute;
+  top: 18px;
+  left: 18px;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: 100%;
-  min-width: 0;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid #cfe0eb;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--sdx-green);
+  font-size: 18px;
+  box-shadow: 0 4px 14px rgba(30, 104, 150, 0.08);
 }
 
-.sdx .sdx-service__eyebrow {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-  color: var(--svc-accent);
+.sdx .sdx-service--sky .sdx-service__circle {
+  border-color: #cfe2ef;
+  color: var(--sdx-blue);
 }
 
-.sdx .sdx-service strong {
-  margin-top: 3px;
-  font-size: 19px;
-  font-weight: 840;
-  line-height: 1.15;
-  letter-spacing: -0.5px;
-  color: var(--svc-title);
+.sdx .sdx-service--sun .sdx-service__circle {
+  border-color: #e5e1a4;
+  color: #68702d;
 }
 
-.sdx .sdx-service p {
-  max-width: 54%;
-  margin: 6px 0 0;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--svc-text);
-}
-
-.sdx .sdx-service__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: auto;
-  padding: 6px 12px 6px 13px;
-  border-radius: 999px;
-  background: var(--svc-accent);
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 800;
-  white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(23, 63, 96, 0.12);
-  transition: gap 0.2s;
-}
-
-.sdx .sdx-service:hover .sdx-service__chip {
-  gap: 9px;
-}
-
-/* Illustration tucked into the bottom-right corner, running off the edge. */
 .sdx .sdx-service__art {
   position: absolute;
-  right: -18px;
-  bottom: -20px;
+  top: 6px;
+  right: 7px;
   width: 174px;
-  height: 174px;
-  transform: rotate(-8deg);
-  transform-origin: 100% 100%;
-  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.12));
+  height: 145px;
+  filter: saturate(0.82);
   transition: transform 0.25s;
 }
 
 .sdx .sdx-service:hover .sdx-service__art {
-  transform: translate(-3px, -4px) rotate(-12deg) scale(1.04);
+  transform: translateY(-5px) rotate(-2deg);
 }
 
 .sdx .sdx-service__art svg {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
+}
+
+.sdx .sdx-service strong {
+  position: relative;
+  z-index: 1;
+  font-size: 17.5px;
+  font-weight: 840;
+  letter-spacing: -0.5px;
+  color: var(--sdx-forest);
+}
+
+.sdx .sdx-service p {
+  position: relative;
+  z-index: 1;
+  max-width: 235px;
+  margin: 7px 0 0;
+  font-size: 11.5px;
+  line-height: 1.56;
+  color: #607b69;
+}
+
+.sdx .sdx-service--sky strong {
+  color: var(--sdx-blue-deep);
+}
+
+.sdx .sdx-service--sky p {
+  color: #5d7b91;
+}
+
+.sdx .sdx-service--sun strong {
+  color: #59612b;
+}
+
+.sdx .sdx-service--sun p {
+  color: #73734b;
 }
 
 /* ---------- Panels ---------- */
@@ -2462,47 +2436,8 @@ body.sdx-body {
     display: none;
   }
 
-  /* Narrower cards: a little taller, smaller title and corner icon. */
-  .sdx .sdx-service {
-    height: 196px;
-    padding: 18px 18px;
-  }
-
-  .sdx .sdx-service strong {
-    font-size: 17px;
-  }
-
-  .sdx .sdx-service p {
-    max-width: 100%;
-  }
-
   .sdx .sdx-service__art {
-    width: 146px;
-    height: 146px;
-    right: -16px;
-    bottom: -18px;
-  }
-}
-
-@media (max-width: 800px) and (min-width: 601px) {
-  .sdx .sdx-service {
-    height: 196px;
-    padding: 16px 14px;
-  }
-
-  .sdx .sdx-service strong {
-    font-size: 15.5px;
-  }
-
-  .sdx .sdx-service__chip {
-    padding: 5px 10px;
-    font-size: 10.5px;
-  }
-
-  .sdx .sdx-service__art {
-    width: 130px;
-    height: 130px;
-    opacity: 0.8;
+    width: 135px;
   }
 }
 
@@ -2567,6 +2502,15 @@ body.sdx-body {
 
   .sdx .sdx-content {
     padding: 23px 19px 52px;
+  }
+
+  .sdx .sdx-service {
+    height: 185px;
+    padding: 18px 16px;
+  }
+
+  .sdx .sdx-service__art {
+    width: 119px;
   }
 }
 
@@ -2667,23 +2611,21 @@ body.sdx-body {
   }
 
   .sdx .sdx-service {
-    height: 158px;
+    height: 156px;
     padding: 18px 18px 16px;
   }
 
   .sdx .sdx-service__art {
-    width: 168px;
-    height: 168px;
-    right: -16px;
-    bottom: -20px;
+    width: 151px;
+    top: 7px;
   }
 
   .sdx .sdx-service strong {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .sdx .sdx-service p {
-    max-width: 56%;
+    max-width: 190px;
     font-size: 11px;
   }
 
@@ -2741,12 +2683,35 @@ body.sdx-body {
 
 
 /* =========================================================
-   Owl perched on top of Live tracking
-   (head peeks over the card's top edge, body hidden behind it)
+   Live tracking: owl officer at his "desk" (the card) with a
+   welcome message on his left. The row above the card is at least as
+   tall as the owl down to his desk line (width × 0.6856) and grows if
+   the message needs more room; the owl stays pinned to its bottom.
 ========================================================= */
+/* dashboard only: pull the owl closer to the header */
+.sdx .sdx-content:has(> .sdx-overview) {
+  padding-top: 10px;
+}
+
 .sdx .sdx-track-wrap {
+  --ofc-w: 196px;
+  --ofc-right: 22px;
   position: relative;
-  padding-top: 50px;
+}
+
+.sdx .sdx-track-top {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: calc(var(--ofc-w) * 0.6856);
+  padding: 0 calc(var(--ofc-right) + var(--ofc-w) * 0.86) 16px 4px;
+}
+
+/* the owl's SVGs hang from the bottom of this row onto the card */
+.sdx .sdx-track-top .ofc-back,
+.sdx .sdx-track-top .ofc-front {
+  top: auto;
+  bottom: calc(var(--ofc-w) * -0.0389);
 }
 
 .sdx .sdx-track-wrap > .sdx-track {
@@ -2754,79 +2719,55 @@ body.sdx-body {
   z-index: 1;
 }
 
-.sdx .sdx-track-owl {
-  position: absolute;
-  top: 0;
-  right: clamp(110px, 16%, 190px);
-  z-index: 0;
-  width: 74px;
-  pointer-events: none;
+.sdx .sdx-welcome {
+  max-width: 560px;
+  animation: sdx-welcome-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both;
 }
 
-.sdx .sdx-track-owl .owl-mascot {
-  pointer-events: auto;
-  display: block;
-  width: 100%;
+.sdx .sdx-welcome h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 850;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  color: var(--sdx-forest, #173f60);
+}
+
+.sdx .sdx-welcome p {
   margin: 0;
-  padding: 0;
-  line-height: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  cursor: pointer;
-  transform-origin: center 80%;
-  filter: drop-shadow(0 6px 8px rgba(5, 30, 52, 0.18));
-  transition: transform 0.25s ease;
-  animation: sdx-owl-peek 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both;
-  -webkit-tap-highlight-color: transparent;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #557085;
 }
 
-.sdx .sdx-track-owl .owl-mascot:hover {
-  border-color: transparent;
-  transform: translateY(-4px);
+@keyframes sdx-welcome-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
 }
 
-.sdx .sdx-track-owl .owl-mascot:focus {
-  outline: none;
-}
-
-.sdx .sdx-track-owl .owl-mascot:focus-visible {
-  outline: 3px solid var(--sdx-sun);
-  outline-offset: 2px;
-  border-radius: 14px;
-}
-
-.sdx .sdx-track-owl .owl-mascot svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-  pointer-events: none;
-}
-
-.sdx .sdx-track-owl .owl-mascot .wing,
-.sdx .sdx-track-owl .owl-mascot .eye {
-  transform-box: view-box;
-}
-
-@keyframes sdx-owl-peek {
-  from { transform: translateY(46px); }
-  to { transform: none; }
-}
-
-@media (max-width: 600px) {
+@media (max-width: 760px) {
   .sdx .sdx-track-wrap {
-    padding-top: 42px;
+    --ofc-w: 150px;
+    --ofc-right: 4px;
   }
 
-  .sdx .sdx-track-owl {
-    width: 62px;
-    right: 128px;
+  .sdx .sdx-track-top {
+    padding: 0 calc(var(--ofc-right) + var(--ofc-w) * 0.8) 12px 2px;
+  }
+
+  .sdx .sdx-welcome h2 {
+    margin-bottom: 4px;
+    font-size: 17px;
+  }
+
+  .sdx .sdx-welcome p {
+    font-size: 11.5px;
+    line-height: 1.45;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sdx .sdx-track-owl .owl-mascot {
+  .sdx .sdx-welcome {
     animation: none;
   }
 }
