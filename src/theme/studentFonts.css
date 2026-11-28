@@ -1,0 +1,17 @@
+/* =========================================================
+   CampuServe — Student side typography
+   ---------------------------------------------------------
+   Display : Righteous (rounded geometric, single weight)
+   Text    : Nunito
+   Mono    : DM Mono (claim codes, receipts)
+
+   All three load from Google Fonts via the <link> in index.html.
+   Change a font for the whole student side by editing the three
+   variables below.
+   ========================================================= */
+
+:root {
+  --cs-font-display: "Righteous", "Nunito", "Segoe UI", system-ui, sans-serif;
+  --cs-font-body: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --cs-font-mono: "DM Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
+}

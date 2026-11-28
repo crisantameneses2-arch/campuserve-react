@@ -1,4 +1,6 @@
 
+import { useState } from "react";
+import OwlHelper from "../../components/owl/OwlHelper";
 import "./HelpCenter.css";
 
 const faqs = [
@@ -66,21 +68,90 @@ const faqs = [
 
 
 export default function HelpCenter() {
+    /* bumps each time a question is opened, so the owl goes "hmm" */
+    const [ponder, setPonder] = useState(0);
+    /* one answer open at a time; null = all closed */
+    const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+    const toggle = (index: number) => {
+        if (openIndex === index) {
+            setOpenIndex(null);
+        } else {
+            setOpenIndex(index);
+            setPonder((n) => n + 1);
+        }
+    };
+
     return (
         <div className="help-center-page">
             <section className="help-center-section">
-                <h2>Frequently Asked Questions</h2>
-                <p className="help-center-subtitle">
-                    Select a question to view its answer.
-                </p>
+                <header className="help-center-hero">
+                    <div className="help-center-hero-text">
+                        <h2>Frequently Asked Questions</h2>
+                        <p className="help-center-subtitle">
+                            Select a question to view its answer.
+                        </p>
+                    </div>
+                    <div className="help-center-owl">
+                        <OwlHelper pose="thinking" nudge={ponder} />
+                    </div>
+                </header>
 
                 <div className="help-center-faq-list">
-                    {faqs.map((faq, index) => (
-                        <details className="help-center-faq" key={index}>
-                            <summary>{faq.question}</summary>
-                            <p>{faq.answer}</p>
-                        </details>
-                    ))}
+                    {faqs.map((faq, index) => {
+                        const isOpen = openIndex === index;
+                        const buttonId = `help-faq-q-${index}`;
+                        const panelId = `help-faq-a-${index}`;
+
+                        return (
+                            <div
+                                className={`help-center-faq${isOpen ? " is-open" : ""}`}
+                                key={faq.question}
+                                style={{ animationDelay: `${0.2 + index * 0.04}s` }}
+                            >
+                                <h3 className="help-center-faq-heading">
+                                    <button
+                                        type="button"
+                                        id={buttonId}
+                                        className="help-center-faq-question"
+                                        aria-expanded={isOpen}
+                                        aria-controls={panelId}
+                                        onClick={() => toggle(index)}
+                                    >
+                                        <span className="help-center-faq-number">
+                                            {String(index + 1).padStart(2, "0")}
+                                        </span>
+                                        <span className="help-center-faq-text">
+                                            {faq.question}
+                                        </span>
+                                        <span className="help-center-faq-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 20 20" width="14" height="14">
+                                                <path
+                                                    d="M5 7.5l5 5 5-5"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                        </span>
+                                    </button>
+                                </h3>
+
+                                <div
+                                    id={panelId}
+                                    role="region"
+                                    aria-labelledby={buttonId}
+                                    className="help-center-faq-panel"
+                                >
+                                    <div className="help-center-faq-panel-inner">
+                                        <p>{faq.answer}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </section>
 

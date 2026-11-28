@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import OwlHelper from "../../components/owl/OwlHelper";
 import "./ContactSupport.css";
 
 export default function ContactSupport() {
@@ -7,6 +8,8 @@ export default function ContactSupport() {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  /* bumps on every sent message, so the support owl "takes the call" */
+  const [ring, setRing] = useState(0);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -15,6 +18,7 @@ export default function ContactSupport() {
 
     // UI confirmation only. No message is saved or sent yet.
     setSubmitted(true);
+    setRing((n) => n + 1);
     setSubject("");
     setMessage("");
     setCategory("General Inquiry");
@@ -53,6 +57,12 @@ export default function ContactSupport() {
               <p>Send your concern through the support form.</p>
             </div>
           </div>
+        </div>
+
+        <div className="contact-support-desk">
+        {/* support owl standing behind the form card (the card is his desk) */}
+        <div className="contact-support-owl">
+          <OwlHelper pose="headset" nudge={ring} />
         </div>
 
         <div className="contact-support-form-card">
@@ -118,6 +128,7 @@ export default function ContactSupport() {
               Submit Message <span>→</span>
             </button>
           </form>
+        </div>
         </div>
       </div>
     </div>

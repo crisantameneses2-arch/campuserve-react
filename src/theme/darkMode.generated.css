@@ -1001,70 +1001,48 @@ html.cs-dark .sdx .sdx-heading small {
 }
 
 html.cs-dark .sdx .sdx-service {
-  border: 1px solid #27445a;
-  background: linear-gradient(145deg, #0b1724, #214048);
+  --svc-bg-from: #0b1724;
+  --svc-bg-to: #20394e;
+  --svc-border: #6d8598;
+  --svc-border-hover: #7f97a9;
+  --svc-accent: #45a9e0;
+  --svc-title: #f2f6fa;
+  --svc-text: #9fb3c3;
+  --svc-chip-text: #162b3d;
+  --svc-halo: rgba(69, 169, 224, 0.1);
+  --svc-glow: rgba(242, 246, 250, 0.12);
 }
 
-html.cs-dark .sdx .sdx-service:hover {
-  border-color: #7dbf9a;
+html.cs-dark .sdx .sdx-service::before {
+  background: radial-gradient(closest-side, rgba(22, 43, 61, 0.55), transparent);
 }
 
-html.cs-dark .sdx .sdx-service--sky {
-  background: linear-gradient(145deg, #0b1724, #20394e);
-  border-color: #264258;
-}
-
-html.cs-dark .sdx .sdx-service--sky:hover {
-  border-color: #6d8698;
+html.cs-dark .sdx .sdx-service--green {
+  --svc-bg-from: #0b1724;
+  --svc-bg-to: #214049;
+  --svc-border: #7ac297;
+  --svc-border-hover: #7bc19b;
+  --svc-accent: #88d6b4;
+  --svc-title: #f2f6fa;
+  --svc-text: #a6b9c9;
+  --svc-halo: rgba(136, 214, 180, 0.1);
+  --svc-glow: rgba(242, 246, 250, 0.12);
 }
 
 html.cs-dark .sdx .sdx-service--sun {
-  background: linear-gradient(145deg, #2e4143, #2e4043);
-  border-color: #d3cd69;
+  --svc-bg-from: #0b1724;
+  --svc-bg-to: #2e3f43;
+  --svc-border: #d3c169;
+  --svc-border-hover: #d3bd69;
+  --svc-accent: #dac181;
+  --svc-title: #f2f6fa;
+  --svc-text: #beb495;
+  --svc-halo: rgba(212, 184, 107, 0.12);
+  --svc-glow: rgba(242, 246, 250, 0.12);
 }
 
-html.cs-dark .sdx .sdx-service--sun:hover {
-  border-color: #d3cd69;
-}
-
-html.cs-dark .sdx .sdx-service__circle {
-  border: 1px solid #27445a;
-  background: rgba(22, 43, 61, 0.82);
-  color: #45a9e0;
-}
-
-html.cs-dark .sdx .sdx-service--sky .sdx-service__circle {
-  border-color: #264358;
-  color: #45a9e0;
-}
-
-html.cs-dark .sdx .sdx-service--sun .sdx-service__circle {
-  border-color: #d3cd69;
-  color: #d4dfe9;
-}
-
-html.cs-dark .sdx .sdx-service strong {
+html.cs-dark .sdx .sdx-service__chip {
   color: #f2f6fa;
-}
-
-html.cs-dark .sdx .sdx-service p {
-  color: #a6b9c9;
-}
-
-html.cs-dark .sdx .sdx-service--sky strong {
-  color: #f2f6fa;
-}
-
-html.cs-dark .sdx .sdx-service--sky p {
-  color: #9fb3c3;
-}
-
-html.cs-dark .sdx .sdx-service--sun strong {
-  color: #d4dfe9;
-}
-
-html.cs-dark .sdx .sdx-service--sun p {
-  color: #b1c3d2;
 }
 
 html.cs-dark .sdx .sdx-panel {
@@ -2596,12 +2574,59 @@ html.cs-dark .help-center-faq {
   border: 1px solid #223c51;
 }
 
-html.cs-dark .help-center-faq summary::after {
+html.cs-dark .help-center-faq::before {
+  background: #2585c5;
+}
+
+html.cs-dark .help-center-faq:hover {
+  border-color: #29465c;
+}
+
+html.cs-dark .help-center-faq.is-open {
+  border-color: #29475d;
+}
+
+html.cs-dark .help-center-faq-question {
+  color: #d4dfe9;
+}
+
+html.cs-dark .help-center-faq-question:focus-visible {
+  outline: 2px solid #45a9e0;
+}
+
+html.cs-dark .help-center-faq-number {
+  background: #0b1724;
   color: #9eb2c2;
 }
 
-html.cs-dark .help-center-faq p {
+html.cs-dark .help-center-faq.is-open .help-center-faq-number {
+  background: #20394e;
+  color: #45a9e0;
+}
+
+html.cs-dark .help-center-faq.is-open .help-center-faq-text {
+  color: #f2f6fa;
+}
+
+html.cs-dark .help-center-faq-icon {
+  background: #0b1724;
+  border: 1px solid #223c51;
   color: #9eb2c2;
+}
+
+html.cs-dark .help-center-faq-question:hover .help-center-faq-icon {
+  color: #45a9e0;
+  border-color: #29465c;
+}
+
+html.cs-dark .help-center-faq.is-open .help-center-faq-icon {
+  background: #20394e;
+  border-color: #29475d;
+  color: #45a9e0;
+}
+
+html.cs-dark .help-center-faq-panel p {
+  color: #acbece;
 }
 
 html.cs-dark .help-center-contact {
@@ -2611,6 +2636,14 @@ html.cs-dark .help-center-contact {
 
 html.cs-dark .help-center-contact p {
   color: #9eb2c2;
+}
+
+html.cs-dark .help-center-section .help-center-hero h2 {
+  color: #f2f6fa;
+}
+
+html.cs-dark .help-center-hero .help-center-subtitle {
+  color: #a7b9c9;
 }
 
 /* ---- src/pages/student/MyProfile.css ---- */

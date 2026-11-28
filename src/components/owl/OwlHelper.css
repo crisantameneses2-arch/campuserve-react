@@ -1,0 +1,89 @@
+/* =========================================================
+   Owl officer for the help pages (OwlHelper.tsx).
+   Size it with --owlh-w on any parent.
+
+   thinking (viewBox -32 -150 384 670)
+     height = width × 1.745, feet on the bottom edge
+   headset  (viewBox 8 -4 457 526)
+     height = width × 1.151; bottom of the raised wing / top of the
+     bag strap is width × 0.665 from the top of the SVG
+========================================================= */
+
+.owlh {
+  display: block;
+  width: var(--owlh-w, 130px);
+  height: auto;
+  overflow: visible;
+  cursor: pointer;
+  outline: none;
+  filter: drop-shadow(0 6px 10px rgba(5, 30, 52, 0.12));
+  -webkit-tap-highlight-color: transparent;
+}
+
+.owlh--thinking {
+  aspect-ratio: 384 / 670;
+}
+
+.owlh--headset {
+  aspect-ratio: 457 / 526;
+}
+
+.owlh:focus-visible {
+  outline: 3px solid #f5de57;
+  outline-offset: 4px;
+  border-radius: 16px;
+}
+
+/* Parts that rotate/squash around points given in SVG units. */
+.owlh g[style*="transform-origin"],
+.owlh .oth-eye,
+.owlh .ohs-eye,
+.owlh .oth-move,
+.owlh .ohs-move {
+  transform-box: view-box;
+}
+
+.owlh .oth-move,
+.owlh .ohs-move {
+  animation: owlh-bob 2.6s ease-in-out infinite;
+}
+
+@keyframes owlh-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Floating question marks (thinking pose) */
+.owlh .oth-qm {
+  transform-box: fill-box;
+  transform-origin: 50% 80%;
+  animation: owlh-qfloat 2.4s ease-in-out infinite;
+}
+
+.owlh .oth-qm:nth-child(2) {
+  animation-delay: -0.8s;
+  animation-duration: 2.1s;
+}
+
+.owlh .oth-qm:nth-child(3) {
+  animation-delay: -1.5s;
+  animation-duration: 2.7s;
+}
+
+@keyframes owlh-qfloat {
+  0%, 100% { transform: translateY(0) rotate(-8deg); opacity: 1; }
+  50% { transform: translateY(-10px) rotate(8deg); opacity: 0.75; }
+}
+
+/* Dark theme: the navy question mark would vanish on the dark page. */
+html.cs-dark .owlh .oth-qm:first-child {
+  fill: #9fd3f5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owlh .oth-move,
+  .owlh .ohs-move,
+  .owlh .oth-qm {
+    animation: none;
+  }
+}

@@ -44,41 +44,185 @@
 .help-center-faq-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
+/* ---------- question card ---------- */
 .help-center-faq {
-  padding: 18px 20px;
-  background: #fff;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.3s ease,
+    transform 0.25s ease;
+  animation: help-center-faq-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.help-center-faq summary {
-  cursor: pointer;
+/* soft accent bar that grows down the left edge when open */
+.help-center-faq::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #4f8fbf;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.help-center-faq:hover {
+  border-color: #cbdbe8;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+}
+
+.help-center-faq.is-open {
+  border-color: #c6d9e8;
+  box-shadow: 0 8px 24px rgba(23, 63, 96, 0.08);
+  transform: none;
+}
+
+.help-center-faq.is-open::before {
+  transform: scaleY(1);
+}
+
+.help-center-faq-heading {
+  margin: 0;
+  font-size: inherit;
+}
+
+.help-center-faq-question {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 0;
+  background: none;
+  color: #1f2937;
+  font: inherit;
+  font-size: 15px;
   font-weight: 600;
-  list-style: none;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
 }
 
-.help-center-faq summary::-webkit-details-marker {
-  display: none;
+.help-center-faq-question:focus-visible {
+  outline: 2px solid #4f8fbf;
+  outline-offset: -2px;
+  border-radius: 14px;
 }
 
-.help-center-faq summary::after {
-  content: "+";
-  float: right;
+.help-center-faq-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #f1f5f9;
   color: #64748b;
-  font-size: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
-.help-center-faq[open] summary::after {
-  content: "−";
+.help-center-faq.is-open .help-center-faq-number {
+  background: #e3eef7;
+  color: #2f6a96;
 }
 
-.help-center-faq p {
-  margin: 14px 0 0;
+.help-center-faq-text {
+  flex: 1;
+  transition: color 0.25s ease;
+}
+
+.help-center-faq.is-open .help-center-faq-text {
+  color: #173f60;
+}
+
+.help-center-faq-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   color: #64748b;
-  line-height: 1.6;
+  transition:
+    transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.help-center-faq-question:hover .help-center-faq-icon {
+  color: #2f6a96;
+  border-color: #cbdbe8;
+}
+
+.help-center-faq.is-open .help-center-faq-icon {
+  transform: rotate(180deg);
+  background: #e3eef7;
+  border-color: #c6d9e8;
+  color: #2f6a96;
+}
+
+/* ---------- sliding answer ----------
+   grid rows 0fr -> 1fr animates to the answer's real height,
+   so it slides open and closed smoothly whatever its length. */
+.help-center-faq-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.42s cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s linear 0.42s;
+}
+
+.help-center-faq.is-open .help-center-faq-panel {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition:
+    grid-template-rows 0.42s cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s;
+}
+
+.help-center-faq-panel-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.help-center-faq-panel p {
+  margin: 0;
+  padding: 0 22px 18px 64px;
+  color: #556677;
+  font-size: 14px;
+  line-height: 1.7;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.25s ease, transform 0.35s ease;
+}
+
+.help-center-faq.is-open .help-center-faq-panel p {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.08s;
+}
+
+@keyframes help-center-faq-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 
 .help-center-contact {
@@ -97,4 +241,130 @@
 .help-center-contact p {
   margin: 0;
   color: #64748b;
+}
+
+/* =========================================================
+   Header with the thinking owl.
+   The owl peeks out from behind the first question card: only the
+   top half of him shows, the rest is hidden behind the card. His
+   box is clipped just inside that card so nothing shows in the gap
+   below it.
+========================================================= */
+.help-center-hero {
+  --owlh-w: 124px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  /* the visible top half of the owl (full owl = width × 1.745) */
+  --owlh-show: calc(var(--owlh-w) * 0.95);
+  --owlh-tuck: 30px;
+  /* raises the owl above the card without moving the cards */
+  --owlh-lift: 20px;
+  min-height: var(--owlh-show);
+  padding: 0 calc(var(--owlh-w) + 28px) 18px 2px;
+}
+
+.help-center-hero-text {
+  max-width: 560px;
+  animation: help-center-hero-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both;
+}
+
+.help-center-section .help-center-hero h2 {
+  margin: 0 0 6px;
+  /* same pairing as the dashboard welcome: tight bold heading,
+     Georgia italic line underneath */
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  color: #173f60;
+}
+
+.help-center-hero .help-center-subtitle {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #557085;
+}
+
+.help-center-owl {
+  position: absolute;
+  right: 18px;
+  /* reaches a little way down behind the first card, then is cut off */
+  bottom: calc(var(--owlh-tuck) * -1);
+  height: calc(var(--owlh-show) + var(--owlh-lift) + var(--owlh-tuck));
+  overflow: hidden;
+  z-index: 0;
+}
+
+.help-center-owl > * {
+  display: block;
+}
+
+/* the cards sit in front of the owl */
+.help-center-faq-list {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes help-center-hero-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 760px) {
+  .help-center-page {
+    padding: 16px 12px;
+  }
+
+  .help-center-hero {
+    --owlh-w: 84px;
+    padding: 0 calc(var(--owlh-w) + 14px) 14px 2px;
+  }
+
+  .help-center-section .help-center-hero h2 {
+    font-size: 19px;
+  }
+
+  .help-center-hero .help-center-subtitle {
+    font-size: 12.5px;
+  }
+
+  .help-center-owl {
+    right: 6px;
+  }
+
+  .help-center-faq-question {
+    gap: 10px;
+    padding: 14px 14px;
+    font-size: 14px;
+  }
+
+  .help-center-faq-number {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .help-center-faq-panel p {
+    padding: 0 16px 16px 52px;
+    font-size: 13.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-center-hero-text,
+  .help-center-faq {
+    animation: none;
+  }
+
+  .help-center-faq,
+  .help-center-faq::before,
+  .help-center-faq-icon,
+  .help-center-faq-panel,
+  .help-center-faq-panel p {
+    transition: none !important;
+  }
 }

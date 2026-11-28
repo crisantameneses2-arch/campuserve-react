@@ -57,6 +57,7 @@ import {
   toDate,
 } from "../../utils/format";
 
+import "../../theme/studentFonts.css";
 import "./StudentDashboard.css";
 import "./StudentDashboardTheme.css";
 import AccountSettings from "../../pages/student/AccountSettings";

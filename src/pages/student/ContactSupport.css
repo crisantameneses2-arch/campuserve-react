@@ -221,3 +221,56 @@
     width: 100%;
   }
 }
+
+/* =========================================================
+   Support owl behind the form card.
+   The card is his desk: the owl sits behind it (z-index 0),
+   so only his head, headset and raised wing show above it.
+   Visible part = owl width × 0.665 (see OwlHelper.css).
+========================================================= */
+.contact-support-desk {
+  --owlh-w: 168px;
+  position: relative;
+  min-width: 0;
+  padding-top: calc(var(--owlh-w) * 0.665);
+}
+
+.contact-support-owl {
+  position: absolute;
+  top: 0;
+  right: 34px;
+  z-index: 0;
+}
+
+.contact-support-desk > .contact-support-form-card {
+  position: relative;
+  z-index: 1;
+}
+
+/* line the blue panel up with the card, not with the owl's head */
+@media (min-width: 801px) {
+  .contact-support-info {
+    margin-top: calc(168px * 0.665);
+  }
+}
+
+@media (max-width: 800px) {
+  .contact-support-desk {
+    --owlh-w: 140px;
+    margin-top: 4px;
+  }
+
+  .contact-support-owl {
+    right: 22px;
+  }
+}
+
+@media (max-width: 600px) {
+  .contact-support-desk {
+    --owlh-w: 124px;
+  }
+
+  .contact-support-owl {
+    right: 14px;
+  }
+}
