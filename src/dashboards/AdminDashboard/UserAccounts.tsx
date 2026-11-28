@@ -1,6 +1,7 @@
 import "./UserAccounts.css";
 
 import { useEffect, useMemo, useState } from "react";
+import { logActivity, type LogActor } from "../../services/activityLog";
 
 import {
   collection,
@@ -194,7 +195,7 @@ const getAccountNameParts = (account: Account) => {
   };
 };
 
-function UserAccounts() {
+function UserAccounts({ actor }: { actor?: LogActor } = {}) {
   // ========================================
   // CREATE ACCOUNT STATE
   // ========================================
@@ -559,6 +560,13 @@ if (isEmployeeAccount && !createPosition.trim()) {
         "Account created successfully. The user can now log in using the email and password."
       );
 
+      await logActivity(
+        { ...actor, role: "admin" },
+        "ACCOUNT_CREATED",
+        `Created a ${createRole.replace(/_/g, " ")} account for ${normalizedFirstName} ${normalizedLastName}.`,
+        { role: createRole, status: createStatus }
+      );
+
       // Clear form
       setCreateStudentId("");
       setCreateLastName("");
@@ -893,6 +901,15 @@ status: editStatus,
       });
     }
 
+    await logActivity(
+      { ...actor, role: "admin" },
+      "ACCOUNT_UPDATED",
+      `Updated the account of ${
+        getAccountDisplayName(editingAccount) || "a user"
+      }.`,
+      { emailChanged: normalizedEmail !== oldDocumentId }
+    );
+
     setEditMessage("Account updated successfully.");
     setEditingAccount(null);
 
@@ -936,6 +953,14 @@ status: editStatus,
         }
       );
 
+      await logActivity(
+        { ...actor, role: "admin" },
+        "ACCOUNT_DELETED",
+        `Deleted the account of ${
+          getAccountDisplayName(account) || "a user"
+        }.`
+      );
+
       await retrieveAccounts();
     } catch (error) {
       console.error(
@@ -968,6 +993,14 @@ status: editStatus,
         {
           status: "active",
         }
+      );
+
+      await logActivity(
+        { ...actor, role: "admin" },
+        "ACCOUNT_RESTORED",
+        `Restored the account of ${
+          getAccountDisplayName(account) || "a user"
+        }.`
       );
 
       await retrieveAccounts();

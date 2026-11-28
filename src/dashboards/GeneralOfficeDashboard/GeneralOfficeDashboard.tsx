@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { isRetiredItem } from "../../components/items/retiredItems";
 import { useNotifications } from "../../hooks/useNotifications";
 import {
     markNotificationRead,
@@ -18,8 +17,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
-import MessagesPanel from "../../components/messaging/MessagesPanel";
-import UnreadMessagesBadge from "../../components/messaging/UnreadMessagesBadge";
+import { logActivity } from "../../services/activityLog";
 
 
 // =========================
@@ -93,6 +91,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
     const [showNotifications, setShowNotifications] = useState(false);
 
     const notificationUserKey = account.email || "general-office";
+
+    // Who is recorded in the activity log for actions on this page.
+    const logActor = {
+        id: account.email,
+        name: account.name || account.email || "General Office",
+        role: "general_office",
+    };
 
     const {
         items: notifications,
@@ -246,6 +251,17 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 }
             );
 
+            await logActivity(
+                logActor,
+                "INVENTORY_UPDATED",
+                `Updated stock for ${selectedInventoryItem.itemName} (${selectedInventoryItem.size}).`,
+                {
+                    price: Number(editStock.price),
+                    totalStock: Number(editStock.totalStock),
+                    reservedQuantity: Number(editStock.reservedQuantity),
+                }
+            );
+
             setShowEditStockModal(false);
             setSelectedInventoryItem(null);
 
@@ -302,10 +318,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                     };
                 });
 
-            // ROTC items are no longer offered.
-            setInventory(
-                inventoryData.filter((item) => !isRetiredItem(item.itemName))
-            );
+            setInventory(inventoryData);
 
         } catch (error) {
 
@@ -595,6 +608,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 }
             );
 
+            await logActivity(
+                logActor,
+                "RESERVATION_PICKUP_UPDATED",
+                `Changed the pickup date of reservation ${reservationId}.`,
+                { pickupDate: newPickupDate }
+            );
+
             await loadReservations();
 
         } catch (error) {
@@ -689,7 +709,16 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                     status: "Cancelled",
                     cancellationReason:
                         cancellationReason.trim(),
-                    cancelledAt: serverTimestamp(),
+                }
+            );
+
+            await logActivity(
+                logActor,
+                "RESERVATION_CANCELLED",
+                `Cancelled reservation ${selectedReservationForCancel.id}.`,
+                {
+                    reason: cancellationReason.trim(),
+                    stockRestored: wasApproved,
                 }
             );
 
@@ -916,10 +945,13 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 doc(db, "itemReservations", reservationId),
                 {
                     status: "approved",
-                    // Starts the 7-day claim deadline
-                    // (api/cron/expire-reservations.ts).
-                    approvedAt: serverTimestamp(),
                 }
+            );
+
+            await logActivity(
+                logActor,
+                "RESERVATION_APPROVED",
+                `Approved reservation ${reservationId}.`
             );
 
             await loadReservations();
@@ -1127,6 +1159,12 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                 }
             );
 
+            await logActivity(
+                logActor,
+                "RESERVATION_CLAIMED",
+                `Marked reservation ${reservationId} as claimed.`
+            );
+
             await loadReservations();
             await loadInventory();
 
@@ -1213,6 +1251,16 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                         })),
 
                     createdAt: serverTimestamp(),
+                }
+            );
+
+            await logActivity(
+                logActor,
+                "RESERVATION_CREATED",
+                `Entered a new reservation ${reservationId}.`,
+                {
+                    totalAmount: Number(newRequest.totalAmount || 0),
+                    itemCount: newRequest.items.length,
                 }
             );
 
@@ -1579,15 +1627,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                         Reports
                     </button>
 
-                    <button
-                        className={`go-nav-item ${activePage === "Messages" ? "active" : ""}`}
-                        onClick={() => setActivePage("Messages")}
-                    >
-                        <span>💬</span>
-                        Messages
-                        <UnreadMessagesBadge office="general_office" />
-                    </button>
-
                 </nav>
 
             </aside>
@@ -1939,6 +1978,24 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                                     </div>
 
                                     <span>84%</span>
+
+                                </div>
+
+                                <div className="inventory-item">
+
+                                    <div className="inventory-info">
+                                        <h3>ROTC Uniform</h3>
+                                        <p>1,250 total stock</p>
+                                    </div>
+
+                                    <div className="stock-bar">
+                                        <div
+                                            className="stock-progress"
+                                            style={{ width: "70%" }}
+                                        ></div>
+                                    </div>
+
+                                    <span>70%</span>
 
                                 </div>
 
@@ -3883,8 +3940,7 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
                     activePage !== "Reservations" &&
                     activePage !== "Claiming" &&
                     activePage !== "Reports" &&
-                    activePage !== "Transactions" &&
-                    activePage !== "Messages" && (
+                    activePage !== "Transactions" && (
 
                         <section className="go-content">
 
@@ -4962,20 +5018,6 @@ function GeneralOfficeDashboard({ account }: GeneralOfficeDashboardProps) {
 
                     </div>
 
-                )}
-
-                {/* ========================= */}
-                {/* MESSAGES PAGE */}
-                {/* ========================= */}
-
-                {activePage === "Messages" && (
-                    <section className="go-content">
-                        <MessagesPanel
-                            mode="staff"
-                            office="general_office"
-                            staffName={account.name || "General Office"}
-                        />
-                    </section>
                 )}
 
             </main>

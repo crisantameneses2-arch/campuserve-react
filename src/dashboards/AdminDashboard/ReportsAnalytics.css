@@ -303,3 +303,59 @@
     flex: 1;
   }
 }
+
+/* ===== FUNCTIONAL ADDITIONS ===== */
+
+.reports-error {
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.reports-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reports-empty {
+  margin: 0;
+  padding: 40px 12px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.status-report strong small {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Many bars (30 days / a month / 12 months): narrower and tighter */
+
+.chart-bars.dense {
+  gap: 3px;
+  padding: 0 8px;
+  justify-content: space-between;
+}
+
+.chart-bars.dense > div {
+  flex: 1;
+  width: auto;
+  max-width: 22px;
+  border-radius: 3px 3px 0 0;
+}
+
+.chart-labels.dense {
+  padding: 9px 8px 0;
+  font-size: 10px;
+}
+
+.chart-labels > span {
+  overflow: visible;
+  white-space: nowrap;
+}

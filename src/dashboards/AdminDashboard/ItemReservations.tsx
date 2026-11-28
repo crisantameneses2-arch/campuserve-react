@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 
 import {
   collection,
@@ -29,6 +28,7 @@ type ItemLine = {
 type StatusKey =
   | "pending"
   | "unpaid"
+  | "paid"
   | "approved"
   | "claimed"
   | "cancelled"
@@ -54,6 +54,7 @@ type Row = {
   claimStubId: string;
   cancellationReason: string;
   searchText: string;
+  searchCompact: string;
 };
 
 /* =====================================================
@@ -65,6 +66,7 @@ const PAGE_SIZE = 10;
 const STATUS_LABELS: Record<StatusKey, string> = {
   pending: "Pending",
   unpaid: "Unpaid",
+  paid: "Paid",
   approved: "Approved",
   claimed: "Claimed",
   cancelled: "Cancelled",
@@ -75,6 +77,7 @@ const STATUS_LABELS: Record<StatusKey, string> = {
 const STATUS_CLASSES: Record<StatusKey, string> = {
   pending: "pending",
   unpaid: "unpaid",
+  paid: "paid",
   approved: "approved",
   claimed: "completed",
   cancelled: "cancelled",
@@ -84,6 +87,7 @@ const STATUS_CLASSES: Record<StatusKey, string> = {
 const FILTER_OPTIONS: StatusKey[] = [
   "pending",
   "unpaid",
+  "paid",
   "approved",
   "claimed",
   "cancelled",
@@ -99,6 +103,7 @@ function normalizeStatus(raw: unknown): StatusKey {
 
   if (value === "pending") return "pending";
   if (value === "unpaid") return "unpaid";
+  if (value === "paid") return "paid";
   if (value === "approved") return "approved";
   if (value === "claimed") return "claimed";
   if (value === "cancelled" || value === "canceled")
@@ -160,6 +165,30 @@ function accountName(data: Record<string, unknown>): string {
     .trim();
 
   return full || text(data.name);
+}
+
+const compact = (value: string) => value.replace(/[^a-z0-9]/g, "");
+
+/**
+ * Every word typed must appear somewhere (in any order), and dashes or
+ * spaces inside IDs are ignored, so "20210001" finds "2021-0001".
+ */
+function matchesSearch(
+  haystack: string,
+  compactHaystack: string,
+  term: string
+): boolean {
+  return term
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => {
+      if (haystack.includes(word)) return true;
+
+      const squeezed = compact(word);
+
+      return squeezed.length > 0 && compactHaystack.includes(squeezed);
+    });
 }
 
 /** Stops spreadsheet apps from running cells that begin with = + - @ */
@@ -281,6 +310,7 @@ function ItemReservations() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [accountsError, setAccountsError] = useState(false);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -357,9 +387,11 @@ function ItemReservations() {
         });
 
         setStudentNames(names);
+        setAccountsError(false);
       },
       (snapshotError) => {
         console.error("Could not load accounts:", snapshotError);
+        setAccountsError(true);
       }
     );
 
@@ -415,6 +447,7 @@ function ItemReservations() {
           claimStubId: text(reservation.claimStubId),
           cancellationReason: text(reservation.cancellationReason),
           searchText: "",
+          searchCompact: "",
         };
 
         row.searchText = [
@@ -429,6 +462,8 @@ function ItemReservations() {
           .join(" ")
           .toLowerCase();
 
+        row.searchCompact = compact(row.searchText);
+
         return row;
       })
       .sort((a, b) => b.createdMs - a.createdMs);
@@ -440,7 +475,8 @@ function ItemReservations() {
     return rows.filter(
       (row) =>
         (statusFilter === "ALL" || row.status === statusFilter) &&
-        (!term || row.searchText.includes(term))
+        (!term ||
+          matchesSearch(row.searchText, row.searchCompact, term))
     );
   }, [rows, search, statusFilter]);
 
@@ -450,8 +486,9 @@ function ItemReservations() {
       pending: rows.filter(
         (row) => row.status === "pending" || row.status === "unpaid"
       ).length,
-      approved: rows.filter((row) => row.status === "approved")
-        .length,
+      approved: rows.filter(
+        (row) => row.status === "approved" || row.status === "paid"
+      ).length,
       claimed: rows.filter((row) => row.status === "claimed")
         .length,
       cancelled: rows.filter((row) => row.status === "cancelled")
@@ -517,6 +554,14 @@ function ItemReservations() {
         </div>
       )}
 
+      {accountsError && !error && (
+        <div className="reservations-error" role="alert">
+          Student names could not be loaded, so searching by name will
+          not work. Ask your administrator to allow reading the accounts
+          collection in Firestore.
+        </div>
+      )}
+
       <div className="reservation-summary">
         <div className="reservation-stat">
           <span>Total Reservations</span>
@@ -529,7 +574,7 @@ function ItemReservations() {
         </div>
 
         <div className="reservation-stat active">
-          <span>Approved</span>
+          <span>Paid / Approved</span>
           <strong>{stats.approved}</strong>
         </div>
 
@@ -700,146 +745,146 @@ function ItemReservations() {
         )}
       </div>
 
-            {selected &&
-        createPortal(
+      {selected && (
+        <div
+          className="reservation-modal-backdrop"
+          onClick={() => setSelectedId("")}
+        >
           <div
-            className="reservation-modal-backdrop"
-            onClick={() => setSelectedId("")}
+            className="reservation-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reservation-modal-title"
+            onClick={(event) => event.stopPropagation()}
           >
-            <div
-              className="reservation-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="reservation-modal-title"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="reservation-modal-header">
-                <div>
-                  <h2 id="reservation-modal-title">
-                    {selected.displayId}
-                  </h2>
-                  <span
-                    className={`reservation-status ${
-                      STATUS_CLASSES[selected.status]
-                    }`}
-                  >
-                    {selected.status === "other"
-                      ? humanize(selected.rawStatus)
-                      : STATUS_LABELS[selected.status]}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="reservation-modal-close"
-                  onClick={() => setSelectedId("")}
+            <div className="reservation-modal-header">
+              <div>
+                <h2 id="reservation-modal-title">
+                  {selected.displayId}
+                </h2>
+                <span
+                  className={`reservation-status ${
+                    STATUS_CLASSES[selected.status]
+                  }`}
                 >
-                  ×
-                </button>
+                  {selected.status === "other"
+                    ? humanize(selected.rawStatus)
+                    : STATUS_LABELS[selected.status]}
+                </span>
               </div>
 
-              <dl className="reservation-facts">
-                <div>
-                  <dt>Student</dt>
-                  <dd>
-                    {selected.studentName}
-                    <small>{selected.studentId || "No student ID"}</small>
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Contact</dt>
-                  <dd>
-                    {selected.mobile || "—"}
-                    <small>{selected.program}</small>
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Pickup</dt>
-                  <dd>
-                    {selected.pickupDate || "—"}
-                    <small>{selected.pickupTime}</small>
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Created</dt>
-                  <dd>{formatDateTime(selected.createdMs)}</dd>
-                </div>
-
-                <div>
-                  <dt>Payment</dt>
-                  <dd>
-                    {selected.paymentStatus
-                      ? humanize(selected.paymentStatus)
-                      : "Not recorded"}
-                    <small>{money(selected.total)}</small>
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Claimed on</dt>
-                  <dd>
-                    {selected.claimedMs
-                      ? formatDate(selected.claimedMs)
-                      : "—"}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Payment code</dt>
-                  <dd>{selected.paymentCode || "—"}</dd>
-                </div>
-
-                <div>
-                  <dt>Claim stub</dt>
-                  <dd>{selected.claimStubId || "—"}</dd>
-                </div>
-              </dl>
-
-              {selected.cancellationReason && (
-                <div className="reservation-reason">
-                  <strong>Cancellation reason</strong>
-                  <p>{selected.cancellationReason}</p>
-                </div>
-              )}
-
-              <h3>Reserved items</h3>
-
-              {selected.items.length === 0 ? (
-                <p className="reservation-muted">
-                  No item lines found for this reservation.
-                </p>
-              ) : (
-                <table className="reservation-mini-table">
-                  <thead>
-                    <tr>
-                      <th>Item</th>
-                      <th>Size</th>
-                      <th>Qty</th>
-                      <th>Type</th>
-                      <th>Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selected.items.map((item) => (
-                      <tr key={item.key}>
-                        <td>{item.name}</td>
-                        <td>{item.size || "—"}</td>
-                        <td>{item.quantity}</td>
-                        <td>{item.channel}</td>
-                        <td>{money(item.subtotal)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <button
+                type="button"
+                aria-label="Close"
+                className="reservation-modal-close"
+                onClick={() => setSelectedId("")}
+              >
+                ×
+              </button>
             </div>
-          </div>,
-          document.body
-        )}
+
+            <dl className="reservation-facts">
+              <div>
+                <dt>Student</dt>
+                <dd>
+                  {selected.studentName}
+                  <small>
+                    {selected.studentId || "No student ID"}
+                  </small>
+                </dd>
+              </div>
+
+              <div>
+                <dt>Contact</dt>
+                <dd>
+                  {selected.mobile || "—"}
+                  <small>{selected.program}</small>
+                </dd>
+              </div>
+
+              <div>
+                <dt>Pickup</dt>
+                <dd>
+                  {selected.pickupDate || "—"}
+                  <small>{selected.pickupTime}</small>
+                </dd>
+              </div>
+
+              <div>
+                <dt>Created</dt>
+                <dd>{formatDateTime(selected.createdMs)}</dd>
+              </div>
+
+              <div>
+                <dt>Payment</dt>
+                <dd>
+                  {selected.paymentStatus
+                    ? humanize(selected.paymentStatus)
+                    : "Not recorded"}
+                  <small>{money(selected.total)}</small>
+                </dd>
+              </div>
+
+              <div>
+                <dt>Claimed on</dt>
+                <dd>
+                  {selected.claimedMs
+                    ? formatDate(selected.claimedMs)
+                    : "—"}
+                </dd>
+              </div>
+
+              <div>
+                <dt>Payment code</dt>
+                <dd>{selected.paymentCode || "—"}</dd>
+              </div>
+
+              <div>
+                <dt>Claim stub</dt>
+                <dd>{selected.claimStubId || "—"}</dd>
+              </div>
+            </dl>
+
+            {selected.cancellationReason && (
+              <div className="reservation-reason">
+                <strong>Cancellation reason</strong>
+                <p>{selected.cancellationReason}</p>
+              </div>
+            )}
+
+            <h3>Reserved items</h3>
+
+            {selected.items.length === 0 ? (
+              <p className="reservation-muted">
+                No item lines found for this reservation.
+              </p>
+            ) : (
+              <table className="reservation-mini-table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Size</th>
+                    <th>Qty</th>
+                    <th>Type</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selected.items.map((item) => (
+                    <tr key={item.key}>
+                      <td>{item.name}</td>
+                      <td>{item.size || "—"}</td>
+                      <td>{item.quantity}</td>
+                      <td>{item.channel}</td>
+                      <td>{money(item.subtotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -65,6 +65,7 @@ type Row = {
   status: string;
   createdMs: number;
   searchText: string;
+  searchCompact: string;
 };
 
 type LogEntry = {
@@ -188,6 +189,30 @@ function accountName(data: Record<string, unknown>): string {
   return full || String(data.name || "").trim();
 }
 
+const compact = (value: string) => value.replace(/[^a-z0-9]/g, "");
+
+/**
+ * Every word typed must appear somewhere (in any order), and dashes or
+ * spaces inside IDs are ignored, so "20210001" finds "2021-0001".
+ */
+function matchesSearch(
+  haystack: string,
+  compactHaystack: string,
+  term: string
+): boolean {
+  return term
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => {
+      if (haystack.includes(word)) return true;
+
+      const squeezed = compact(word);
+
+      return squeezed.length > 0 && compactHaystack.includes(squeezed);
+    });
+}
+
 /** Stops spreadsheet apps from running cells that begin with = + - @ */
 function csvCell(value: unknown): string {
   let text = String(value ?? "");
@@ -263,6 +288,7 @@ function DocumentRequests() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [accountsError, setAccountsError] = useState(false);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -340,9 +366,11 @@ function DocumentRequests() {
         });
 
         setStudentNames(names);
+        setAccountsError(false);
       },
       (snapshotError) => {
         console.error("Could not load accounts:", snapshotError);
+        setAccountsError(true);
       }
     );
 
@@ -387,6 +415,7 @@ function DocumentRequests() {
             .toLowerCase(),
         };
       })
+      .map((row) => ({ ...row, searchCompact: compact(row.searchText) }))
       .sort((a, b) => b.createdMs - a.createdMs);
   }, [requests, details, studentNames]);
 
@@ -396,7 +425,8 @@ function DocumentRequests() {
     return rows.filter(
       (row) =>
         (statusFilter === "ALL" || row.status === statusFilter) &&
-        (!term || row.searchText.includes(term))
+        (!term ||
+          matchesSearch(row.searchText, row.searchCompact, term))
     );
   }, [rows, search, statusFilter]);
 
@@ -599,6 +629,14 @@ function DocumentRequests() {
       {error && (
         <div className="requests-error" role="alert">
           {error}
+        </div>
+      )}
+
+      {accountsError && !error && (
+        <div className="requests-error" role="alert">
+          Student names could not be loaded, so searching by name will
+          not work. Ask your administrator to allow reading the accounts
+          collection in Firestore.
         </div>
       )}
 

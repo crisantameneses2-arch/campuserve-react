@@ -484,21 +484,21 @@ function AdminDashboard({
 
           {/* ================= ACTIVITY LOGS ================= */}
 
-                    {can("activityLogs") && (
-            <button
-              className={`sidebar-item ${
-                currentPage === "activityLogs"
-                  ? "active"
-                  : ""
-              }`}
-              onClick={() =>
-                setCurrentPage("activityLogs")
-              }
-            >
-              <span>📝</span>
-              Activity logs
-            </button>
-          )}
+          {can("activityLogs") && (
+<button
+            className={`sidebar-item ${
+              currentPage === "activityLogs"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setCurrentPage("activityLogs")
+            }
+          >
+            <span>📝</span>
+            Activity logs
+          </button>
+)}
 
           {/* ================= SYSTEM SETTINGS ================= */}
 
@@ -646,7 +646,12 @@ function AdminDashboard({
 
           {currentPage === "userAccounts" ? (
 
-            <UserAccounts />
+            <UserAccounts
+              actor={{
+                id: account.firebaseUid || account.email,
+                name: account.name || account.email,
+              }}
+            />
 
           /* ROLES & PERMISSIONS */
 
@@ -691,12 +696,12 @@ function AdminDashboard({
           ) : currentPage === "systemSettings" ? (
 
             <SystemSettings
-  actor={{
-    id: account.firebaseUid || account.email || "unknown-admin",
-    name: account.name || account.email || "Administrator",
-    role: "admin",
-  }}
-/>
+              actor={{
+                id: account.firebaseUid || account.email,
+                name: account.name || account.email,
+                role: "admin",
+              }}
+            />
 
           /* DASHBOARD */
 
