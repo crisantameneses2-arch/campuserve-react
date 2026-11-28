@@ -1,24 +1,51 @@
 /* =========================================================
    CampuServe — Student side typography
    ---------------------------------------------------------
-   Headlines : DK Longreach (single weight)
-   Body text : Karla (Regular, Italic, Bold, Bold Italic)
+   Headlines : Avoin (demo, single bold weight)
+   Body text : Ranosta (demo, single regular weight)
    Mono      : DM Mono (claim codes)
 
-   Both fonts are bundled from src/assets/fonts, so they work
-   offline and on Vercel without any <link> in index.html.
+   Kept as before (do not change):
+   - "Welcome back!" / "We're glad you're here!" on the dashboard:
+     DK Longreach heading + Karla italic line underneath
+     (pinned at the bottom of this file)
+   - The digital receipt keeps its own font stack
+     (see src/components/receipt/DigitalReceipt.css)
 
-   Note: this DK Longreach file is a demo version with no
-   digits (0-9). Numbers inside headlines automatically fall
-   back to Karla, the next font in the list.
+   All font files are bundled from src/assets/fonts, so they
+   work offline and on Vercel without any <link> in index.html.
 
-   The digital receipt keeps its own font stack
-   (see src/components/receipt/DigitalReceipt.css).
+   About the demo fonts:
+   - The Avoin demo draws a "PERSONAL USE ONLY" stamp instead of
+     the digits 5-9, so Avoin is never used for digits (see the
+     unicode-range below). Numbers in headlines use Karla bold.
+   - The Ranosta demo only has A-Z, a-z, space, comma and period.
+     Every other character (digits, ? ! : - @ ( ) etc.) falls
+     back to Karla, the next font in the list.
+   Buying the full versions removes both limits; just replace
+   the two .woff files.
 
    Change a font for the whole student side by editing the
-   variables below (and the matching --sdx-font-* ones in
-   StudentDashboardTheme.css).
+   variables below.
    ========================================================= */
+
+@font-face {
+  font-family: "Avoin";
+  src: url("../assets/fonts/AvoinDemo-Bold.woff") format("woff");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  /* everything except the digits 0-9 (the demo stamps 5-9) */
+  unicode-range: U+0000-002F, U+003A-FFFF;
+}
+
+@font-face {
+  font-family: "Ranosta";
+  src: url("../assets/fonts/RanostaDemo-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 @font-face {
   font-family: "DK Longreach";
@@ -61,8 +88,12 @@
 }
 
 :root {
-  --cs-font-display: "DK Longreach", "Karla", "Segoe UI", system-ui, sans-serif;
-  --cs-font-body: "Karla", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --cs-font-display: "Avoin", "Karla", "Segoe UI", system-ui, sans-serif;
+  --cs-font-body: "Ranosta", "Karla", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* the dashboard welcome keeps its original pair */
+  --cs-font-welcome-title: "DK Longreach", "Karla", "Segoe UI", system-ui, sans-serif;
+  --cs-font-welcome-text: "Karla", "Segoe UI", system-ui, -apple-system, sans-serif;
   --cs-font-mono: "DM Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
 }
 
@@ -77,7 +108,7 @@
   font-weight: 400;
 }
 
-/* h3s that hold content rather than a headline stay in Karla bold:
+/* h3s that hold content rather than a headline stay in the body font:
    FAQ questions, the document/item name on Live tracking cards,
    and item names on stock cards. */
 .sdx h3.help-center-faq-heading,
@@ -92,4 +123,44 @@
   font-family: var(--sdx-font-display, var(--cs-font-display));
   font-weight: 400;
   letter-spacing: 0.01em;
+}
+
+/* Avoin's space is very narrow, and several headings use negative
+   letter-spacing, so words ran together ("Sendusamessage"). */
+.sdx :is(h1, h2, h3):not(.rcp *),
+.sdx .sdx-topbar__title strong {
+  word-spacing: 0.16em;
+}
+
+.sdx .sdx-track-top .sdx-welcome h2 {
+  word-spacing: normal;
+}
+
+/* ---------------------------------------------------------
+   Ranosta has a single regular weight and no italic. Let the
+   browser draw bold/italic for it so labels, buttons and
+   emphasis keep their weight. (The student theme turned this
+   off; the receipt keeps it off so it looks exactly as before.)
+   --------------------------------------------------------- */
+.sdx {
+  font-synthesis: weight style;
+}
+
+.sdx .rcp-overlay,
+.sdx .rcp {
+  font-synthesis: none;
+}
+
+/* ---------------------------------------------------------
+   Dashboard welcome: keep DK Longreach + Karla italic.
+   --------------------------------------------------------- */
+.sdx .sdx-track-top .sdx-welcome h2 {
+  font-family: var(--cs-font-welcome-title);
+  font-weight: 400;
+  font-synthesis: none;
+}
+
+.sdx .sdx-track-top .sdx-welcome p {
+  font-family: var(--cs-font-welcome-text);
+  font-synthesis: none;
 }
