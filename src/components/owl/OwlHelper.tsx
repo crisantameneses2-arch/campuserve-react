@@ -182,7 +182,7 @@ const POSES: Record<OwlPose, PoseArt> = {
     <g transform="translate(250.35 242.35)"><path d="M81.0881 92.3258C79.7447 118.668 53.992 257.12 31.1359 255.466C8.27993 253.812 -1.97423 90.2243 0.312198 45.3901C1.65558 19.0483 15.3107 -1.56071 38.1667 0.0929871C61.0227 1.74668 82.4314 65.984 81.0881 92.3258Z" fill="#61ADDD"/></g>
 </g>
 </g>
-<g id="oth-question-marks" font-family="'Arial Rounded MT Bold','Nunito','Segoe UI',system-ui,sans-serif" font-weight="800" text-anchor="middle">
+<g id="oth-question-marks" font-family="'Forque','Arial Rounded MT Bold','Segoe UI',system-ui,sans-serif" font-weight="800" text-anchor="middle">
   <text class="oth-qm" x="255" y="-28" font-size="78" fill="#00345E">?</text>
   <text class="oth-qm" x="318" y="-72" font-size="54" fill="#42A76F">?</text>
   <text class="oth-qm" x="205" y="-84" font-size="40" fill="#4DB4E8">?</text>

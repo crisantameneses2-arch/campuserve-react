@@ -11,7 +11,7 @@
   --cst-muted: #6f879b;
 
   color: var(--cst-ink);
-  font-family: var(--sdx-font-body, Inter, "Aptos", "Segoe UI", system-ui, sans-serif);
+  font-family: var(--cs-font-body);
   font-size: 13px;
   line-height: 1.5;
   text-align: left;
@@ -47,7 +47,7 @@
 
 .cst-head h1 {
   margin-top: 6px;
-  font-family: var(--sdx-font-display, Georgia, "Times New Roman", serif);
+  font-family: var(--cs-font-display);
   font-size: clamp(28px, 4vw, 40px);
   font-weight: 400;
   line-height: 1.1;
@@ -212,7 +212,8 @@
   border: 1.5px dashed #a9cbe2;
   border-radius: 16px;
   color: var(--cst-blue);
-  font-family: var(--sdx-font-display, Georgia, "Times New Roman", serif);
+  font-family: var(--cs-font-display);
+  font-weight: 400;
   font-size: 28px;
   font-style: normal;
 }
@@ -267,7 +268,7 @@
   border-radius: 14px;
   background: #eef6fb;
   color: #17496d;
-  font-family: var(--sdx-font-mono, "Consolas", "SFMono-Regular", ui-monospace, monospace);
+  font-family: var(--cs-font-mono);
   font-size: clamp(22px, 3.4vw, 30px);
   font-weight: 800;
   letter-spacing: 0.12em;

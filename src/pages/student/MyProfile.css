@@ -75,9 +75,10 @@
 
 .mpx-hero h2 {
   margin: 0;
+  font-family: var(--cs-font-display);
   font-size: 26px;
-  font-weight: 830;
-  letter-spacing: -0.6px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
   line-height: 1.15;
   color: #fff;
   overflow-wrap: anywhere;

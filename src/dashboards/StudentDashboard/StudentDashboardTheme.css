@@ -38,9 +38,10 @@ body.sdx-body {
   --sdx-line: #dce8ef;
   --sdx-muted: #718da2;
 
-  /* Fonts: Righteous (display) + Nunito (text) + DM Mono (codes) */
-  --sdx-font-display: "Righteous", "Nunito", system-ui, sans-serif;
-  --sdx-font-body: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Fonts: DK Longreach (headlines) + Karla (text) + DM Mono (codes).
+     @font-face rules live in src/theme/studentFonts.css. */
+  --sdx-font-display: var(--cs-font-display, "DK Longreach", "Karla", system-ui, sans-serif);
+  --sdx-font-body: var(--cs-font-body, "Karla", "Segoe UI", system-ui, -apple-system, sans-serif);
   --sdx-font-mono: "DM Mono", "Consolas", ui-monospace, monospace;
 
   display: flex;
@@ -2811,8 +2812,8 @@ body.sdx-body {
 
 .sdx .sdx-welcome h2 {
   margin: 0 0 6px;
-  /* Righteous heading, Nunito italic line underneath */
-  font-family: var(--sdx-font-display, "Righteous", system-ui, sans-serif);
+  /* DK Longreach heading, Karla italic line underneath */
+  font-family: var(--sdx-font-display);
   font-size: 24px;
   font-weight: 400;
   letter-spacing: 0.01em;

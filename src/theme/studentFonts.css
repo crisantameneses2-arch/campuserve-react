@@ -1,17 +1,95 @@
 /* =========================================================
    CampuServe — Student side typography
    ---------------------------------------------------------
-   Display : Righteous (rounded geometric, single weight)
-   Text    : Nunito
-   Mono    : DM Mono (claim codes, receipts)
+   Headlines : DK Longreach (single weight)
+   Body text : Karla (Regular, Italic, Bold, Bold Italic)
+   Mono      : DM Mono (claim codes)
 
-   All three load from Google Fonts via the <link> in index.html.
-   Change a font for the whole student side by editing the three
-   variables below.
+   Both fonts are bundled from src/assets/fonts, so they work
+   offline and on Vercel without any <link> in index.html.
+
+   Note: this DK Longreach file is a demo version with no
+   digits (0-9). Numbers inside headlines automatically fall
+   back to Karla, the next font in the list.
+
+   The digital receipt keeps its own font stack
+   (see src/components/receipt/DigitalReceipt.css).
+
+   Change a font for the whole student side by editing the
+   variables below (and the matching --sdx-font-* ones in
+   StudentDashboardTheme.css).
    ========================================================= */
 
+@font-face {
+  font-family: "DK Longreach";
+  src: url("../assets/fonts/DKLongreach.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Karla";
+  src: url("../assets/fonts/Karla-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Karla";
+  src: url("../assets/fonts/Karla-Italic.woff") format("woff");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Karla";
+  src: url("../assets/fonts/Karla-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Karla";
+  src: url("../assets/fonts/Karla-BoldItalic.woff") format("woff");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
-  --cs-font-display: "Righteous", "Nunito", "Segoe UI", system-ui, sans-serif;
-  --cs-font-body: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --cs-font-display: "DK Longreach", "Karla", "Segoe UI", system-ui, sans-serif;
+  --cs-font-body: "Karla", "Segoe UI", system-ui, -apple-system, sans-serif;
   --cs-font-mono: "DM Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
+}
+
+/* ---------------------------------------------------------
+   Headlines on every student page use the display font.
+   (Pages that already set --sdx-font-display keep their own
+   sizes; this only fills in the headings that inherited the
+   body font.) The digital receipt (.rcp) is left alone.
+   --------------------------------------------------------- */
+.sdx :is(h1, h2, h3):not(.rcp *) {
+  font-family: var(--sdx-font-display, var(--cs-font-display));
+  font-weight: 400;
+}
+
+/* h3s that hold content rather than a headline stay in Karla bold:
+   FAQ questions, the document/item name on Live tracking cards,
+   and item names on stock cards. */
+.sdx h3.help-center-faq-heading,
+.sdx .sdx-tl__tab h3,
+.sdx .stock-card-main h3 {
+  font-family: var(--sdx-font-body, var(--cs-font-body));
+  font-weight: 700;
+}
+
+/* Page title in the top bar is a <strong>, not a heading. */
+.sdx .sdx-topbar__title strong {
+  font-family: var(--sdx-font-display, var(--cs-font-display));
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }

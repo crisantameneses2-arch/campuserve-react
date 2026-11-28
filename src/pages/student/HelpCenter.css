@@ -271,8 +271,8 @@
 
 .help-center-section .help-center-hero h2 {
   margin: 0 0 6px;
-  /* same pairing as the dashboard welcome: tight bold heading,
-     Georgia italic line underneath */
+  /* same pairing as the dashboard welcome: headline font,
+     Karla italic line underneath */
   font-size: 26px;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -282,7 +282,7 @@
 
 .help-center-hero .help-center-subtitle {
   margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--sdx-font-body, "Karla", "Segoe UI", system-ui, sans-serif);
   font-style: italic;
   font-size: 14px;
   line-height: 1.55;

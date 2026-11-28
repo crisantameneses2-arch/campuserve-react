@@ -30,7 +30,7 @@
   box-sizing: border-box;
   background: var(--reservation-background);
   color: var(--reservation-text);
-  font-family: var(--sdx-font-body, Arial, Helvetica, sans-serif);
+  font-family: var(--cs-font-body);
 }
 
 .reservation-page *,
