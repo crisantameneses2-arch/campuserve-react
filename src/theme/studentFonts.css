@@ -2,7 +2,7 @@
    CampuServe — Student side typography
    ---------------------------------------------------------
    Headlines : Avoin (demo, single bold weight)
-   Body text : Ranosta (demo, single regular weight)
+   Body text : GC Protage (demo, Light to ExtraBold)
    Mono      : DM Mono (claim codes)
 
    Kept as before (do not change):
@@ -19,11 +19,11 @@
    - The Avoin demo draws a "PERSONAL USE ONLY" stamp instead of
      the digits 5-9, so Avoin is never used for digits (see the
      unicode-range below). Numbers in headlines use Karla bold.
-   - The Ranosta demo only has A-Z, a-z, space, comma and period.
+   - The GC Protage demo only has A-Z, a-z, space, comma and period.
      Every other character (digits, ? ! : - @ ( ) etc.) falls
      back to Karla, the next font in the list.
    Buying the full versions removes both limits; just replace
-   the two .woff files.
+   the .woff files.
 
    Change a font for the whole student side by editing the
    variables below.
@@ -40,9 +40,49 @@
 }
 
 @font-face {
-  font-family: "Ranosta";
-  src: url("../assets/fonts/RanostaDemo-Regular.woff") format("woff");
+  font-family: "GC Protage";
+  src: url("../assets/fonts/GcProtageDemo-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GC Protage";
+  src: url("../assets/fonts/GcProtageDemo-Regular.woff") format("woff");
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GC Protage";
+  src: url("../assets/fonts/GcProtageDemo-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GC Protage";
+  src: url("../assets/fonts/GcProtageDemo-SemiBold.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GC Protage";
+  src: url("../assets/fonts/GcProtageDemo-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GC Protage";
+  src: url("../assets/fonts/GcProtageDemo-ExtraBold.woff") format("woff");
+  font-weight: 800;
   font-style: normal;
   font-display: swap;
 }
@@ -89,7 +129,7 @@
 
 :root {
   --cs-font-display: "Avoin", "Karla", "Segoe UI", system-ui, sans-serif;
-  --cs-font-body: "Ranosta", "Karla", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --cs-font-body: "GC Protage", "Karla", "Segoe UI", system-ui, -apple-system, sans-serif;
 
   /* the dashboard welcome keeps its original pair */
   --cs-font-welcome-title: "DK Longreach", "Karla", "Segoe UI", system-ui, sans-serif;
@@ -137,10 +177,10 @@
 }
 
 /* ---------------------------------------------------------
-   Ranosta has a single regular weight and no italic. Let the
-   browser draw bold/italic for it so labels, buttons and
-   emphasis keep their weight. (The student theme turned this
-   off; the receipt keeps it off so it looks exactly as before.)
+   GC Protage has real weights (Light to ExtraBold) but no italic.
+   Let the browser slant it for italic text (and fill in any
+   weight it lacks). The student theme turned this off; the
+   receipt keeps it off so it looks exactly as before.
    --------------------------------------------------------- */
 .sdx {
   font-synthesis: weight style;
